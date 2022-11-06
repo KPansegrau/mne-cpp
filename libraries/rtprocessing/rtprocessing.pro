@@ -95,6 +95,7 @@ SOURCES += \
     helpers/parksmcclellan.cpp \
     helpers/filterkernel.cpp \
     helpers/filterio.cpp \
+    helpers/butterworth.cpp \
 
 HEADERS +=  \
     icp.h \
@@ -113,6 +114,7 @@ HEADERS +=  \
     helpers/parksmcclellan.h \
     helpers/filterkernel.h \
     helpers/filterio.h \
+    helpers/butterworth.h \
 
 clang {
     QMAKE_CXXFLAGS += -isystem $${EIGEN_INCLUDE_DIR} 

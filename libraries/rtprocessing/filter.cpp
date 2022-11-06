@@ -1,4 +1,7 @@
 //=============================================================================================================
+
+//TODO edit documentation here
+
 /**
  * @file     filter.cpp
  * @author   Ruben Doerfel <Ruben.Doerfel@tu-ilmenau.de>;
@@ -78,7 +81,8 @@ bool RTPROCESSINGLIB::filterFile(QIODevice &pIODevice,
                                  int iOrder,
                                  int designMethod,
                                  const RowVectorXi& vecPicks,
-                                 bool bUseThreads)
+                                 bool bUseThreads,
+                                 bool bFilterTwopass)
 {
     // Normalize cut off frequencies to nyquist
     dCenterfreq = dCenterfreq/(dSFreq/2.0);
@@ -95,11 +99,24 @@ bool RTPROCESSINGLIB::filterFile(QIODevice &pIODevice,
                                        dSFreq,
                                        designMethod);
 
-    return filterFile(pIODevice,
-                      pFiffRawData,
-                      filter,
-                      vecPicks,
-                      bUseThreads);
+
+    if(filter.getDesignMethod() == FilterKernel::m_designMethods.at(2)){
+        //for IIR Butterworth filtering
+        return filterFileIir(pIODevice,
+                            pFiffRawData,
+                            filter,
+                            vecPicks,
+                            bUseThreads,
+                            bFilterTwopass);
+
+    }else{
+        //for FIR filtering
+        return filterFile(pIODevice,
+                          pFiffRawData,
+                          filter,
+                          vecPicks,
+                          bUseThreads);
+    }
 }
 
 //=============================================================================================================
@@ -167,6 +184,7 @@ bool RTPROCESSINGLIB::filterFile(QIODevice &pIODevice,
            first_buffer = false;
         }
 
+
         matData = filterDataBlock(matData,
                                   vecPicks,
                                   filterKernel,
@@ -183,7 +201,89 @@ bool RTPROCESSINGLIB::filterFile(QIODevice &pIODevice,
         }
 
         matDataOverlap = matData.block(0,matData.cols()-iOrder,matData.rows(),iOrder);
+
+
     }
+
+    outfid->finish_writing_raw();
+
+    return true;
+}
+
+
+//=============================================================================================================
+
+bool RTPROCESSINGLIB::filterFileIir(QIODevice &pIODevice,
+                                    QSharedPointer<FiffRawData> pFiffRawData,
+                                    const FilterKernel& filterKernel,
+                                    const RowVectorXi& vecPicks,
+                                    bool bUseThreads,
+                                    bool bFilterTwopass)
+{
+
+    RowVectorXd cals;
+    SparseMatrix<double> mult;
+    RowVectorXi sel;
+    FiffStream::SPtr outfid = FiffStream::start_writing_raw(pIODevice, pFiffRawData->info, cals);
+
+    //Setup reading parameters
+    fiff_int_t from = pFiffRawData->first_samp;
+    fiff_int_t to = pFiffRawData->last_samp;
+
+    //do not slice the input into blocks
+//    int iSize = to - from;
+
+//    float quantum_sec = iSize/pFiffRawData->info.sfreq;
+//    fiff_int_t quantum = ceil(quantum_sec*pFiffRawData->info.sfreq);
+
+    // Read, filter and write the data
+//    bool first_buffer = true;
+
+//    fiff_int_t first, last;
+    MatrixXd matData;
+    MatrixXd times;
+
+
+        if (!pFiffRawData->read_raw_segment(matData, times, mult, from, to, sel)) {
+            qWarning("[Filter::filterData] Error during read_raw_segment\n");
+            return false;
+        }
+
+        qInfo() << "Filtering and writing block" << from << "to" << to;
+
+
+
+
+
+/*    for(first = from; first < to; first+=quantum) {
+        last = first+quantum-1;
+        if (last > to) {
+            last = to;
+        }
+
+        if (!pFiffRawData->read_raw_segment(matData, times, mult, first, last, sel)) {
+            qWarning("[Filter::filterData] Error during read_raw_segment\n");
+            return false;
+        }
+
+        qInfo() << "Filtering and writing block" << first << "to" << last;
+
+        if (first_buffer) {
+           if (first > 0) {
+               outfid->write_int(FIFF_FIRST_SAMPLE,&first);
+           }
+           first_buffer = false;
+        }
+*/
+
+        matData = filterDataBlockIir(matData,
+                                    vecPicks,
+                                    filterKernel,
+                                    bUseThreads);
+
+        outfid->write_raw_buffer(matData,cals);
+
+    //}
 
     outfid->finish_writing_raw();
 
@@ -202,7 +302,8 @@ MatrixXd RTPROCESSINGLIB::filterData(const MatrixXd& mataData,
                                      int designMethod,
                                      const RowVectorXi& vecPicks,
                                      bool bUseThreads,
-                                     bool bKeepOverhead)
+                                     bool bKeepOverhead,
+                                     bool bFilterTwopass)
 {
     // Check for size of data
     if(mataData.cols() < iOrder){
@@ -225,11 +326,22 @@ MatrixXd RTPROCESSINGLIB::filterData(const MatrixXd& mataData,
                                        dSFreq,
                                        designMethod);
 
-    return filterData(mataData,
+    if(filter.getDesignMethod() == FilterKernel::m_designMethods.at(2)){
+        //for IIR Butterworth filtering
+        return filterDataIir(mataData,
+                            filter,
+                            vecPicks,
+                            bUseThreads,
+                            bFilterTwopass);
+
+    }else{
+        //for FIR filtering
+        return filterData(mataData,
                       filter,
                       vecPicks,
                       bUseThreads,
                       bKeepOverhead);
+    }
 }
 
 //=============================================================================================================
@@ -294,10 +406,12 @@ MatrixXd RTPROCESSINGLIB::filterData(const MatrixXd& mataData,
             from += iSize;
         }
     } else {
+
         matDataOut = filterDataBlock(mataData,
                                      vecPicks,
                                      filterKernel,
                                      bUseThreads);
+
     }
 
     if(bKeepOverhead) {
@@ -307,6 +421,52 @@ MatrixXd RTPROCESSINGLIB::filterData(const MatrixXd& mataData,
     }
 }
 
+
+//=============================================================================================================
+
+MatrixXd RTPROCESSINGLIB::filterDataIir(const MatrixXd& matDataIn,
+                                        const FilterKernel& filterKernel,
+                                        const RowVectorXi& vecPicks,
+                                        bool bUseThreads,
+                                        bool bFilterTwopass)
+
+{
+    int iOrder = filterKernel.getFilterOrder();
+
+    // Check for size of data
+    if(matDataIn.cols() < iOrder){
+        qWarning() << "[Filter::filterData] Filter length/order is bigger than data length. Returning.";
+        return matDataIn;
+    }
+
+    // Create output matrix with size of input matrix
+    MatrixXd matDataOut(matDataIn.rows(), matDataIn.cols());
+    matDataOut.setZero();
+
+    //filter the data in forward direction
+    matDataOut = filterDataBlockIir(matDataIn,
+                                    vecPicks,
+                                    filterKernel,
+                                    bUseThreads);
+   // TODO this part does not work, fix it or delete two-pass option at all
+    if(bFilterTwopass){
+        //reverse data and filter it again (forward and backward filtering in order to compensate non-linear phase of IIR filters (recommended for offline filtering))
+        MatrixXd matDataReversed(matDataOut.rows(), matDataOut.cols());
+        matDataReversed = matDataOut.reverse(); //flip data
+        //filter in backward direction
+        matDataOut = filterDataBlockIir(matDataReversed,
+                                        vecPicks,
+                                        filterKernel,
+                                        bUseThreads);
+        matDataOut = matDataOut.reverse(); //reverse data again to restore order of time samples
+    }
+
+    return matDataOut;
+
+
+}
+
+
 //=============================================================================================================
 
 MatrixXd RTPROCESSINGLIB::filterDataBlock(const MatrixXd& mataData,
@@ -314,6 +474,8 @@ MatrixXd RTPROCESSINGLIB::filterDataBlock(const MatrixXd& mataData,
                                           const FilterKernel& filterKernel,
                                           bool bUseThreads)
 {
+
+
     int iOrder = filterKernel.getFilterOrder();
 
     // Check for size of data
@@ -325,6 +487,7 @@ MatrixXd RTPROCESSINGLIB::filterDataBlock(const MatrixXd& mataData,
     // Setup filters to the correct length, so we do not have to do this everytime we call the FFT filter function
     FilterKernel filterKernelSetup = filterKernel;
     filterKernelSetup.prepareFilter(mataData.cols());
+
 
     // Do the concurrent filtering
     RowVectorXi vecPicksNew = vecPicks;
@@ -372,10 +535,69 @@ MatrixXd RTPROCESSINGLIB::filterDataBlock(const MatrixXd& mataData,
 
 //=============================================================================================================
 
+MatrixXd RTPROCESSINGLIB::filterDataBlockIir(const Eigen::MatrixXd& mataData,
+                                                            const Eigen::RowVectorXi& vecPicks,
+                                                            const RTPROCESSINGLIB::FilterKernel& filterKernel,
+                                                            bool bUseThreads)
+{
+
+    //filter all channels if no vecPicks are specified
+    RowVectorXi vecPicksNew = vecPicks;
+    if(vecPicksNew.cols() == 0) {
+        vecPicksNew = RowVectorXi::LinSpaced(mataData.rows(), 0, mataData.rows());
+    }
+
+    // Generate QList structure which can be handled by the QConcurrent framework
+    QList<FilterObject> timeData;
+
+    // Only select channels specified in vecPicksNew, no preparation of filterKernel is needed
+    FilterObject data;
+    for(qint32 i = 0; i < vecPicksNew.cols(); ++i) {
+        data.filterKernel = filterKernel;
+        data.iRow = vecPicksNew[i];
+        data.vecData = mataData.row(vecPicksNew[i]);
+        timeData.append(data);
+    }
+
+    //prepare output data matrix, not filtered data is not delayed for IIR
+    MatrixXd matDataOut(mataData.rows(), mataData.cols());
+    matDataOut = mataData;
+
+    //do filtering channel by channel, IIR filtering is chosen in filterChannel
+    if(bUseThreads) {
+        QFuture<void> future = QtConcurrent::map(timeData,
+                                                 filterChannel);
+        future.waitForFinished();
+    } else {
+        for(int i = 0; i < timeData.size(); ++i) {
+            filterChannel(timeData[i]);
+        }
+    }
+
+    for(int r = 0; r < timeData.size(); r++) {
+        // Write the newly calculated filtered data to the filter data matrix. This data has no delay.
+        matDataOut.row(timeData.at(r).iRow) = timeData.at(r).vecData;
+    }
+
+    return matDataOut;
+
+}
+
+//=============================================================================================================
+
 void RTPROCESSINGLIB::filterChannel(RTPROCESSINGLIB::FilterObject& channelDataTime)
 {
-    //channelDataTime.vecData = channelDataTime.first.at(i).applyConvFilter(channelDataTime.vecData, true);
-    channelDataTime.filterKernel.applyFftFilter(channelDataTime.vecData, true); //FFT Convolution for rt is not suitable. FFT make the signal filtering non causal.
+    if(channelDataTime.filterKernel.getDesignMethod() == FilterKernel::m_designMethods.at(2)){
+        //IIR filtering with Butterworth filter
+
+        channelDataTime.filterKernel.applyIirFilter(channelDataTime.vecData);
+
+    }else{
+        //FIR filtering
+
+        //channelDataTime.vecData = channelDataTime.first.at(i).applyConvFilter(channelDataTime.vecData, true);
+        channelDataTime.filterKernel.applyFftFilter(channelDataTime.vecData, true); //FFT Convolution for rt is not suitable. FFT make the signal filtering non causal.
+    }
 }
 
 //=============================================================================================================

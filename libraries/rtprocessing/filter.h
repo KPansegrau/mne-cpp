@@ -96,6 +96,9 @@ typedef struct {
  * @param[in] designMethod         The design method to use. Choose between Cosine and Tschebyscheff. Defaul is set to Cosine.
  * @param[in] vecPicks             Channel indexes to filter. Default is filter all channels.
  * @param[in] bUseThreads          hether to use multiple threads. Default is set to true.
+ * @param[in] bFilterTwopass       Whether the data should be IIR filtered forward and backward (null phase for IIR offline filering) or not (necessary for online IIR filtering).
+ *                                 Only relevant for IIR filters. Default is set to true (forward and backward filtering is performed).
+ *
  *
  * @return Returns true if successfull, false otherwise.
  */
@@ -109,7 +112,9 @@ RTPROCESINGSHARED_EXPORT bool filterFile(QIODevice& pIODevice,
                                          int iOrder = 4096,
                                          int designMethod = FilterKernel::m_designMethods.indexOf(FilterParameter("Cosine")),
                                          const Eigen::RowVectorXi &vecPicks = Eigen::RowVectorXi(),
-                                         bool bUseThreads = true);
+                                         bool bUseThreads = true,
+                                         bool bFilterTwopass = true);
+
 
 //=========================================================================================================
 /**
@@ -132,20 +137,46 @@ RTPROCESINGSHARED_EXPORT bool filterFile(QIODevice& pIODevice,
 
 //=========================================================================================================
 /**
+ * Filters data from an input file based on an exsisting IIR filter kernel and writes the filtered data to a
+ * pIODevice.
+ *
+ * @param[in] pIODevice            The IO device to write to.
+ * @param[in] pFiffRawData         The fiff raw data object to read from.
+ * @param[in] filterKernel         The list of filter kernels to use.
+ * @param[in] vecPicks             Channel indexes to filter. Default is filter all channels.
+ * @param[in] bUseThreads          hether to use multiple threads. Default is set to true.
+ * @param[in] bFilterTwopass       Whether the data should be IIR filtered forward and backward (null phase for IIR offline filering) or not (necessary for online IIR filtering).
+ *                                 Only relevant for IIR filters. Default is set to true (forward and backward filtering is performed).
+ *
+ *
+ * @return Returns true if successfull, false otherwise.
+ */
+RTPROCESINGSHARED_EXPORT bool filterFileIir(QIODevice& pIODevice,
+                                            QSharedPointer<FIFFLIB::FiffRawData> pFiffRawData,
+                                            const RTPROCESSINGLIB::FilterKernel& filterKernel,
+                                            const Eigen::RowVectorXi &vecPicks = Eigen::RowVectorXi(),
+                                            bool bUseThreads = false,
+                                            bool bFilterTwopass = true);
+
+//=========================================================================================================
+/**
  * Creates a user designed filter kernel and filters the raw input data.
  * The data needs to be present all at once. For continous filtering via overlap add use the FilterOverlapAdd class.
  *
- * @param[in] matData          The data which is to be filtered.
- * @param[in] type             The type of the filter: LPF, HPF, BPF, NOTCH (from enum FilterType).
- * @param[in] dCenterfreq      The center of the frequency.
- * @param[in] dBandwidth       The filter bandwidth. Ignored if FilterType is set to LPF,HPF. If NOTCH/BPF: bandwidth of stop-/passband.
- * @param[in] dTransition      The transistion band determines the width of the filter slopes (steepness).
- * @param[in] dSFreq           The input data sampling frequency.
- * @param[in] iOrder           Represents the order of the filter, the higher the higher is the stopband attenuation. Default is 1024 taps.
- * @param[in] designMethod     The design method to use. Choose between Cosine and Tschebyscheff. Defaul is set to Cosine.
- * @param[in] vecPicks         Channel indexes to filter. Default is filter all channels.
- * @param[in] bUseThreads      Whether to use multiple threads. Default is set to true.
- * @param[in] bKeepOverhead    Whether to keep the delayed part of the data after filtering. Default is set to false .
+ * @param[in] matData               The data which is to be filtered.
+ * @param[in] type                  The type of the filter: LPF, HPF, BPF, NOTCH (from enum FilterType).
+ * @param[in] dCenterfreq           The center of the frequency.
+ * @param[in] dBandwidth            The filter bandwidth. Ignored if FilterType is set to LPF,HPF. If NOTCH/BPF: bandwidth of stop-/passband.
+ * @param[in] dTransition           The transistion band determines the width of the filter slopes (steepness).
+ * @param[in] dSFreq                The input data sampling frequency.
+ * @param[in] iOrder                Represents the order of the filter, the higher the higher is the stopband attenuation. Default is 1024 taps.
+ * @param[in] designMethod          The design method to use. Choose between Cosine and Tschebyscheff. Defaul is set to Cosine.
+ * @param[in] vecPicks              Channel indexes to filter. Default is filter all channels.
+ * @param[in] bUseThreads           Whether to use multiple threads. Default is set to true.
+ * @param[in] bKeepOverhead         Whether to keep the delayed part of the data after filtering. Default is set to false .
+ * @param[in] bfilterTwppass        Whether the data should be IIR filtered forward and backward (null phase for IIR offline filering) or not (necessary for online IIR filtering).
+ *                                  Only relevant for IIR filters. Default is set to true (forward and backward filtering is performed).
+ *
  *
  * @return The filtered data in form of a matrix.
  */
@@ -159,18 +190,20 @@ RTPROCESINGSHARED_EXPORT Eigen::MatrixXd filterData(const Eigen::MatrixXd& matDa
                                                     int designMethod = FilterKernel::m_designMethods.indexOf(FilterParameter("Cosine")),
                                                     const Eigen::RowVectorXi &vecPicks = Eigen::RowVectorXi(),
                                                     bool bUseThreads = true,
-                                                    bool bKeepOverhead = false);
+                                                    bool bKeepOverhead = false,
+                                                    bool bFilterTwopass = true);
 
 //=========================================================================================================
 /**
  * Calculates the filtered version of the raw input data based on a given list filters
  * The data needs to be present all at once. For continous filtering via overlap add use the FilterOverlapAdd class.
  *
- * @param[in] mataData         The data which is to be filtered.
- * @param[in] filterKernel     The list of filter kernels to use.
- * @param[in] vecPicks         Channel indexes to filter. Default is filter all channels.
- * @param[in] bUseThreads      Whether to use multiple threads. Default is set to true.
- * @param[in] bKeepOverhead    Whether to keep the delayed part of the data after filtering. Default is set to false .
+ * @param[in] mataData              The data which is to be filtered.
+ * @param[in] filterKernel          The list of filter kernels to use.
+ * @param[in] vecPicks              Channel indexes to filter. Default is filter all channels.
+ * @param[in] bUseThreads           Whether to use multiple threads. Default is set to true.
+ * @param[in] bKeepOverhead         Whether to keep the delayed part of the data after filtering. Default is set to false .
+ *
  *
  * @return The filtered data in form of a matrix.
  */
@@ -179,6 +212,32 @@ RTPROCESINGSHARED_EXPORT Eigen::MatrixXd filterData(const Eigen::MatrixXd& mataD
                                                     const Eigen::RowVectorXi& vecPicks = Eigen::RowVectorXi(),
                                                     bool bUseThreads = true,
                                                     bool bKeepOverhead = false);
+
+
+//=========================================================================================================
+
+//TODO: edit docu here
+
+/**
+ * Calculates the filtered version of the raw input data based on a given list filters
+ * The data needs to be present all at once. For continous filtering via overlap add use the FilterOverlapAdd class.
+ *
+ * @param[in] matDataIn             The data which is to be filtered.
+ * @param[in] filterKernel          The list of filter kernels to use.
+ * @param[in] vecPicks              Channel indexes to filter. Default is filter all channels.
+ * @param[in] bUseThreads           Whether to use multiple threads. Default is set to true.
+ * @param[in] bTwopassFiltering     Whether the data should be IIR filtered forward and backward (null phase for offline filering) or not (necessary for online filtering).
+ *                                  Default is set to true (forward and backward filtering is performed).
+ *
+ *
+ * @return The filtered data in form of a matrix.
+ */
+RTPROCESINGSHARED_EXPORT Eigen::MatrixXd filterDataIir(const Eigen::MatrixXd& matDataIn,
+                                                    const RTPROCESSINGLIB::FilterKernel& filterKernel,
+                                                    const Eigen::RowVectorXi& vecPicks = Eigen::RowVectorXi(),
+                                                    bool bUseThreads = true,
+                                                    bool bFilterTwopass = true);
+
 
 //=========================================================================================================
 /**
@@ -198,12 +257,34 @@ RTPROCESINGSHARED_EXPORT Eigen::MatrixXd filterDataBlock(const Eigen::MatrixXd& 
                                                          bool bUseThreads = true);
 
 //=========================================================================================================
+
+//TODO edit documentation here
+
+/**
+ * Calculates the IIR filtered version of the raw input data block.
+ * Always returns the data without delay.
+ *
+ * @param[in] mataData         The data which is to be filtered.
+ * @param[in] vecPicks         The used channel as index in RowVector.
+ * @param[in] filterKernel     The FilterKernel to to filter the data with.
+ * @param[in] bUseThreads      Whether to use multiple threads.
+ *
+ * @return The filtered data in form of a matrix with no delay.
+ */
+RTPROCESINGSHARED_EXPORT Eigen::MatrixXd filterDataBlockIir(const Eigen::MatrixXd& mataData,
+                                                            const Eigen::RowVectorXi& vecPicks,
+                                                            const RTPROCESSINGLIB::FilterKernel& filterKernel,
+                                                            bool bUseThreads = true);
+
+
+//=========================================================================================================
 /**
  * This function is used to filter row-wise in parallel threads
  *
  * @param[in] channelDataTime  The channel data to perform the filtering on.
  */
 RTPROCESINGSHARED_EXPORT void filterChannel(FilterObject &channelDataTime);
+
 
 //=============================================================================================================
 /**

@@ -52,6 +52,7 @@ SUBDIRS += \
     test_fiff_rwr \
     test_fiff_mne_types_io \
     test_filtering \
+    test_filtering_iir \
     test_hpiFit \
     test_hpiDataUpdater \
     test_hpiFit_integration \

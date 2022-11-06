@@ -1,4 +1,7 @@
 //=============================================================================================================
+
+//TODO edit documentation here (whole file!)
+
 /**
  * @file     filterkernel.h
  * @author   Lorenz Esch <lesch@mgh.harvard.edu>;
@@ -199,6 +202,22 @@ public:
     void applyFftFilter(Eigen::RowVectorXd& vecData,
                         bool bKeepOverhead = false);
 
+    //=========================================================================================================
+
+    //TODO edit documentation here
+
+    /**
+     * Applies the current IIR filter to the input data using the transposed direct form II.
+     *
+     * @param[in, out]  vecData         Holds the data to be filtered. Gets overwritten with its filtered result.
+     *
+     * @return the filtered data in form of a RowVectorXd.
+     */
+    void applyIirFilter(Eigen::RowVectorXd& vecData);
+
+    //=========================================================================================================
+
+
     QString getName() const;
     void setName(const QString& sFilterName);
 
@@ -228,6 +247,10 @@ public:
 
     Eigen::RowVectorXcd getFftCoefficients() const;
     void setFftCoefficients(const Eigen::RowVectorXcd& vecFftCoeff);
+
+    Eigen::RowVectorXd getRecCoeffsA() const;
+
+    Eigen::RowVectorXd getRecCoeffsB() const;
 
     FilterParameter getDesignMethod() const;
     void setDesignMethod(int iDesignMethod);
@@ -270,8 +293,12 @@ private:
     QString         m_sFilterName;          /**< contains name of the filter. */
     QString         m_sFilterShortDescription; /**< contains a short string describign some filter parameters. */
 
-    Eigen::RowVectorXd     m_vecCoeff;       /**< contains the forward filter coefficient set. */
-    Eigen::RowVectorXcd    m_vecFftCoeff;    /**< the FFT-transformed forward filter coefficient set, required for frequency-domain filtering, zero-padded to m_iFftLength. */
+    Eigen::RowVectorXd      m_vecCoeff;       /**< contains the forward fir filter coefficient set. */
+    Eigen::RowVectorXcd     m_vecFftCoeff;    /**< the FFT-transformed forward fir filter coefficient set, required for frequency-domain filtering, zero-padded to m_iFftLength. */
+
+    Eigen::RowVectorXd      m_vecRecCoeffsA;     /**< the IIR Butterworth recursion coefficients of the denominator of H[z] (a's) in second order section form. */
+    Eigen::RowVectorXd      m_vecRecCoeffsB;     /**< the IIR Butterworth recursion coefficients of the numerator of H[z] (b's) in second order section form.. */
+
 };
 
 } // NAMESPACE RTPROCESSINGLIB

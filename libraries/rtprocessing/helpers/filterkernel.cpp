@@ -34,6 +34,9 @@
  *
  */
 
+
+//TODO: edit description
+
 //=============================================================================================================
 // INCLUDES
 //=============================================================================================================
@@ -44,8 +47,12 @@
 
 #include "parksmcclellan.h"
 #include "cosinefilter.h"
+#include "butterworth.h"
 
 #include <iostream>
+
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 //=============================================================================================================
 // QT INCLUDES
@@ -79,7 +86,8 @@ using namespace UTILSLIB;
 
 QVector<RTPROCESSINGLIB::FilterParameter> FilterKernel::m_designMethods ({
     FilterParameter(QString("Cosine"), QString("A cosine filter")),
-    FilterParameter(QString("Tschebyscheff"), QString("A tschebyscheff filter"))
+    FilterParameter(QString("Tschebyscheff"), QString("A tschebyscheff filter")),
+    FilterParameter(QString("Butterworth"), QString("An IIR butterworth filter"))
 //    FilterParameter(QString("External"), QString("An external filter"))
 });
 QVector<RTPROCESSINGLIB::FilterParameter> FilterKernel::m_filterTypes ({
@@ -130,8 +138,10 @@ FilterKernel::FilterKernel(const QString& sFilterName,
 , m_sFilterName(sFilterName)
 , m_sFilterShortDescription()
 {
-    if(iOrder < 9) {
-       qWarning() << "[FilterKernel::FilterKernel] Less than 9 taps were provided. Setting number of taps to 9.";
+    if(m_iDesignMethod != 2){ //for FIR filters
+        if(iOrder < 9) {
+           qWarning() << "[FilterKernel::FilterKernel] Less than 9 taps were provided. Setting number of taps to 9.";
+        }
     }
 
     designFilter();
@@ -224,6 +234,63 @@ void FilterKernel::applyFftFilter(RowVectorXd& vecData,
     } else {
         vecData = vecData.head(iOriginalSize + m_vecCoeff.cols()).eval();
     }
+}
+
+//=============================================================================================================
+
+void FilterKernel::applyIirFilter(Eigen::RowVectorXd& vecData)
+{
+
+    int iNumBiquads = m_vecRecCoeffsA.cols() / 3; //we have three a's (and b's) per biquad
+    int iNumSamples = vecData.size(); //number of samples
+
+    //this filer application implementation is adapted from I. Orifes filter application in his GitHub repository "Butterworth-Filter-Design" (see BiquadChain Class)
+
+    //initialize delay variables and pointers
+    //this part is from Orifes BiquadChain::allocate and BiquadChain::reset
+    RowVectorXd _yn = RowVectorXd::Zero(iNumBiquads);
+    RowVectorXd _yn1 = RowVectorXd::Zero(iNumBiquads);
+    RowVectorXd _yn2 = RowVectorXd::Zero(iNumBiquads);
+    double _xn1 = 0;
+    double _xn2 = 0;
+    double* yn = &_yn[0];
+    double* yn1 = &_yn1[0];
+    double* yn2 = &_yn2[0];
+
+
+    //this part is adapted from Orifes BiquadChain::processBiquad
+    for (int iSample{0}; iSample < iNumSamples; iSample++){
+        //current input sample
+        double xn = vecData[iSample];
+
+        //iteration #0 as starting point
+        yn[0] = m_vecRecCoeffsB[0] * xn + m_vecRecCoeffsB[1] * _xn1 + m_vecRecCoeffsB[2] * _xn2
+                - m_vecRecCoeffsA[1] * yn1[0] - m_vecRecCoeffsA[2] * yn2[0];
+
+        //iterations #1 to iNumBiquad-1
+        for(int i = 1; i < iNumBiquads; i++){
+            int iCoeffStartIdx = i * 3;
+            yn[i] = m_vecRecCoeffsB[iCoeffStartIdx] * yn[i - 1]
+                    + m_vecRecCoeffsB[iCoeffStartIdx+1] * yn1[i - 1]
+                    + m_vecRecCoeffsB[iCoeffStartIdx+2] * yn2[i - 1]
+                    - m_vecRecCoeffsA[iCoeffStartIdx+1] * yn1[i]
+                    - m_vecRecCoeffsA[iCoeffStartIdx+2] * yn2[i];
+        }
+
+        // Shift delay elements so that they can be used for the next sample
+        for(int i = 0; i < iNumBiquads; i++){
+            yn2[i] = yn1[i];
+            yn1[i] = yn[i];
+        }
+        _xn2 = _xn1;
+        _xn1 = xn;
+
+        //write result
+        vecData[iSample] = yn[iNumBiquads - 1];
+    }
+
+    //TODO add backward filtering when whole data stream is forward filtered (flip data then filter again and flip again)
+
 }
 
 //=============================================================================================================
@@ -368,6 +435,21 @@ void FilterKernel::setFftCoefficients(const Eigen::RowVectorXcd& vecFftCoeff)
 
 //=============================================================================================================
 
+Eigen::RowVectorXd FilterKernel::getRecCoeffsA() const
+{
+    return m_vecRecCoeffsA;
+}
+
+//=============================================================================================================
+
+Eigen::RowVectorXd FilterKernel::getRecCoeffsB() const
+{
+    return m_vecRecCoeffsB;
+}
+
+//=============================================================================================================
+
+
 bool FilterKernel::fftTransformCoeffs(int iFftLength)
 {
     #ifdef EIGEN_FFTW_DEFAULT
@@ -404,6 +486,7 @@ bool FilterKernel::fftTransformCoeffs(int iFftLength)
 
 void FilterKernel::designFilter()
 {
+
     // Make sure we only use a minimum needed FFT size
     int iFftLength = m_iFilterOrder;
     int exp = ceil(MNEMath::log2(iFftLength));
@@ -471,28 +554,49 @@ void FilterKernel::designFilter()
             //Now generate the fft version of the shortened impulse response
             fftTransformCoeffs(iFftLength);
 
+            break;            
+        }
+
+        case 2:{
+
+
+            //create new IIR Butterworth filter
+            Butterworth butterfilt(m_iFilterType,
+                                   m_iFilterOrder,
+                                   m_dCenterFreq*(m_sFreq/2),
+                                   m_dBandwidth*(m_sFreq/2),
+                                   m_sFreq);
+
+            //get calculated recursion coefficients of the new Butterworth filter
+            //coefficients are in second order section form (a0,a1,a2 of first biquad then a0,a1,a2 of second ...)
+            m_vecRecCoeffsA = butterfilt.m_vecRecCoeffsA;
+            m_vecRecCoeffsB = butterfilt.m_vecRecCoeffsB;
+
+        }
+    }
+
+    if(m_iDesignMethod != 2){ //only true for FIR filter design methods (cosine and parksmcclellan)
+        switch(m_iFilterType) {
+            case 0:
+                m_dLowpassFreq = 0;
+                m_dHighpassFreq = m_dCenterFreq*(m_sFreq/2);
+            break;
+
+            case 1:
+                m_dLowpassFreq = m_dCenterFreq*(m_sFreq/2);
+                m_dHighpassFreq = 0;
+            break;
+
+            case 2:
+                m_dLowpassFreq = (m_dCenterFreq + m_dBandwidth/2)*(m_sFreq/2);
+                m_dHighpassFreq = (m_dCenterFreq - m_dBandwidth/2)*(m_sFreq/2);
             break;
         }
     }
 
-    switch(m_iFilterType) {
-        case 0:
-            m_dLowpassFreq = 0;
-            m_dHighpassFreq = m_dCenterFreq*(m_sFreq/2);
-        break;
-
-        case 1:
-            m_dLowpassFreq = m_dCenterFreq*(m_sFreq/2);
-            m_dHighpassFreq = 0;
-        break;
-
-        case 2:
-            m_dLowpassFreq = (m_dCenterFreq + m_dBandwidth/2)*(m_sFreq/2);
-            m_dHighpassFreq = (m_dCenterFreq - m_dBandwidth/2)*(m_sFreq/2);
-        break;
-    }
     getShortDescription();
 }
+
 
 //=============================================================================================================
 
