@@ -260,6 +260,7 @@ void FilterKernel::applyIirFilter(Eigen::RowVectorXd& vecData)
 
     //this part is adapted from Orifes BiquadChain::processBiquad
     for (int iSample{0}; iSample < iNumSamples; iSample++){
+
         //current input sample
         double xn = vecData[iSample];
 
@@ -288,8 +289,6 @@ void FilterKernel::applyIirFilter(Eigen::RowVectorXd& vecData)
         //write result
         vecData[iSample] = yn[iNumBiquads - 1];
     }
-
-    //TODO add backward filtering when whole data stream is forward filtered (flip data then filter again and flip again)
 
 }
 

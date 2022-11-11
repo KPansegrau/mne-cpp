@@ -96,9 +96,6 @@ typedef struct {
  * @param[in] designMethod         The design method to use. Choose between Cosine and Tschebyscheff. Defaul is set to Cosine.
  * @param[in] vecPicks             Channel indexes to filter. Default is filter all channels.
  * @param[in] bUseThreads          hether to use multiple threads. Default is set to true.
- * @param[in] bFilterTwopass       Whether the data should be IIR filtered forward and backward (null phase for IIR offline filering) or not (necessary for online IIR filtering).
- *                                 Only relevant for IIR filters. Default is set to true (forward and backward filtering is performed).
- *
  *
  * @return Returns true if successfull, false otherwise.
  */
@@ -112,8 +109,7 @@ RTPROCESINGSHARED_EXPORT bool filterFile(QIODevice& pIODevice,
                                          int iOrder = 4096,
                                          int designMethod = FilterKernel::m_designMethods.indexOf(FilterParameter("Cosine")),
                                          const Eigen::RowVectorXi &vecPicks = Eigen::RowVectorXi(),
-                                         bool bUseThreads = true,
-                                         bool bFilterTwopass = true);
+                                         bool bUseThreads = true);
 
 
 //=========================================================================================================
@@ -137,29 +133,6 @@ RTPROCESINGSHARED_EXPORT bool filterFile(QIODevice& pIODevice,
 
 //=========================================================================================================
 /**
- * Filters data from an input file based on an exsisting IIR filter kernel and writes the filtered data to a
- * pIODevice.
- *
- * @param[in] pIODevice            The IO device to write to.
- * @param[in] pFiffRawData         The fiff raw data object to read from.
- * @param[in] filterKernel         The list of filter kernels to use.
- * @param[in] vecPicks             Channel indexes to filter. Default is filter all channels.
- * @param[in] bUseThreads          hether to use multiple threads. Default is set to true.
- * @param[in] bFilterTwopass       Whether the data should be IIR filtered forward and backward (null phase for IIR offline filering) or not (necessary for online IIR filtering).
- *                                 Only relevant for IIR filters. Default is set to true (forward and backward filtering is performed).
- *
- *
- * @return Returns true if successfull, false otherwise.
- */
-RTPROCESINGSHARED_EXPORT bool filterFileIir(QIODevice& pIODevice,
-                                            QSharedPointer<FIFFLIB::FiffRawData> pFiffRawData,
-                                            const RTPROCESSINGLIB::FilterKernel& filterKernel,
-                                            const Eigen::RowVectorXi &vecPicks = Eigen::RowVectorXi(),
-                                            bool bUseThreads = false,
-                                            bool bFilterTwopass = true);
-
-//=========================================================================================================
-/**
  * Creates a user designed filter kernel and filters the raw input data.
  * The data needs to be present all at once. For continous filtering via overlap add use the FilterOverlapAdd class.
  *
@@ -174,7 +147,7 @@ RTPROCESINGSHARED_EXPORT bool filterFileIir(QIODevice& pIODevice,
  * @param[in] vecPicks              Channel indexes to filter. Default is filter all channels.
  * @param[in] bUseThreads           Whether to use multiple threads. Default is set to true.
  * @param[in] bKeepOverhead         Whether to keep the delayed part of the data after filtering. Default is set to false .
- * @param[in] bfilterTwppass        Whether the data should be IIR filtered forward and backward (null phase for IIR offline filering) or not (necessary for online IIR filtering).
+ * @param[in] bfilterTwopass        Whether the data should be IIR filtered forward and backward (null phase for IIR offline filering) or not (necessary for online IIR filtering).
  *                                  Only relevant for IIR filters. Default is set to true (forward and backward filtering is performed).
  *
  *

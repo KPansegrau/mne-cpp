@@ -81,8 +81,7 @@ bool RTPROCESSINGLIB::filterFile(QIODevice &pIODevice,
                                  int iOrder,
                                  int designMethod,
                                  const RowVectorXi& vecPicks,
-                                 bool bUseThreads,
-                                 bool bFilterTwopass)
+                                 bool bUseThreads)
 {
     // Normalize cut off frequencies to nyquist
     dCenterfreq = dCenterfreq/(dSFreq/2.0);
@@ -100,23 +99,12 @@ bool RTPROCESSINGLIB::filterFile(QIODevice &pIODevice,
                                        designMethod);
 
 
-    if(filter.getDesignMethod() == FilterKernel::m_designMethods.at(2)){
-        //for IIR Butterworth filtering
-        return filterFileIir(pIODevice,
-                            pFiffRawData,
-                            filter,
-                            vecPicks,
-                            bUseThreads,
-                            bFilterTwopass);
+    return filterFile(pIODevice,
+                      pFiffRawData,
+                      filter,
+                      vecPicks,
+                      bUseThreads);
 
-    }else{
-        //for FIR filtering
-        return filterFile(pIODevice,
-                          pFiffRawData,
-                          filter,
-                          vecPicks,
-                          bUseThreads);
-    }
 }
 
 //=============================================================================================================
@@ -204,86 +192,6 @@ bool RTPROCESSINGLIB::filterFile(QIODevice &pIODevice,
 
 
     }
-
-    outfid->finish_writing_raw();
-
-    return true;
-}
-
-
-//=============================================================================================================
-
-bool RTPROCESSINGLIB::filterFileIir(QIODevice &pIODevice,
-                                    QSharedPointer<FiffRawData> pFiffRawData,
-                                    const FilterKernel& filterKernel,
-                                    const RowVectorXi& vecPicks,
-                                    bool bUseThreads,
-                                    bool bFilterTwopass)
-{
-
-    RowVectorXd cals;
-    SparseMatrix<double> mult;
-    RowVectorXi sel;
-    FiffStream::SPtr outfid = FiffStream::start_writing_raw(pIODevice, pFiffRawData->info, cals);
-
-    //Setup reading parameters
-    fiff_int_t from = pFiffRawData->first_samp;
-    fiff_int_t to = pFiffRawData->last_samp;
-
-    //do not slice the input into blocks
-//    int iSize = to - from;
-
-//    float quantum_sec = iSize/pFiffRawData->info.sfreq;
-//    fiff_int_t quantum = ceil(quantum_sec*pFiffRawData->info.sfreq);
-
-    // Read, filter and write the data
-//    bool first_buffer = true;
-
-//    fiff_int_t first, last;
-    MatrixXd matData;
-    MatrixXd times;
-
-
-        if (!pFiffRawData->read_raw_segment(matData, times, mult, from, to, sel)) {
-            qWarning("[Filter::filterData] Error during read_raw_segment\n");
-            return false;
-        }
-
-        qInfo() << "Filtering and writing block" << from << "to" << to;
-
-
-
-
-
-/*    for(first = from; first < to; first+=quantum) {
-        last = first+quantum-1;
-        if (last > to) {
-            last = to;
-        }
-
-        if (!pFiffRawData->read_raw_segment(matData, times, mult, first, last, sel)) {
-            qWarning("[Filter::filterData] Error during read_raw_segment\n");
-            return false;
-        }
-
-        qInfo() << "Filtering and writing block" << first << "to" << last;
-
-        if (first_buffer) {
-           if (first > 0) {
-               outfid->write_int(FIFF_FIRST_SAMPLE,&first);
-           }
-           first_buffer = false;
-        }
-*/
-
-        matData = filterDataBlockIir(matData,
-                                    vecPicks,
-                                    filterKernel,
-                                    bUseThreads);
-
-        outfid->write_raw_buffer(matData,cals);
-
-    //}
 
     outfid->finish_writing_raw();
 
@@ -448,17 +356,22 @@ MatrixXd RTPROCESSINGLIB::filterDataIir(const MatrixXd& matDataIn,
                                     vecPicks,
                                     filterKernel,
                                     bUseThreads);
-   // TODO this part does not work, fix it or delete two-pass option at all
+
+   //TODO this part does not work, fix it
     if(bFilterTwopass){
         //reverse data and filter it again (forward and backward filtering in order to compensate non-linear phase of IIR filters (recommended for offline filtering))
         MatrixXd matDataReversed(matDataOut.rows(), matDataOut.cols());
-        matDataReversed = matDataOut.reverse(); //flip data
+        matDataReversed = matDataOut.rowwise().reverse(); //flip data
+
+        //TODO: test wrong two-pass filtering for second data half
+
         //filter in backward direction
         matDataOut = filterDataBlockIir(matDataReversed,
                                         vecPicks,
                                         filterKernel,
                                         bUseThreads);
-        matDataOut = matDataOut.reverse(); //reverse data again to restore order of time samples
+
+        matDataOut = matDataOut.rowwise().reverse(); //reverse data again to restore order of time samples
     }
 
     return matDataOut;

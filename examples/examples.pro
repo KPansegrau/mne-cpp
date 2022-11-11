@@ -55,7 +55,6 @@ SUBDIRS += \
     ex_fiff_io \
     ex_fiff_sniffer \
     ex_file_utils \
-    ex_filtering_iir \
     ex_find_evoked \
     ex_inverse_mne \
     ex_make_inverse_operator \

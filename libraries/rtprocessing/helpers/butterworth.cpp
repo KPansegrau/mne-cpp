@@ -72,11 +72,6 @@ using namespace Eigen;
 // DEFINE MEMBER METHODS
 //=============================================================================================================
 
-//TODO: define default Butterworth object
-
-//=============================================================================================================
-
-
 Butterworth::Butterworth(int iType,
                          int iOrder,
                          double dCenterFreq,
@@ -101,7 +96,7 @@ void Butterworth::createAnalogLowpassPrototype(int iOrder)
 
     RowVectorXcd vecPoles = RowVectorXcd::Zero(iOrder);
 
-    //for loop calculates all poles of the analog prototype
+    //for loop calculates all poles of the analog prototype according to Euler's equation
     //prototype poles are ordered by descending absolut value of imaginary part
     int iCount{1};
     for(int i = 0,iIndex = 0; i < (iOrder/2); i++, iIndex+=2){
@@ -139,6 +134,8 @@ void Butterworth::createAnalogLowpassPrototype(int iOrder)
     }
     m_dPrototypeGain = dPoleProduct.real();
 
+    //for Debugging
+    std::cout << "[Butterworth::createAnalogLowpassPrototype] Prototype gain: " << m_dPrototypeGain << '\n';
 }
 
 //=============================================================================================================
@@ -154,15 +151,6 @@ void Butterworth::convertPrototype2Lowpass()
     //critical frequency (cutoff) of new analog LP is m_dOmegaLowPrewarped
     m_vecAnalogPoles = m_dOmegaLowPrewarped * m_vecPrototypePoles.array();
 
-    if(m_iFilterOrder % 2 == 0){
-        //for even filter orders: sort the poles by ascending absolute value of imaginary part (ensures same pole order as obtained with Matlab)
-        std::sort(m_vecAnalogPoles.data(),m_vecAnalogPoles.data()+m_vecAnalogPoles.size(),
-                [&](std::complex<double> a, std::complex<double> b){if(std::abs(a.imag()) == std::abs(b.imag())){ return a.imag() > b.imag();} return (std::abs(a.imag()) < std::abs(b.imag()));});
-    }else{
-        //for odd filter order: sort by descending absolute calue of imaginary part
-        std::sort(m_vecAnalogPoles.data(),m_vecAnalogPoles.data()+m_vecAnalogPoles.size(),
-                [&](std::complex<double> a, std::complex<double> b){if(std::abs(a.imag()) == std::abs(b.imag())){ return a.imag() > b.imag();} return (std::abs(a.imag()) > std::abs(b.imag()));});
-    }
 
     //for Debugging
     qDebug() << "[Butterworth::convertPrototype2Lowpass] Analog LP poles:";
@@ -198,16 +186,6 @@ void Butterworth::convertPrototype2Highpass()
 
     //calculate new analog HP poles (elementwise operation)
     m_vecAnalogPoles = m_dOmegaHighPrewarped / m_vecPrototypePoles.array();
-
-    if(m_iFilterOrder % 2 == 0){
-        //for even filter orders: sort the poles by ascending absolute value of imaginary part (ensures same pole order as obtained with Matlab)
-        std::sort(m_vecAnalogPoles.data(),m_vecAnalogPoles.data()+m_vecAnalogPoles.size(),
-                [&](std::complex<double> a, std::complex<double> b){if(std::abs(a.imag()) == std::abs(b.imag())){ return a.imag() > b.imag();} return (std::abs(a.imag()) < std::abs(b.imag()));});
-    }else{
-        //for odd filter order: sort by descending absolute calue of imaginary part
-        std::sort(m_vecAnalogPoles.data(),m_vecAnalogPoles.data()+m_vecAnalogPoles.size(),
-                [&](std::complex<double> a, std::complex<double> b){if(std::abs(a.imag()) == std::abs(b.imag())){ return a.imag() > b.imag();} return (std::abs(a.imag()) > std::abs(b.imag()));});
-    }
 
 
     //for Debugging
@@ -258,15 +236,13 @@ void Butterworth::convertPrototype2Bandpass()
     std::cout << "[Butterworth::convertPrototype2Bandpass] Analog BP center frequency in rad/s (after prewarping): " << dCenterFreqPrewarped << "\n";
 
     //calculate new analog BP poles --> each prototype pole causes a pair of new poles
-    //iPole runs through the prototype poles
-    //iCount for writing the new pole pair in the right entries in m_vecAnalogPoles
     m_vecAnalogPoles = RowVectorXcd::Zero(iNumPoles*2);
     for(int iPole{0},iCount{0}; iPole < iNumPoles; iPole++, iCount+=2){
         m_vecAnalogPoles[iCount] = 0.5 * (m_vecPrototypePoles[iPole] * dBandwidthPrewarped + sqrt(pow(m_vecPrototypePoles[iPole], 2) * pow(dBandwidthPrewarped, 2) - (4 * pow(dCenterFreqPrewarped,2))));
         m_vecAnalogPoles[iCount + 1] = 0.5 * (m_vecPrototypePoles[iPole] * dBandwidthPrewarped - sqrt(pow(m_vecPrototypePoles[iPole], 2) * pow(dBandwidthPrewarped, 2) - (4 * pow(dCenterFreqPrewarped,2))));
     }
 
-    //we need the poles ordered by descending absolute value of imag part (so that conjugate complex pairs are stored in subsequent vector elements)
+    //we need the poles ordered by descending absolute value of imag part (so that conjugate complex pairs are stored in subsequent vector elements, descending order because this matches Matlabs order)
     std::sort(m_vecAnalogPoles.data(),m_vecAnalogPoles.data()+m_vecAnalogPoles.size(),
             [&](std::complex<double> a, std::complex<double> b){if(std::abs(a.imag()) == std::abs(b.imag())){ return a.imag() > b.imag();} return (std::abs(a.imag()) > std::abs(b.imag()));});
 
@@ -315,16 +291,14 @@ void Butterworth::convertPrototype2Bandstop()
     std::cout << "[Butterworth::convertPrototype2Bandpass] Analog BS center frequency in rad/s (after prewarping): " << dCenterFreqPrewarped << "\n";
 
     //calculate new analog BS poles --> each prototype pole causes a pair of new poles
-    //iPole runs through the prototype poles
-    //iCount for writing the new pole pair in the right entries in m_vecAnalogPoles
     m_vecAnalogPoles = RowVectorXcd::Zero(iNumPoles*2);
     for(int iPole{0}, iCount{0}; iPole < iNumPoles; iPole++, iCount+=2){
         m_vecAnalogPoles[iCount] = -0.5 * (-1 * dBandwidthPrewarped / m_vecPrototypePoles[iPole] + sqrt(pow(dBandwidthPrewarped, 2) / pow(m_vecPrototypePoles[iPole], 2) - (4 * pow(dCenterFreqPrewarped,2))));
         m_vecAnalogPoles[iCount + 1] = -0.5 * (-1 * dBandwidthPrewarped / m_vecPrototypePoles[iPole] - sqrt(pow(dBandwidthPrewarped, 2) / pow(m_vecPrototypePoles[iPole], 2) - (4 * pow(dCenterFreqPrewarped,2))));
     }
 
-    //TODO: this sorting does not work completely (order does not match the pole order of reference data)
     //we need the poles ordered by descending absolute value of imag part (so that conjugate complex pairs are stored in subsequent vector elements)
+    //this sorting does not match Matlabs order of analog poles but descending order is closer than ascending order
     std::sort(m_vecAnalogPoles.data(),m_vecAnalogPoles.data()+m_vecAnalogPoles.size(),
             [&](std::complex<double> a, std::complex<double> b){if(std::abs(a.imag()) == std::abs(b.imag())){ return a.imag() > b.imag();} return (std::abs(a.imag()) > std::abs(b.imag()));});
 
@@ -473,13 +447,7 @@ void Butterworth::splitIntoBiquads()
     }
     qDebug() << "[Butterworth::splitIntoBiquads] Number of necessary Stages: " << m_iNumStages;
 
-
-    //group poles and zeros (decide which poles and zeros are combined for each biquad) to minimize errors due to numberical precision issues
-    //TODO: check whether grouping of poles and zeros is necessary according to storing order of poles and zeros, matlab and python does grouping, Orife and Falco do not
-    //TODO: matlab finds pole pair closest to unit circle and zero pair closest to this pole pair for the first biquad and repeats this procedure for the other biquads
-    //TODO: Falco and Orife just take first 2 poles and zeros for first biquad
-    //TODO: seems like grouping is elaborately
-
+    //TODO: implement grouping of poles and zeros (decide which poles and zeros are combined for each biquad) to minimize errors due to numberical precision issues
 
     int iNumCoeffs = m_iNumStages * 3;
     qDebug() << "[Butterworth::splitIntoBiquads] Number of recursion coefficients a and b each: " << iNumCoeffs;
@@ -519,8 +487,6 @@ void Butterworth::splitIntoBiquads()
    }
 
 
-
-    //gain after bilinear transform (m_dDigitalGain) should be the gain of the first section, all other gains equal one
     //apply overall gain to the first biquad by multiplying the coefficients b0, b1, b2 of the first biquad by the digital gain
     for(int i{0}; i < 3; i++){
         m_vecRecCoeffsB[i] *= m_dDigitalGain;
@@ -580,7 +546,7 @@ bool Butterworth::calculateButterworthCoeffs()
     std::cout << "[Butterworth::calculateButterworthCoeffs] Prewarped lower cutoff frequency in rad/s: from " << m_dLowCutoff*2*M_PI << " to " << m_dOmegaLowPrewarped << "\n";
     std::cout << "[Butterworth::calculateButterworthCoeffs] Prewarped higher cutoff frequency in rad/s: from " << m_dHighCutoff*2*M_PI << " to " << m_dOmegaHighPrewarped << "\n";
 
-    //create an anlog lowpass prototype of desired order (cutoff frequency in rad/s is one)
+    //create an anlog lowpass prototype of desired order (its cutoff frequency in rad/s is one)
     //the prototype has iOrder poles, no zeros and gain of one
     createAnalogLowpassPrototype(m_iFilterOrder);
 
