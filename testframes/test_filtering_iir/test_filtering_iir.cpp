@@ -3,7 +3,7 @@
  * @file     test_filtering_iir.cpp
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>
  * @since    0.1.0
- * @date     June, 2022
+ * @date     November, 2022
  *
  * @section  LICENSE
  *
@@ -106,7 +106,7 @@ private slots:
     void compareDigitalZeros();
     void compareDigitalGain();
 
-    //test Butterworth offline filtering (validatio of Butterworth filter tool)
+    //test Butterworth offline filtering (validation of Butterworth filter tool)
     void compareData();
     void compareTimes();
 
@@ -167,6 +167,9 @@ TestFilteringIir::TestFilteringIir()
     , dEpsilonDigitalGain(1.111e-16)
     , dEpsilonData(DBL_EPSILON)
 {
+    std::cout.precision(17);
+    std::cout << "[TestFilteringIir::TestFilteringIir] Epsilon for Validation = " << dEpsilonData << '\n';
+
 }
 
 //=============================================================================================================
@@ -178,18 +181,14 @@ void TestFilteringIir::initTestCase()
     QFile t_fileIn(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/MEG/sample/sample_audvis_trunc_raw_no_time_offset.fif");
     QFile t_fileOut(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/MEG/sample/sample_audvis_trunc_raw_butter_filt_out.fif");
 
-/*    // Filter in Python is created with following function: mne.filter.design_mne_c_filter(raw.info['sfreq'], 5, 10, 1, 1)
-    // This will create a filter with with 8193 elements/taps/Order. In order to be concise with the MNE-CPP implementation
-    // the filter is cut to the Order used in mne-cpp (1024, see below).//
-    // The actual filtering was performed with the function: mne.filter._overlap_add_filter(dataIn, filter_python, phase = 'linear')
-*/
 
-
-    //TODO: edit docu here for used matlab filter for reference file
-//    QFile t_fileRef(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/Result/ref_sample_audvis_trunc_raw_butter_BP_filt.fif");
-//    QFile t_fileRef(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/Result/ref_sample_audvis_trunc_raw_butter_BS_filt.fif");
-    QFile t_fileRef(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/Result/ref_sample_audvis_trunc_raw_butter_LP_twopass_filt.fif");
-//    QFile t_fileRef(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/Result/ref_sample_audvis_trunc_raw_butter_HP_filt.fif");
+    // Reference Filters is created in Matlab with the functions buttap() (prototype creation), butter('s') (analog filter), bilinear() (digital filter), zp2sos (cascade of biquads)
+    // Filtering is performed with sosfilt (forward filtering), flip (reverse data), sosfilt (backward filtering and flip (restore order of samples)
+    // choose one of the reference filters A to D
+//    QFile t_fileRef(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/Result/ref_sample_audvis_trunc_raw_butter_LP_twopass_filt.fif");
+//    QFile t_fileRef(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/Result/ref_sample_audvis_trunc_raw_butter_HP_twopass_filt.fif");
+    QFile t_fileRef(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/Result/ref_sample_audvis_trunc_raw_butter_BP_twopass_filt.fif");
+//    QFile t_fileRef(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/Result/ref_sample_audvis_trunc_raw_butter_BS_twopass_filt.fif");
 
 
     // Make sure test folder exists
@@ -208,31 +207,31 @@ void TestFilteringIir::initTestCase()
 
     //the unit tests of filter kernel creation (tests for poles, zeros and gain) should ensure consistency after recompilation
 
-    //for lowpass
-    int iFilterType = FilterKernel::m_filterTypes.indexOf(FilterParameter("LPF"));
+    //choose one of the exemplary filters A to D
+
+    //init filter parameters for lowpass filter (Filter A)
+/*    int iFilterType = FilterKernel::m_filterTypes.indexOf(FilterParameter("LPF"));
     iOrder = 16; //filter order 16 for unit test
     double dCenterFreq = 40; //center frequency in Hz (cutoff frequency for LP)
     double dBandwidth = 0; //bandwidth in Hz (not needed for LP)
+*/
 
-
-
-/*    //for highpass
+/*    //highpass (Filter B)
     int iFilterType = FilterKernel::m_filterTypes.indexOf(FilterParameter("HPF"));
     iOrder = 6; //filter order 6
     double dCenterFreq = 4; //center frequency in Hz (cutoff frequency for HP)
     double dBandwidth = 0; //bandwidth in Hz (not needed for HP)
 */
 
-
-/*    //init filter parameters for bandpass
+    //bandpass (Filter C)
     int iFilterType = FilterKernel::m_filterTypes.indexOf(FilterParameter("BPF"));
     iOrder = 5; //filter order 5
     double dCenterFreq = 10; //center frequency in Hz
     double dBandwidth = 10; //bandwidth in Hz
-*/
 
-/*    //for bandstop
-    int iFilterType = FilterKernel::m_filterTypes.indexOf(FilterParameter("NOTCH"));
+
+    //bandstop (Filter D)
+/*    int iFilterType = FilterKernel::m_filterTypes.indexOf(FilterParameter("NOTCH"));
     iOrder = 10; //filter order 10 for unit test
     double dCenterFreq = 60; //center frequency in Hz
     double dBandwidth = 4; //bandwidth in Hz
@@ -275,11 +274,8 @@ void TestFilteringIir::initTestCase()
 
     printf(">>>>>>>>>>>>>>>>>>>>>>>>> Read Matlab Results For Butterworth Kernel Creation As Reference >>>>>>>>>>>>>>>>>>>>>>>>>\n");
 
-    //TODO: edit documentation here
-    //The txt file contains the prototype poles calcuated with Matlab's function buttap(5) (5th order prototype) in the first five rows
-    //Each row represents one pole, where the fist column contais the real part, the second column the imaginary part
 
-
+    //The txt files contain the poles, zeros and gain for the prototype, analog and digital reference filters (Filter A to D) generated with Matlab
     //set reference file name depending on filter type
     QString refKernelFileName;
     switch(iFilterType){
@@ -398,7 +394,7 @@ void TestFilteringIir::initTestCase()
 
     printf(">>>>>>>>>>>>>>>>>>>>>>>>> Application of Butterworth Filter Kernel (Read, Filter and Write) >>>>>>>>>>>>>>>>>>>>>>>>>\n");
 
-    //the unit tests for filter application should are for validation purposes
+    //the unit tests for filter application are for validation purposes
 
     //Only filter MEG channels
     RowVectorXi vPicks = rawFirstInRaw.info.pick_types(true, false, false);
@@ -420,23 +416,8 @@ void TestFilteringIir::initTestCase()
     // Filtering
     printf("Filtering...");
 
-    //TODO: dTransition is ignored for IIR filter kernel; its value is arbitrary set to one in order to use existing filterData
-    //only forward filtering
-/*    mFirstFiltered = RTPROCESSINGLIB::filterData(mFirstInData,
-                                                 iFilterType,
-                                                 dCenterFreq,
-                                                 dBandwidth,
-                                                 1,
-                                                 dSFreq,
-                                                 iOrder,
-                                                 RTPROCESSINGLIB::FilterKernel::m_designMethods.indexOf(FilterParameter("Butterworth")),
-                                                 vPicks,
-                                                 true,
-                                                 false,
-                                                 false);
-*/
-
     //two-pass filtering
+    //dTransition is ignored for IIR filter kernel; its value is arbitrary set to one in order to use existing filterData
     mFirstFiltered = RTPROCESSINGLIB::filterData(mFirstInData,
                                                  iFilterType,
                                                  dCenterFreq,
@@ -624,7 +605,7 @@ void TestFilteringIir::compareTimes()
 
 void TestFilteringIir::cleanupTestCase()
 {
-/*  //TODO: enable this in case all unit tests pass
+/*
     QFile t_fileOut(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/MEG/sample/sample_audvis_trunc_raw_butter_filt_out.fif");
     t_fileOut.remove();
 */

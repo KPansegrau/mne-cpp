@@ -360,18 +360,25 @@ MatrixXd RTPROCESSINGLIB::filterDataIir(const MatrixXd& matDataIn,
    //TODO this part does not work, fix it
     if(bFilterTwopass){
         //reverse data and filter it again (forward and backward filtering in order to compensate non-linear phase of IIR filters (recommended for offline filtering))
-        MatrixXd matDataReversed(matDataOut.rows(), matDataOut.cols());
-        matDataReversed = matDataOut.rowwise().reverse(); //flip data
+        MatrixXd matDataFwdReversed(matDataOut.rows(), matDataOut.cols()); //matrix for forward filtered data with reversed sample order
 
-        //TODO: test wrong two-pass filtering for second data half
+        // manual reversion of data matrix columns (.rowwise().reverse() does not work here)
+        for(int iCol{0}; iCol < matDataOut.cols(); iCol++){
+            matDataFwdReversed.col(matDataOut.cols()-1 - iCol) = matDataOut.col(iCol);
+        }
 
         //filter in backward direction
-        matDataOut = filterDataBlockIir(matDataReversed,
-                                        vecPicks,
-                                        filterKernel,
-                                        bUseThreads);
+        MatrixXd matDataBwdReversed(matDataFwdReversed.rows(), matDataFwdReversed.cols()); //matrix for backward filterd data (order of samples is still reversed)
+        matDataBwdReversed = filterDataBlockIir(matDataFwdReversed,
+                                                vecPicks,
+                                                filterKernel,
+                                                bUseThreads);
 
-        matDataOut = matDataOut.rowwise().reverse(); //reverse data again to restore order of time samples
+        // manual reversion of data matrix columns to restore sample order (.rowwise().reverse() does not work here)
+        for(int iCol{0}; iCol < matDataOut.cols(); iCol++){
+            matDataOut.col(matDataOut.cols()-1 - iCol) = matDataBwdReversed.col(iCol);
+        }
+
     }
 
     return matDataOut;
