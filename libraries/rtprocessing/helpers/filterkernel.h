@@ -1,18 +1,17 @@
 //=============================================================================================================
 
-//TODO edit documentation here (whole file!)
-
 /**
  * @file     filterkernel.h
  * @author   Lorenz Esch <lesch@mgh.harvard.edu>;
  *           Ruben Doerfel <Ruben.Doerfel@tu-ilmenau.de>;
- *           Christoph Dinh <chdinh@nmr.mgh.harvard.edu>
+ *           Christoph Dinh <chdinh@nmr.mgh.harvard.edu>;
+ *           Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>
  * @since    0.1.3
- * @date     June, 2020
+ * @date     November, 2022
  *
  * @section  LICENSE
  *
- * Copyright (C) 2020, Lorenz Esch, Ruben Doerfel, Christoph Dinh. All rights reserved.
+ * Copyright (C) 2022, Lorenz Esch, Ruben Doerfel, Christoph Dinh, Kerstin Pansegrau. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that
  * the following conditions are met:
@@ -39,6 +38,7 @@
  *           a length of an multiple integer of a power of 2 in order to efficiently compute a FFT. The length of
  *           the FFT is given by the next power of 2 of the length of the input sequence. In order to avoid
  *           circular-convolution, the input sequence is given by the FFT-length-NumFilterTaps.
+ *           Additionally, the filter object can generate IIR Butterworth filter coefficients using the designMethod Butterworth.
  *
  *           e.g. FFT length=4096, NumFilterTaps=80 -> input sequence 4096-80=4016
  *
@@ -55,7 +55,6 @@
 //=============================================================================================================
 
 #include "../rtprocessing_global.h"
-//#include "filter.h"
 
 //=============================================================================================================
 // EIGEN INCLUDES
@@ -153,7 +152,7 @@ public:
      * @param[in] dBandwidth       Ignored if FilterType is set to LPF,HPF. if NOTCH/BPF: bandwidth of stop-/passband - normed to sFreq/2 (nyquist).
      * @param[in] dParkswidth      Determines the width of the filter slopes (steepness) - normed to sFreq/2 (nyquist).
      * @param[in] dSFreq           The sampling frequency.
-     * @param[in] designMethod     Specifies the design method to use. Choose between Cosind and Tschebyscheff.
+     * @param[in] designMethod     Specifies the design method to use. Choose between Cosind (FIR), Tschebyscheff (FIR) and Butterworth (IIR).
      **/
     FilterKernel(const QString &sFilterName,
                  int  iFilterType,
@@ -207,11 +206,15 @@ public:
     //TODO edit documentation here
 
     /**
-     * Applies the current IIR filter to the input data using the transposed direct form II.
+     * Applies the current IIR filter to the input data using the Transposed Direct Form II.
+     * This filer application implementation is adapted from I. Orifes filter application in his GitHub repository "Butterworth-Filter-Design" (see BiquadChain Class)
      *
      * @param[in, out]  vecData         Holds the data to be filtered. Gets overwritten with its filtered result.
      *
      * @return the filtered data in form of a RowVectorXd.
+     *
+     * Reference: https://github.com/ruohoruotsi/Butterworth-Filter-Design
+     *
      */
     void applyIirFilter(Eigen::RowVectorXd& vecData);
 
@@ -297,7 +300,7 @@ private:
     Eigen::RowVectorXcd     m_vecFftCoeff;    /**< the FFT-transformed forward fir filter coefficient set, required for frequency-domain filtering, zero-padded to m_iFftLength. */
 
     Eigen::RowVectorXd      m_vecRecCoeffsA;     /**< the IIR Butterworth recursion coefficients of the denominator of H[z] (a's) in second order section form. */
-    Eigen::RowVectorXd      m_vecRecCoeffsB;     /**< the IIR Butterworth recursion coefficients of the numerator of H[z] (b's) in second order section form.. */
+    Eigen::RowVectorXd      m_vecRecCoeffsB;     /**< the IIR Butterworth recursion coefficients of the numerator of H[z] (b's) in second order section form. */
 
 };
 

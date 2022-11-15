@@ -6,13 +6,14 @@
  * @file     filterkernel.cpp
  * @author   Lorenz Esch <lesch@mgh.harvard.edu>;
  *           Ruben Doerfel <Ruben.Doerfel@tu-ilmenau.de>;
- *           Christoph Dinh <chdinh@nmr.mgh.harvard.edu>
+ *           Christoph Dinh <chdinh@nmr.mgh.harvard.edu>;
+ *           Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>
  * @since    0.1.0
- * @date     February, 2014
+ * @date     November, 2022
  *
  * @section  LICENSE
  *
- * Copyright (C) 2014, Lorenz Esch, Ruben Doerfel, Christoph Dinh. All rights reserved.
+ * Copyright (C) 2014, Lorenz Esch, Ruben Doerfel, Christoph Dinh, Kerstin Pansegrau. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that
  * the following conditions are met:
@@ -65,9 +66,7 @@
 //=============================================================================================================
 
 #include <Eigen/SparseCore>
-//#ifndef EIGEN_FFTW_DEFAULT
-//#define EIGEN_FFTW_DEFAULT
-//#endif
+
 #include <unsupported/Eigen/FFT>
 
 //=============================================================================================================
@@ -85,9 +84,9 @@ using namespace UTILSLIB;
 //=============================================================================================================
 
 QVector<RTPROCESSINGLIB::FilterParameter> FilterKernel::m_designMethods ({
-    FilterParameter(QString("Cosine"), QString("A cosine filter")),
-    FilterParameter(QString("Tschebyscheff"), QString("A tschebyscheff filter")),
-    FilterParameter(QString("Butterworth"), QString("An IIR butterworth filter"))
+    FilterParameter(QString("Cosine"), QString("A cosine filter")), //FIR filter
+    FilterParameter(QString("Tschebyscheff"), QString("A tschebyscheff filter")), //FIR filter
+    FilterParameter(QString("Butterworth"), QString("An IIR butterworth filter")) //IIR filter
 //    FilterParameter(QString("External"), QString("An external filter"))
 });
 QVector<RTPROCESSINGLIB::FilterParameter> FilterKernel::m_filterTypes ({
@@ -240,11 +239,10 @@ void FilterKernel::applyFftFilter(RowVectorXd& vecData,
 
 void FilterKernel::applyIirFilter(Eigen::RowVectorXd& vecData)
 {
+    //this filer application implementation is adapted from I. Orifes filter application in his GitHub repository "Butterworth-Filter-Design" (see BiquadChain Class)
 
     int iNumBiquads = m_vecRecCoeffsA.cols() / 3; //we have three a's (and b's) per biquad
-    int iNumSamples = vecData.size(); //number of samples
-
-    //this filer application implementation is adapted from I. Orifes filter application in his GitHub repository "Butterworth-Filter-Design" (see BiquadChain Class)
+    int iNumSamples = vecData.size();
 
     //initialize delay variables and pointers
     //this part is from Orifes BiquadChain::allocate and BiquadChain::reset

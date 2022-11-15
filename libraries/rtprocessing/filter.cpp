@@ -1,17 +1,16 @@
 //=============================================================================================================
 
-//TODO edit documentation here
-
 /**
  * @file     filter.cpp
  * @author   Ruben Doerfel <Ruben.Doerfel@tu-ilmenau.de>;
- *           Lorenz Esch <lesch@mgh.harvard.edu>
+ *           Lorenz Esch <lesch@mgh.harvard.edu>;
+ *           Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de
  * @since    0.1.3
- * @date     June, 2020
+ * @date     November, 2022
  *
  * @section  LICENSE
  *
- * Copyright (C) 2020, Ruben Doerfel, Lorenz Esch. All rights reserved.
+ * Copyright (C) 2022, Ruben Doerfel, Lorenz Esch, Kerstin Pansegrau. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that
  * the following conditions are met:
@@ -357,7 +356,6 @@ MatrixXd RTPROCESSINGLIB::filterDataIir(const MatrixXd& matDataIn,
                                     filterKernel,
                                     bUseThreads);
 
-   //TODO this part does not work, fix it
     if(bFilterTwopass){
         //reverse data and filter it again (forward and backward filtering in order to compensate non-linear phase of IIR filters (recommended for offline filtering))
         MatrixXd matDataFwdReversed(matDataOut.rows(), matDataOut.cols()); //matrix for forward filtered data with reversed sample order
@@ -382,7 +380,6 @@ MatrixXd RTPROCESSINGLIB::filterDataIir(const MatrixXd& matDataIn,
     }
 
     return matDataOut;
-
 
 }
 
@@ -470,7 +467,7 @@ MatrixXd RTPROCESSINGLIB::filterDataBlockIir(const Eigen::MatrixXd& mataData,
     // Generate QList structure which can be handled by the QConcurrent framework
     QList<FilterObject> timeData;
 
-    // Only select channels specified in vecPicksNew, no preparation of filterKernel is needed
+    // Only select channels specified in vecPicksNew
     FilterObject data;
     for(qint32 i = 0; i < vecPicksNew.cols(); ++i) {
         data.filterKernel = filterKernel;
@@ -479,11 +476,11 @@ MatrixXd RTPROCESSINGLIB::filterDataBlockIir(const Eigen::MatrixXd& mataData,
         timeData.append(data);
     }
 
-    //prepare output data matrix, not filtered data is not delayed for IIR
+    //prepare output data matrix, not filtered data is not delayed for IIR filtering
     MatrixXd matDataOut(mataData.rows(), mataData.cols());
     matDataOut = mataData;
 
-    //do filtering channel by channel, IIR filtering is chosen in filterChannel
+    //do filtering channel by channel, IIR filtering approach is chosen in filterChannel
     if(bUseThreads) {
         QFuture<void> future = QtConcurrent::map(timeData,
                                                  filterChannel);
@@ -509,12 +506,9 @@ void RTPROCESSINGLIB::filterChannel(RTPROCESSINGLIB::FilterObject& channelDataTi
 {
     if(channelDataTime.filterKernel.getDesignMethod() == FilterKernel::m_designMethods.at(2)){
         //IIR filtering with Butterworth filter
-
         channelDataTime.filterKernel.applyIirFilter(channelDataTime.vecData);
-
     }else{
         //FIR filtering
-
         //channelDataTime.vecData = channelDataTime.first.at(i).applyConvFilter(channelDataTime.vecData, true);
         channelDataTime.filterKernel.applyFftFilter(channelDataTime.vecData, true); //FFT Convolution for rt is not suitable. FFT make the signal filtering non causal.
     }

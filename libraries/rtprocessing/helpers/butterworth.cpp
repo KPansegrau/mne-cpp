@@ -3,7 +3,7 @@
  * @file     butterworth.cpp
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>
  * @since    0.1.9
- * @date     April, 2022
+ * @date     November, 2022
  *
  * @section  LICENSE
  *
@@ -51,11 +51,6 @@
 
 
 //=============================================================================================================
-// QT INCLUDES
-//=============================================================================================================
-
-
-//=============================================================================================================
 // EIGEN INCLUDES
 //=============================================================================================================
 
@@ -78,7 +73,7 @@ Butterworth::Butterworth(int iType,
                          double dBandwidth,
                          double dSFreq)
 
-: m_iFilterType(iType)
+: m_iFilterType(iType) //from enum TPassType (LPF, HPF, BPF, NOTCH)
 , m_iFilterOrder(iOrder)
 , m_dBandwidth(dBandwidth) //in Hz, not normed
 , m_dCenterFreq(dCenterFreq) //in Hz, not normed
@@ -120,13 +115,13 @@ void Butterworth::createAnalogLowpassPrototype(int iOrder)
         }
     }
 
-    // for Debugging
+/*    // for Debugging
     std::cout.precision(17);
     qDebug() << "[Butterworth::createAnalogLowpassPrototype] Prototype poles:";
     for(int i{0}; i < iOrder; i++){
        std::cout << "Prototype pole #" << i << " : " << m_vecPrototypePoles[i] << "\n"; //for debugging print prototype poles
     }
-
+*/
     //calculate prototype gain (should be 1)
     std::complex<double> dPoleProduct(1.0,0.0);
     for(int i{0}; i < iNumPoles; i++){
@@ -134,8 +129,8 @@ void Butterworth::createAnalogLowpassPrototype(int iOrder)
     }
     m_dPrototypeGain = dPoleProduct.real();
 
-    //for Debugging
-    std::cout << "[Butterworth::createAnalogLowpassPrototype] Prototype gain: " << m_dPrototypeGain << '\n';
+//    std::cout << "[Butterworth::createAnalogLowpassPrototype] Prototype gain: " << m_dPrototypeGain << '\n';
+
 }
 
 //=============================================================================================================
@@ -144,20 +139,19 @@ void Butterworth::convertPrototype2Lowpass()
 {
     int iNumPoles = m_vecPrototypePoles.size();
 
-    //for debugging: critical frequency (cutoff) of new analog LP is m_dOmegaLowPrewarped
-    qDebug() << "[Butterworth::convertPrototype2Lowpass] Analog LP cutoff frequency in rad/s: " << m_dOmegaLowPrewarped;
+//    qDebug() << "[Butterworth::convertPrototype2Lowpass] Analog LP cutoff frequency in rad/s: " << m_dOmegaLowPrewarped;
 
     //calculate new analog LP poles (elementwise operation)
     //critical frequency (cutoff) of new analog LP is m_dOmegaLowPrewarped
     m_vecAnalogPoles = m_dOmegaLowPrewarped * m_vecPrototypePoles.array();
 
 
-    //for Debugging
+/*    //for Debugging
     qDebug() << "[Butterworth::convertPrototype2Lowpass] Analog LP poles:";
     for(int i{0}; i < iNumPoles; i++){
        std::cout << "Analog LP pole #" << i << " : " << m_vecAnalogPoles[i] << "\n";
     }
-
+*/
     //check for stability: all poles of the analog LP have to be in the left half of s-plane
     for(int i = 0; i < iNumPoles; i++){
         if(m_vecAnalogPoles[i].real() > 0){
@@ -171,7 +165,7 @@ void Butterworth::convertPrototype2Lowpass()
     //calculate new analog gain
     m_dAnalogGain = m_dPrototypeGain * pow(m_dOmegaLowPrewarped, iNumPoles);
 
-    std::cout << "[Butterworth::convertPrototype2Lowpass] Analog LP gain: " << m_dAnalogGain << "\n";
+//    std::cout << "[Butterworth::convertPrototype2Lowpass] Analog LP gain: " << m_dAnalogGain << "\n";
 
 }
 
@@ -181,19 +175,19 @@ void Butterworth::convertPrototype2Highpass()
 {
     int iNumPoles = m_vecPrototypePoles.size();
 
-    //for debugging: critical frequency (cutoff) of new analog HP is m_dOmegaHighPrewarped
-    qDebug() << "[Butterworth::convertPrototype2Highpass] Analog HP cutoff frequency in rad/s: " << m_dOmegaHighPrewarped;
+    //critical frequency (cutoff) of new analog HP is m_dOmegaHighPrewarped
+//    qDebug() << "[Butterworth::convertPrototype2Highpass] Analog HP cutoff frequency in rad/s: " << m_dOmegaHighPrewarped;
 
     //calculate new analog HP poles (elementwise operation)
     m_vecAnalogPoles = m_dOmegaHighPrewarped / m_vecPrototypePoles.array();
 
 
-    //for Debugging
+/*    //for Debugging
     qDebug() << "[Butterworth::convertPrototype2Highpass] Analog HP poles:";
     for(int i{0}; i < iNumPoles; i++){
        std::cout << "Analog HP pole #" << i << " : " << m_vecAnalogPoles[i] << "\n";
     }
-
+*/
     //check for stability: all poles of the analog HP have to be in the left half of s-plane
     for(int i = 0; i < iNumPoles; i++){
         if(m_vecAnalogPoles[i].real() > 0){
@@ -204,19 +198,21 @@ void Butterworth::convertPrototype2Highpass()
 
     //calculate new analog HP zeros --> each prototype pole causes a zero at origin
     m_vecAnalogZeros = RowVectorXcd::Zero(iNumPoles);
-    //for Debugging
+
+/*    //for Debugging
     qDebug() << "[Butterworth::convertPrototype2Highpass] Analog HP zeros:";
     for(int i{0}; i < iNumPoles; i++){
        std::cout << "Analog HP zero #" << i << " : " << m_vecAnalogZeros[i] << "\n";
     }
-
+*/
     //calculate new analog gain
     std::complex<double> dPoleProduct(1.0,0.0);
     for(int i{0}; i < iNumPoles; i++){
         dPoleProduct *= (-1.0 / m_vecPrototypePoles[i]);
     }
     m_dAnalogGain = m_dPrototypeGain * dPoleProduct.real();
-    qDebug() << "[Butterworth::convertPrototype2Highpass] Analog HP gain: " << m_dAnalogGain;
+
+//    qDebug() << "[Butterworth::convertPrototype2Highpass] Analog HP gain: " << m_dAnalogGain;
 
 }
 
@@ -230,11 +226,11 @@ void Butterworth::convertPrototype2Bandpass()
     double dBandwidthPrewarped = m_dOmegaHighPrewarped - m_dOmegaLowPrewarped;
     double dCenterFreqPrewarped = sqrt(m_dOmegaHighPrewarped * m_dOmegaLowPrewarped);
 
-    //for debugging: bandwidth and center frequency of the new analog BP
+/*    //for debugging: bandwidth and center frequency of the new analog BP
     std::cout.precision(17);
     std::cout << "[Butterworth::convertPrototype2Bandpass] Analog BP bandwidth in rad/s (after prewarping): " << dBandwidthPrewarped << "\n";
     std::cout << "[Butterworth::convertPrototype2Bandpass] Analog BP center frequency in rad/s (after prewarping): " << dCenterFreqPrewarped << "\n";
-
+*/
     //calculate new analog BP poles --> each prototype pole causes a pair of new poles
     m_vecAnalogPoles = RowVectorXcd::Zero(iNumPoles*2);
     for(int iPole{0},iCount{0}; iPole < iNumPoles; iPole++, iCount+=2){
@@ -246,13 +242,12 @@ void Butterworth::convertPrototype2Bandpass()
     std::sort(m_vecAnalogPoles.data(),m_vecAnalogPoles.data()+m_vecAnalogPoles.size(),
             [&](std::complex<double> a, std::complex<double> b){if(std::abs(a.imag()) == std::abs(b.imag())){ return a.imag() > b.imag();} return (std::abs(a.imag()) > std::abs(b.imag()));});
 
-
-    //for Debugging
+/*    //for Debugging
     qDebug() << "[Butterworth::convertPrototype2Bandpass] Analog BP poles:";
     for(int i{0}; i < m_vecAnalogPoles.size(); i++){
        std::cout << "Analog BP pole #" << i << " : " << m_vecAnalogPoles[i] << "\n";
     }
-
+*/
     //check for stability: all poles of the analog BP have to be in the left half of s-plane
     for(int i = 0; i < iNumPoles; i++){
         if(m_vecAnalogPoles[i].real() > 0){
@@ -263,15 +258,17 @@ void Butterworth::convertPrototype2Bandpass()
 
     //calculate new analog BP zeros --> each prototype pole causes a zero at origin
     m_vecAnalogZeros = RowVectorXcd::Zero(iNumPoles);
-    //for Debugging
+
+/*    //for Debugging
     qDebug() << "[Butterworth::convertPrototype2Bandpass] Analog BP zeros:";
     for(int i{0}; i < iNumPoles; i++){
        std::cout << "Analog BP zero #" << i << " : " << m_vecAnalogZeros[i] << "\n";
     }
-
+*/
     //calculate new analog gain
     m_dAnalogGain = m_dPrototypeGain * pow(dBandwidthPrewarped, iNumPoles);
-    std::cout << "[Butterworth::convertPrototype2Bandpass] Analog BP gain: " << m_dAnalogGain << "\n";
+
+//    std::cout << "[Butterworth::convertPrototype2Bandpass] Analog BP gain: " << m_dAnalogGain << "\n";
 
 }
 
@@ -285,10 +282,11 @@ void Butterworth::convertPrototype2Bandstop()
     double dBandwidthPrewarped = m_dOmegaHighPrewarped - m_dOmegaLowPrewarped;
     double dCenterFreqPrewarped = sqrt(m_dOmegaHighPrewarped * m_dOmegaLowPrewarped);
 
-    //for debugging: bandwidth and center frequency of the new analog BP
+/*    //for debugging: bandwidth and center frequency of the new analog BP
     std::cout.precision(17);
     std::cout << "[Butterworth::convertPrototype2Bandpass] Analog BS bandwidth in rad/s (after prewarping): " << dBandwidthPrewarped << "\n";
     std::cout << "[Butterworth::convertPrototype2Bandpass] Analog BS center frequency in rad/s (after prewarping): " << dCenterFreqPrewarped << "\n";
+*/
 
     //calculate new analog BS poles --> each prototype pole causes a pair of new poles
     m_vecAnalogPoles = RowVectorXcd::Zero(iNumPoles*2);
@@ -298,16 +296,15 @@ void Butterworth::convertPrototype2Bandstop()
     }
 
     //we need the poles ordered by descending absolute value of imag part (so that conjugate complex pairs are stored in subsequent vector elements)
-    //this sorting does not match Matlabs order of analog poles but descending order is closer than ascending order
     std::sort(m_vecAnalogPoles.data(),m_vecAnalogPoles.data()+m_vecAnalogPoles.size(),
             [&](std::complex<double> a, std::complex<double> b){if(std::abs(a.imag()) == std::abs(b.imag())){ return a.imag() > b.imag();} return (std::abs(a.imag()) > std::abs(b.imag()));});
 
-    //for Debugging
+/*    //for Debugging
     qDebug() << "[Butterworth::convertPrototype2Bandstop] Analog BS poles:";
     for(int i{0}; i < m_vecAnalogPoles.size(); i++){
        std::cout << "Analog BS pole #" << i << " : " << m_vecAnalogPoles[i] << "\n";
     }
-
+*/
     //calculate new analog BS zeros --> each prototype pole causes a pair of imaginary zeros
     m_vecAnalogZeros = RowVectorXcd::Zero(iNumPoles*2);
     for(int iPole{0}, iCount{0}; iPole < iNumPoles; iPole++, iCount+=2){
@@ -315,13 +312,12 @@ void Butterworth::convertPrototype2Bandstop()
         m_vecAnalogZeros[iCount + 1] = conj(m_vecAnalogZeros[iCount]);
     }
 
-
-    //for Debugging
+/*    //for Debugging
     qDebug() << "[Butterworth::convertPrototype2Bandstop] Analog BS zeros:";
     for(int i{0}; i < m_vecAnalogZeros.size(); i++){
        std::cout << "Analog BS zero #" << i << " : " << m_vecAnalogZeros[i] << "\n";
     }
-
+*/
     //check for stability: all poles of the analog BS have to be in the left half of s-plane
     for(int i = 0; i < iNumPoles; i++){
         if(m_vecAnalogPoles[i].real() > 0){
@@ -336,7 +332,8 @@ void Butterworth::convertPrototype2Bandstop()
         dPoleProduct *= (-1.0 / m_vecPrototypePoles[i]);
     }
     m_dAnalogGain = m_dPrototypeGain * dPoleProduct.real();
-    qDebug() << "[Butterworth::convertPrototype2Bandstop] Analog BS gain: " << m_dAnalogGain;
+
+//    qDebug() << "[Butterworth::convertPrototype2Bandstop] Analog BS gain: " << m_dAnalogGain;
 
 }
 
@@ -347,20 +344,20 @@ void Butterworth::bilinearTransform()
 
     double dPrewarpFactorK = 2 * m_dSFreq;
 
-    //transform s-plane poles into z-plane poles
+    //transform s-plane poles (analog) into z-plane poles (digital)
     int iNumPoles = m_vecAnalogPoles.size();
     m_vecDigitalPoles = RowVectorXcd::Zero(iNumPoles);
     for(int iPole{0}; iPole < iNumPoles; iPole++){
         m_vecDigitalPoles[iPole] = (1.0 + (m_vecAnalogPoles[iPole]/dPrewarpFactorK)) / (1.0 - (m_vecAnalogPoles[iPole]/dPrewarpFactorK));
     }
 
-    //for Debugging
+/*    //for Debugging
     std::cout.precision(17);
     qDebug() << "[Butterworth::bilinearTransform] Digital poles after bilinear transform:";
     for(int i{0}; i < iNumPoles; i++){
        std::cout << "Digital pole #" << i << " : " << m_vecDigitalPoles[i] << "\n";
     }
-
+*/
     //check for stability: all poles of the digital filter have to be inside the unit circle of z-plane
     for(int i = 0; i < iNumPoles; i++){
         if((m_vecDigitalPoles[i].real() > 1) && (m_vecDigitalPoles[i].imag() > 1) ){
@@ -377,7 +374,6 @@ void Butterworth::bilinearTransform()
         m_vecDigitalZeros[iZero] = (1.0 + (m_vecAnalogZeros[iZero]/dPrewarpFactorK)) / (1.0 - (m_vecAnalogZeros[iZero]/dPrewarpFactorK));
     }
 
-
     //add further zeros at (-1,0) so that number of zeros equals number of poles (numerator and denominator with same order)
     if(iNumZeros < iNumPoles){
         for(int iZero{iNumZeros}; iZero < iNumPoles; iZero++){
@@ -386,13 +382,12 @@ void Butterworth::bilinearTransform()
         iNumZeros = m_vecDigitalZeros.size();
     }
 
-
-    //for Debugging
+/*    //for Debugging
     qDebug() << "[Butterworth::bilinearTransform] Digital zeros after bilinear transform:";
     for(int i{0}; i < iNumZeros; i++){
        std::cout << "Digital zero #" << i << " : " << m_vecDigitalZeros[i] << "\n";
     }
-
+*/
     //check for stability: all zeros of the digital filter have to be inside the unit circle of z-plane
     for(int i = 0; i < iNumZeros; i++){
         if((m_vecDigitalZeros[i].real() > 1) && (m_vecDigitalZeros[i].imag() > 1) ){
@@ -402,7 +397,6 @@ void Butterworth::bilinearTransform()
     }
 
     //transform s-plane gain into z-plane gain
-    // we must use the numbers of analog zeros and poles here
     std::complex<double> dPoleProduct(1.0,0.0);
     for(int i{0}; i < iNumPoles; i++){
         dPoleProduct *= (dPrewarpFactorK - m_vecAnalogPoles[i]);
@@ -416,28 +410,26 @@ void Butterworth::bilinearTransform()
     std::complex<double> dTmpGain = m_dAnalogGain * dZeroProduct / dPoleProduct;
     m_dDigitalGain = dTmpGain.real();
 
-    qDebug() << "[Butterworth::bilinearTransform] Digital gain after bilinear transform: " << m_dDigitalGain;
-
+//    qDebug() << "[Butterworth::bilinearTransform] Digital gain after bilinear transform: " << m_dDigitalGain;
 
 }
-
 
 //=============================================================================================================
 
 void Butterworth::splitIntoBiquads()
 {
 
-    //numbers of digital poles and zeros before splitting into stages
+    //numbers of digital poles (and zeros) before splitting into stages
     int iNumPoles = m_vecDigitalPoles.size();
-    int iNumZeros = m_vecDigitalZeros.size();
 
-    //for Debugging
+/*    //for Debugging
     qDebug() << "[Butterworth::splitIntoBiquads] Number of digital poles: " << iNumPoles;
     qDebug() << "[Butterworth::splitIntoBiquads] Number of digital zeros: " << iNumZeros;
-
+*/
     //get number of necessary biquads
     bool bDifferentLastStage = ((iNumPoles % 2) != 0);
-    qDebug() << "[Butterworth::splitIntoBiquads] bDifferentLastStage: " << bDifferentLastStage;
+//    qDebug() << "[Butterworth::splitIntoBiquads] bDifferentLastStage: " << bDifferentLastStage;
+
     if(bDifferentLastStage){
         // odd number of poles and zeros --> last stage with only one pole and one zero (last stage is first order)
         m_iNumStages = (iNumPoles / 2) + 1;
@@ -445,22 +437,16 @@ void Butterworth::splitIntoBiquads()
         //even number of poles and zeros --> all stages with two poles and two zeros (all stages are biquads)
         m_iNumStages = iNumPoles / 2;
     }
-    qDebug() << "[Butterworth::splitIntoBiquads] Number of necessary Stages: " << m_iNumStages;
-
-    //TODO: implement grouping of poles and zeros (decide which poles and zeros are combined for each biquad) to minimize errors due to numberical precision issues
 
     int iNumCoeffs = m_iNumStages * 3;
-    qDebug() << "[Butterworth::splitIntoBiquads] Number of recursion coefficients a and b each: " << iNumCoeffs;
-
 
     //calculate biquad coeffs and store in m_vecRecCoeffsA, and m_vecRecCoeffsB
-    //first three entries of m_vecRecCoeffsA are a0, a1 and a2 of the first biquad, next three entries contain a0, a1, a2 of the second biquad etc.
+    //first three entries of m_vecRecCoeffsA represent a0, a1 and a2 of the first biquad, next three entries contain a0, a1, a2 of the second biquad etc.
     m_vecRecCoeffsA = RowVectorXd::Zero(iNumCoeffs);
     m_vecRecCoeffsB = RowVectorXd::Zero(iNumCoeffs);
+
     for(int iCoeff{0}, i{0}; iCoeff < iNumCoeffs; iCoeff += 3, i += 2){
-
         if((iCoeff < iNumCoeffs-3) || (!bDifferentLastStage)){
-
         //calculate a's from poles
         m_vecRecCoeffsA[iCoeff] = 1.0; //a0
         m_vecRecCoeffsA[iCoeff + 1] = (- (m_vecDigitalPoles[i] + m_vecDigitalPoles[i + 1])).real(); //a1
@@ -492,7 +478,7 @@ void Butterworth::splitIntoBiquads()
         m_vecRecCoeffsB[i] *= m_dDigitalGain;
     }
 
-    //for Debugging
+/*    //for Debugging
     qDebug() << "[Butterworth::splitIntoBiquads] Recursion coefficients a0, a1, a2 for each biquad:";
     for(int i{0}; i < iNumCoeffs; i++){
        std::cout << "A Coefficient #" << i << " : " << m_vecRecCoeffsA[i] << "\n";
@@ -501,7 +487,7 @@ void Butterworth::splitIntoBiquads()
     for(int i{0}; i < iNumCoeffs; i++){
        std::cout << "B Coefficient #" << i << " : " << m_vecRecCoeffsB[i] << "\n";
     }
-
+*/
 
 }
 
@@ -511,7 +497,6 @@ bool Butterworth::calculateButterworthCoeffs()
 {
 
     //set cutoff frequencies depending on selected filter type
-    // for LP and HP one of the cutoff frequencies have to be zero
     //center frequency and bandwidth are input parameters in Hz (not normed)
     switch(m_iFilterType) {
         case 0:
@@ -533,26 +518,27 @@ bool Butterworth::calculateButterworthCoeffs()
         break;
     }
 
-    //for Debugging
+/*    //for Debugging
     std::cout.precision(17);
     std::cout << "[Butterworth::calculateButterworthCoeffs] Lower cutoff frequency in Hz: " << m_dLowCutoff << "\n";
     std::cout << "[Butterworth::calculateButterworthCoeffs] Higher cutoff frequency in Hz: " << m_dHighCutoff << "\n";
     std::cout << "[Butterworth::calculateButterworthCoeffs] Sampling frequency in Hz: " << m_dSFreq << "\n";
-
+*/
     //convert cutoff frequencies from Hz to rad/s and perform frequency prewarping
     //reason: bilinear transform results in non linear compression especially at high frequencies which can be compensated by this prewarping step
     m_dOmegaLowPrewarped = 2 * m_dSFreq * tan(m_dLowCutoff * M_PI / m_dSFreq);
     m_dOmegaHighPrewarped = 2 * m_dSFreq * tan(m_dHighCutoff * M_PI / m_dSFreq);
+
+/*    //for Debugging: prewarped cutoff frequencies
     std::cout << "[Butterworth::calculateButterworthCoeffs] Prewarped lower cutoff frequency in rad/s: from " << m_dLowCutoff*2*M_PI << " to " << m_dOmegaLowPrewarped << "\n";
     std::cout << "[Butterworth::calculateButterworthCoeffs] Prewarped higher cutoff frequency in rad/s: from " << m_dHighCutoff*2*M_PI << " to " << m_dOmegaHighPrewarped << "\n";
+*/
 
-    //create an anlog lowpass prototype of desired order (its cutoff frequency in rad/s is one)
+    //create an anlog lowpass prototype of desired order (its cutoff frequency is 1 rad/s)
     //the prototype has iOrder poles, no zeros and gain of one
     createAnalogLowpassPrototype(m_iFilterOrder);
 
     //convert prototype into desired filter type and adjust cutoff frequencies
-    //new poles and zeros are in m_vecAnalogPoles and m_vecAnalogZeros
-    //m_dAnalogGain is set to the adjusted gain after conversion
     switch(m_iFilterType){
         case 0: {   //desired type is LP  (iOrder poles, no zeros)
             convertPrototype2Lowpass();
@@ -649,6 +635,13 @@ double Butterworth::getDigitalGain() const
 Eigen::RowVectorXd Butterworth::getRecCoeffsA() const
 {
     return m_vecRecCoeffsA;
+}
+
+//=============================================================================================================
+
+Eigen::RowVectorXd Butterworth::getRecCoeffsB() const
+{
+    return m_vecRecCoeffsB;
 }
 
 //=============================================================================================================

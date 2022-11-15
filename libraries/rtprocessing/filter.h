@@ -2,13 +2,14 @@
 /**
  * @file     filter.h
  * @author   Ruben Doerfel <Ruben.Doerfel@tu-ilmenau.de>;
- *           Lorenz Esch <lesch@mgh.harvard.edu>
+ *           Lorenz Esch <lesch@mgh.harvard.edu>;
+ *           Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>
  * @since    0.1.3
- * @date     June, 2020
+ * @date     November, 2022
  *
  * @section  LICENSE
  *
- * Copyright (C) 2020, Ruben Doerfel, Lorenz Esch. All rights reserved.
+ * Copyright (C) 2022, Ruben Doerfel, Lorenz Esch, Kerstin Pansegrau. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that
  * the following conditions are met:
@@ -189,14 +190,12 @@ RTPROCESINGSHARED_EXPORT Eigen::MatrixXd filterData(const Eigen::MatrixXd& mataD
 
 //=========================================================================================================
 
-//TODO: edit docu here
-
 /**
- * Calculates the filtered version of the raw input data based on a given list filters
- * The data needs to be present all at once. For continous filtering via overlap add use the FilterOverlapAdd class.
+ * Calculates the filtered version of the raw input data based on a given IIR filter.
+ * The data needs to be present all at once.
  *
  * @param[in] matDataIn             The data which is to be filtered.
- * @param[in] filterKernel          The list of filter kernels to use.
+ * @param[in] filterKernel          The IIR filter kernel to use.
  * @param[in] vecPicks              Channel indexes to filter. Default is filter all channels.
  * @param[in] bUseThreads           Whether to use multiple threads. Default is set to true.
  * @param[in] bTwopassFiltering     Whether the data should be IIR filtered forward and backward (null phase for offline filering) or not (necessary for online filtering).
@@ -231,15 +230,13 @@ RTPROCESINGSHARED_EXPORT Eigen::MatrixXd filterDataBlock(const Eigen::MatrixXd& 
 
 //=========================================================================================================
 
-//TODO edit documentation here
-
 /**
  * Calculates the IIR filtered version of the raw input data block.
  * Always returns the data without delay.
  *
  * @param[in] mataData         The data which is to be filtered.
  * @param[in] vecPicks         The used channel as index in RowVector.
- * @param[in] filterKernel     The FilterKernel to to filter the data with.
+ * @param[in] filterKernel     The IIR FilterKernel to filter the data with.
  * @param[in] bUseThreads      Whether to use multiple threads.
  *
  * @return The filtered data in form of a matrix with no delay.

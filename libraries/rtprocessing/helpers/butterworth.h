@@ -1,12 +1,10 @@
 //=============================================================================================================
 
-//TODO edit documentation here
-
 /**
  * @file     butterworth.h
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>
  * @since    0.1.9
- * @date     April, 2022
+ * @date     November, 2022
  *
  * @section  LICENSE
  *
@@ -64,7 +62,7 @@ namespace RTPROCESSINGLIB
 
 //=============================================================================================================
 /**
- * Creates an IIR butterworth filter.
+ * Creates an IIR Butterworth filter.
  *
  * @brief
  */
@@ -72,13 +70,6 @@ class RTPROCESINGSHARED_EXPORT Butterworth
 {
 public:
     enum TPassType {LPF, HPF, BPF, NOTCH };
-
-    //=========================================================================================================
-    /**
-     * Constructs a default Butterworth object.
-     *
-     */
-    Butterworth();
 
     //=========================================================================================================
     /**
@@ -100,16 +91,13 @@ public:
 
     //=========================================================================================================
     /**
-     * Creates an analog lowpass Butterworth filter prototype with filter order iOrder and prototype gain of 1 (stored in m_dPrototypeGain).
+     * Creates an analog lowpass Butterworth filter prototype with cutoff at 1 rad/s, filter order iOrder and prototype gain of 1 (stored in m_dPrototypeGain).
      * The complex poles of the prototype are stored as conjugate complex pairs in m_vecPrototypePoles
      * with regard to ascending absolute real part.
      * The prototype has no zeros.
      *
-     *
      * @param[in]   iOrder          The filter order.
      *
-     *
-     * References:  [1] MATLAB function butterap(filterOrder)
      */
     void createAnalogLowpassPrototype(int iOrder);
 
@@ -156,16 +144,15 @@ public:
      * Converts the analog filter into a digital one by using the bilinear transfrom.
      * Digital poles, zeros and gain are stored in m_vecDigitalPoles, m_vecDigitalZeros and m_dDigitalGain, respectively.
      *
-     * References:  [1] MATLAB function bilinear() https://ch.mathworks.com/help/signal/ref/bilinear.html
-     *
      */
 
     void bilinearTransform();
 
     //=========================================================================================================
     /**
-     * Converts the digital filter transfer function H[z] in pole zero gain form into second order biquads.
-     *
+     * Converts the digital filter transfer function H[z] (pole zero gain form) into a chain of second order biquads.
+     * The calculated recusion coefficients are stored in member variables m_vecRecCoeffsA and m_vecRecCoeffsB
+     * Coefficients are ordered in m_vecRecCoeffsA as follows: a0, a1, a2 of first biquad, a0, a1, a2 of second biquad etc. (analog for b's in m_vecRecCoeffsB)
      *
      */
 
@@ -173,7 +160,9 @@ public:
 
     //=========================================================================================================
     /**
-     * Calculates the Butterworth Recursion Coefficients.
+     * Subordinate method that calculates the Butterworth Recursion Coefficients.
+     * This method calculates the cutoff frequencies from input parameters (center frequency and bandwidth) according to filter type.
+     * Cutoff frequencies are prewarped and the member methods above are called one after another in order to obtian Butterworth filter coefficients.
      */
     bool calculateButterworthCoeffs();
 
@@ -215,11 +204,11 @@ private:
 
     double m_dOmegaLowPrewarped;            /**< the prewarped lower cutoff frequency in rad/s */
     double m_dOmegaHighPrewarped;           /**< the prewarped higher cutoff frequency in rad/s */
-    double m_dPrototypeGain;                /**< the gain of the analog LP prototype. */
+    double m_dPrototypeGain;                /**< the gain of the analog prototype. */
     double m_dAnalogGain;                   /**< the gain of the analog filter after type conversion. */
     double m_dDigitalGain;                  /**< the gain of the digital filter after bilinear transform. */
 
-    Eigen::RowVectorXcd m_vecPrototypePoles;/**< the poles of the analog LP prototype. */
+    Eigen::RowVectorXcd m_vecPrototypePoles;/**< the poles of the analog prototype. */
     Eigen::RowVectorXcd m_vecAnalogPoles;   /**< the poles of the analog filter. */
     Eigen::RowVectorXcd m_vecAnalogZeros;   /**< the zeros of the analog filter. */
     Eigen::RowVectorXcd m_vecDigitalPoles;  /**< the poles of the digital filter. */

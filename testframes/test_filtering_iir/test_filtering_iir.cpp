@@ -2,7 +2,7 @@
 /**
  * @file     test_filtering_iir.cpp
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>
- * @since    0.1.0
+ * @since    0.1.9
  * @date     November, 2022
  *
  * @section  LICENSE
@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  *
- * @brief     Test for Butterworth filter creation and filtering.
+ * @brief     Test for Butterworth filter creation (consistency tests after recompilation) and filtering (Butterworth filter validation).
  *
  */
 
@@ -113,7 +113,7 @@ private slots:
     void cleanupTestCase();
 
 private:
-    // declare your thresholds, variables and error values here
+
     double dEpsilonPrototypePoles;
     double dEpsilonPrototypeGain;
     double dEpsilonAnalogPoles;
@@ -123,6 +123,7 @@ private:
     double dEpsilonDigitalZeros;
     double dEpsilonDigitalGain;
     double dEpsilonData;
+
     int iOrder;
 
     RowVectorXcd m_vecPrototypePoles;
@@ -167,9 +168,6 @@ TestFilteringIir::TestFilteringIir()
     , dEpsilonDigitalGain(1.111e-16)
     , dEpsilonData(DBL_EPSILON)
 {
-    std::cout.precision(17);
-    std::cout << "[TestFilteringIir::TestFilteringIir] Epsilon for Validation = " << dEpsilonData << '\n';
-
 }
 
 //=============================================================================================================
@@ -181,9 +179,9 @@ void TestFilteringIir::initTestCase()
     QFile t_fileIn(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/MEG/sample/sample_audvis_trunc_raw_no_time_offset.fif");
     QFile t_fileOut(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/MEG/sample/sample_audvis_trunc_raw_butter_filt_out.fif");
 
-
     // Reference Filters is created in Matlab with the functions buttap() (prototype creation), butter('s') (analog filter), bilinear() (digital filter), zp2sos (cascade of biquads)
     // Filtering is performed with sosfilt (forward filtering), flip (reverse data), sosfilt (backward filtering and flip (restore order of samples)
+
     // choose one of the reference filters A to D
 //    QFile t_fileRef(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/Result/ref_sample_audvis_trunc_raw_butter_LP_twopass_filt.fif");
 //    QFile t_fileRef(QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/Result/ref_sample_audvis_trunc_raw_butter_HP_twopass_filt.fif");
@@ -478,8 +476,7 @@ void TestFilteringIir::comparePrototypePoles()
     // compare prototype poles to reference prototype poles
     Eigen::RowVectorXcd vecPrototypePoleDiffComplex = m_vecPrototypePoles.array() - m_vecRefPrototypePoles.array();
     Eigen::RowVectorXd vecPrototypePoleDiff = vecPrototypePoleDiffComplex.array().abs();
-    std::cout.precision(17);
-    std::cout << "[TestFilteringIir::comparePrototypePoles] Maximum of absolute differences = " << vecPrototypePoleDiff.maxCoeff() << '\n';
+//    qDebug << "[TestFilteringIir::comparePrototypePoles] Maximum of absolute differences = " << vecPrototypePoleDiff.maxCoeff() << '\n';
     QVERIFY( vecPrototypePoleDiff.maxCoeff() < dEpsilonPrototypePoles );
 
 }
@@ -490,13 +487,10 @@ void TestFilteringIir::comparePrototypeGain()
 {
      //compare prototype gain to reference prototype gain
     double dPrototypeGainDiff = abs(m_dPrototypeGain - m_dRefPrototypeGain);
-    std::cout.precision(17);
-    std::cout << "[TestFilteringIir::comparePrototypeGain] Maximum of absolute differences = " << dPrototypeGainDiff << '\n';
+//    qDebug << "[TestFilteringIir::comparePrototypeGain] Maximum of absolute differences = " << dPrototypeGainDiff << '\n';
     QVERIFY( dPrototypeGainDiff < dEpsilonPrototypeGain );
 
 }
-
-
 
 //=============================================================================================================
 
@@ -505,8 +499,7 @@ void TestFilteringIir::compareAnalogPoles()
     // compare prototype poles to reference prototype poles
     Eigen::RowVectorXcd vecAnalogPoleDiffComplex = m_vecAnalogPoles.array() - m_vecRefAnalogPoles.array();
     Eigen::RowVectorXd vecAnalogPoleDiff = vecAnalogPoleDiffComplex.array().abs();
-    std::cout.precision(17);
-    std::cout << "[TestFilteringIir::compareAnalogPoles] Maximum of absolute differences = " << vecAnalogPoleDiff.maxCoeff() << '\n';
+//    qDebug << "[TestFilteringIir::compareAnalogPoles] Maximum of absolute differences = " << vecAnalogPoleDiff.maxCoeff() << '\n';
     QVERIFY( vecAnalogPoleDiff.maxCoeff() < dEpsilonAnalogPoles );
 
 }
@@ -520,11 +513,10 @@ void TestFilteringIir::compareAnalogZeros()
         // compare prototype poles to reference prototype poles
         Eigen::RowVectorXcd vecAnalogZeroDiffComplex = m_vecAnalogZeros.array() - m_vecRefAnalogZeros.array();
         Eigen::RowVectorXd vecAnalogZeroDiff = vecAnalogZeroDiffComplex.array().abs();
-        std::cout.precision(17);
-        std::cout << "[TestFilteringIir::compareAnalogZeros] Maximum of absolute differences = " << vecAnalogZeroDiff.maxCoeff() << '\n';
+//        qDebug << "[TestFilteringIir::compareAnalogZeros] Maximum of absolute differences = " << vecAnalogZeroDiff.maxCoeff() << '\n';
         QVERIFY( vecAnalogZeroDiff.maxCoeff() < dEpsilonAnalogZeros );
     }else{
-        qDebug() << "[TestFilteringIir::compareAnalogZeros] Your LP filter has no analog zeros.";
+        qDebug() << "[TestFilteringIir::compareAnalogZeros] Analog LP filter has no zeros.";
     }
 
 }
@@ -535,8 +527,7 @@ void TestFilteringIir::compareAnalogGain()
 {
      //compare prototype gain to reference prototype gain
     double dAnalogGainDiff = abs(m_dAnalogGain - m_dRefAnalogGain);
-    std::cout.precision(17);
-    std::cout << "[TestFilteringIir::compareAnalogGain] Maximum of absolute differences = " << dAnalogGainDiff << '\n';
+//    qDebug << "[TestFilteringIir::compareAnalogGain] Maximum of absolute differences = " << dAnalogGainDiff << '\n';
     QVERIFY( dAnalogGainDiff < dEpsilonAnalogGain );
 
 }
@@ -548,8 +539,7 @@ void TestFilteringIir::compareDigitalPoles()
     // compare prototype poles to reference prototype poles
     Eigen::RowVectorXcd vecDigitalPoleDiffComplex = m_vecDigitalPoles.array() - m_vecRefDigitalPoles.array();
     Eigen::RowVectorXd vecDigitalPoleDiff = vecDigitalPoleDiffComplex.array().abs();
-    std::cout.precision(17);
-    std::cout << "[TestFilteringIir::compareDigitalPoles] Maximum of absolute differences = " << vecDigitalPoleDiff.maxCoeff() << '\n';
+//    qDebug << "[TestFilteringIir::compareDigitalPoles] Maximum of absolute differences = " << vecDigitalPoleDiff.maxCoeff() << '\n';
     QVERIFY( vecDigitalPoleDiff.maxCoeff() < dEpsilonDigitalPoles );
 
 }
@@ -561,8 +551,7 @@ void TestFilteringIir::compareDigitalZeros()
     // compare prototype poles to reference prototype poles
     Eigen::RowVectorXcd vecDigitalZeroDiffComplex = m_vecDigitalZeros.array() - m_vecRefDigitalZeros.array();
     Eigen::RowVectorXd vecDigitalZeroDiff = vecDigitalZeroDiffComplex.array().abs();
-    std::cout.precision(17);
-    std::cout << "[TestFilteringIir::compareDigitalZeros] Maximum of absolute differences = " << vecDigitalZeroDiff.maxCoeff() << '\n';
+//    qDebug << "[TestFilteringIir::compareDigitalZeros] Maximum of absolute differences = " << vecDigitalZeroDiff.maxCoeff() << '\n';
     QVERIFY( vecDigitalZeroDiff.maxCoeff() < dEpsilonDigitalZeros );
 
 }
@@ -573,8 +562,7 @@ void TestFilteringIir::compareDigitalGain()
 {
     //compare prototype gain to reference prototype gain
     double dDigitalGainDiff = abs(m_dDigitalGain - m_dRefDigitalGain);
-    std::cout.precision(17);
-    std::cout << "[TestFilteringIir::compareDigitalGain] Maximum of absolute differences = " << dDigitalGainDiff << '\n';
+//    qDebug << "[TestFilteringIir::compareDigitalGain] Maximum of absolute differences = " << dDigitalGainDiff << '\n';
     QVERIFY( dDigitalGainDiff < dEpsilonDigitalGain );
 
 }
@@ -586,8 +574,7 @@ void TestFilteringIir::compareData()
     //compare filtered data
     MatrixXd mDataDiff = mFirstFiltered - mRefFiltered;
     mDataDiff = mDataDiff.cwiseAbs();
-    std::cout.precision(17);
-    std::cout << "[TestFilteringIir::compareData] Maximum of absolute differences = " << mDataDiff.maxCoeff() << '\n';
+//    qDebug << "[TestFilteringIir::compareData] Maximum of absolute differences = " << mDataDiff.maxCoeff() << '\n';
     QVERIFY( mDataDiff.maxCoeff() < dEpsilonData );
 
 }
@@ -598,8 +585,7 @@ void TestFilteringIir::compareTimes()
 {
     MatrixXd mTimesDiff = mFirstInTimes - mRefInTimes;
     mTimesDiff = mTimesDiff.cwiseAbs();
-    std::cout.precision(17);
-    std::cout << "[TestFilteringIir::compareTimes] Maximum of absolute differences = " << mTimesDiff.maxCoeff() << '\n';
+//    qDebug << "[TestFilteringIir::compareTimes] Maximum of absolute differences = " << mTimesDiff.maxCoeff() << '\n';
     QVERIFY( mTimesDiff.maxCoeff() < dEpsilonData );
 }
 
