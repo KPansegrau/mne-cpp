@@ -1,6 +1,6 @@
 //=============================================================================================================
 /**
- * @file     noisereduction_global.cpp
+ * @file     sampleplugin_global.cpp
  * @author   Juan G Prieto <jgarciaprieto@mgh.harvard.edu>;
  *           Gabriel B Motta <gbmotta@mgh.harvard.edu>;
  * @since    0.1.9
@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  *
- * @brief    noisereduction plugin global definitions.
+ * @brief    sampleplugin plugin global definitions.
  *
  */
 
@@ -37,18 +37,19 @@
 // INCLUDES
 //=============================================================================================================
 
-#include "noisereduction_global.h"
+#include "sampleplugin_global.h"
+#include "utils/buildinfo.h"
 
 //=============================================================================================================
 // DEFINE METHODS
 //=============================================================================================================
 
-const char* NOISEREDUCTIONPLUGIN::buildDateTime(){ return UTILSLIB::dateTimeNow();}
+const char* SAMPLEPLUGINPLUGIN::buildDateTime(){ return UTILSLIB::dateTimeNow();};
 
 //=============================================================================================================
 
-const char* NOISEREDUCTIONPLUGIN::buildHash(){ return UTILSLIB::gitHash();}
+const char* SAMPLEPLUGINPLUGIN::buildHash(){ return UTILSLIB::gitHash();};
 
 //=============================================================================================================
 
-const char* NOISEREDUCTIONPLUGIN::buildHashLong(){ return UTILSLIB::gitHashLong();}
+const char* SAMPLEPLUGINPLUGIN::buildHashLong(){ return UTILSLIB::gitHashLong();};

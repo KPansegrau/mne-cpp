@@ -51,4 +51,25 @@
 #  define SAMPLEPLUGINSHARED_EXPORT Q_DECL_IMPORT   /**< Q_DECL_IMPORT must be added to the declarations of symbols used when compiling a client that uses the shared library. */
 #endif
 
+namespace SAMPLEPLUGINPLUGIN{
+
+//=============================================================================================================
+/**
+ * Returns build date and time.
+ */
+SAMPLEPLUGINSHARED_EXPORT const char* buildDateTime();
+
+//=============================================================================================================
+/**
+ * Returns abbreviated build git hash.
+ */
+SAMPLEPLUGINSHARED_EXPORT const char* buildHash();
+
+//=============================================================================================================
+/**
+ * Returns full build git hash.
+ */
+SAMPLEPLUGINSHARED_EXPORT const char* buildHashLong();
+}
+
 #endif // SAMPLEPLUGIN_GLOBAL_H

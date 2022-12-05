@@ -1,10 +1,10 @@
 //=============================================================================================================
 /**
- * @file     noisereduction_global.cpp
+ * @file     dummytoolbox_global.cpp
  * @author   Juan G Prieto <jgarciaprieto@mgh.harvard.edu>;
  *           Gabriel B Motta <gbmotta@mgh.harvard.edu>;
  * @since    0.1.9
- * @date     September, 2021
+ * @date     November, 2022
  *
  * @section  LICENSE
  *
@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  *
- * @brief    noisereduction plugin global definitions.
+ * @brief    averaging plugin global definitions.
  *
  */
 
@@ -37,18 +37,19 @@
 // INCLUDES
 //=============================================================================================================
 
-#include "noisereduction_global.h"
+#include "dummytoolbox_global.h"
+#include <utils/buildinfo.h>
 
 //=============================================================================================================
 // DEFINE METHODS
 //=============================================================================================================
 
-const char* NOISEREDUCTIONPLUGIN::buildDateTime(){ return UTILSLIB::dateTimeNow();}
+const char* DUMMYTOOLBOXPLUGIN::buildDateTime(){ return UTILSLIB::dateTimeNow();};
 
 //=============================================================================================================
 
-const char* NOISEREDUCTIONPLUGIN::buildHash(){ return UTILSLIB::gitHash();}
+const char* DUMMYTOOLBOXPLUGIN::buildHash(){ return UTILSLIB::gitHash();};
 
 //=============================================================================================================
 
-const char* NOISEREDUCTIONPLUGIN::buildHashLong(){ return UTILSLIB::gitHashLong();}
+const char* DUMMYTOOLBOXPLUGIN::buildHashLong(){ return UTILSLIB::gitHashLong();};
