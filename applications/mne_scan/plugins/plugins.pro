@@ -46,6 +46,7 @@ SUBDIRS += \
     ftbuffer \
     babymeg \
     natus \
+    rtbeamformer
 
     contains(MNECPP_CONFIG, withBrainAmp) {
         SUBDIRS += brainamp \           # Build guide -> https://mne-cpp.github.io/pages/development/brainamp.html
