@@ -63,6 +63,7 @@
 
 namespace SCMEASLIB {
     class RealTimeMultiSampleArray;
+    class RealTimeEvokedSet;
     class RealTimeSourceEstimate;
 }
 
@@ -153,6 +154,15 @@ public:
 
     //=========================================================================================================
 
+    /**
+     * Slot to update the fiff evoked
+     *
+     * @param[in] pMeasurement   The evoked to be appended.
+     */
+    void updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement);
+
+    //=========================================================================================================
+
 
 protected:
 
@@ -166,8 +176,11 @@ protected:
     //=========================================================================================================
 
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeMultiSampleArray> >      m_pRTMSAInput;              /**< The RealTimeMultiSampleArray input.*/
+    QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedSet> >             m_pRTESInput;               /**< The RealTimeEvoked input.*/
+
 
     QSharedPointer<UTILSLIB::CircularBuffer_Matrix_double >                                 m_pCircularMatrixBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
+    QSharedPointer<UTILSLIB::CircularBuffer<FIFFLIB::FiffEvoked> >                          m_pCircularEvokedBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
 
 
     QSharedPointer<SCSHAREDLIB::PluginOutputData<SCMEASLIB::RealTimeSourceEstimate> >       m_pRTSEOutput;              /**< The RealTimeSourceEstimate output.*/
@@ -187,10 +200,18 @@ protected:
     QMutex                          m_qMutex;                   /**< The mutex ensuring thread safety. */
     QFuture<void>                   m_future;                   /**< The future monitoring the clustering. */
 
+    FIFFLIB::FiffEvoked             m_currentEvoked;
+
     qint32                          m_iNumAverages;             /**< The number of trials/averages to store. */
+
+    QString                         m_sAvrType;                 /**< The average type. */
+
 
     QStringList                     m_qListCovChNames;          /**< Covariance channel names. */
     QStringList                     m_qListPickChannels;        /**< Channels to pick. */
+
+signals:
+    void responsibleTriggerTypesChanged(const QStringList& lResponsibleTriggerTypes);
 
 
 };

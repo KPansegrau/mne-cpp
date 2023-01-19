@@ -46,7 +46,7 @@
 
 #include <scMeas/realtimesourceestimate.h>
 #include <scMeas/realtimemultisamplearray.h>
-
+#include <scMeas/realtimeevokedset.h>
 
 
 
@@ -78,9 +78,11 @@ using namespace Eigen;
 
 RtBeamformer::RtBeamformer()
     : m_pCircularMatrixBuffer(CircularBuffer_Matrix_double::SPtr(new CircularBuffer_Matrix_double(40)))
+    , m_pCircularEvokedBuffer(CircularBuffer<FIFFLIB::FiffEvoked>::SPtr::create(40))
     , m_bRawInput(false)
     , m_bEvokedInput(false)
     , m_iNumAverages(1)
+    , m_sAvrType("3")
 {
 
 }
@@ -121,6 +123,12 @@ void RtBeamformer::init()
     connect(m_pRTMSAInput.data(), &PluginInputConnector::notify,
             this, &RtBeamformer::updateRTMSA, Qt::DirectConnection);
     m_inputConnectors.append(m_pRTMSAInput);
+
+    m_pRTESInput = PluginInputData<RealTimeEvokedSet>::create(this, "RTBEAMFORMER RTE In", "RTBEAMFORMER real-time evoked input data");
+    connect(m_pRTESInput.data(), &PluginInputConnector::notify,
+            this, &RtBeamformer::updateRTE, Qt::DirectConnection);
+    m_inputConnectors.append(m_pRTESInput);
+
 
     //Output
     m_pRTSEOutput = PluginOutputData<RealTimeSourceEstimate>::create(this, "RTBEAMFORMER Out", "RTBEAMFORMER output data");
@@ -349,6 +357,70 @@ void RtBeamformer::updateRTMSA(SCMEASLIB::Measurement::SPtr pMeasurement)
 }
 
 //=============================================================================================================
+
+void RtBeamformer::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
+{
+    //HINT: copied from rtcmne
+
+    if(m_pFwd) {
+        if(QSharedPointer<RealTimeEvokedSet> pRTES = pMeasurement.dynamicCast<RealTimeEvokedSet>()) {
+            QStringList lResponsibleTriggerTypes = pRTES->getResponsibleTriggerTypes();
+            emit responsibleTriggerTypesChanged(lResponsibleTriggerTypes);
+
+
+            if(!m_bPluginControlWidgetsInit) {
+                //TODO: following method does nothing
+                initPluginControlWidgets();
+            }
+
+            if(!this->isRunning() || !lResponsibleTriggerTypes.contains(m_sAvrType)) {
+                return;
+            }
+
+            FiffEvokedSet::SPtr pFiffEvokedSet = pRTES->getValue();
+
+            //Fiff Information of the evoked
+            if(!m_pFiffInfoInput && pFiffEvokedSet->evoked.size() > 0) {
+                QMutexLocker locker(&m_qMutex);
+
+                for(int i = 0; i < pFiffEvokedSet->evoked.size(); ++i) {
+                    if(pFiffEvokedSet->evoked.at(i).comment == m_sAvrType) {
+                        m_pFiffInfoInput = QSharedPointer<FiffInfo>(new FiffInfo(pFiffEvokedSet->evoked.at(i).info));
+                        break;
+                    }
+                }
+
+                m_bEvokedInput = true;
+            }
+
+            if(!m_bPluginControlWidgetsInit) {
+                initPluginControlWidgets();
+            }
+
+            if(this->isRunning()) {
+                for(int i = 0; i < pFiffEvokedSet->evoked.size(); ++i) {
+                    if(pFiffEvokedSet->evoked.at(i).comment == m_sAvrType) {
+                        // Store current evoked as member so we can dispatch it if the time pick by the user changed
+                        m_currentEvoked = pFiffEvokedSet->evoked.at(i).pick_channels(m_qListPickChannels);
+
+                        // Please note that we do not need a copy here since this function will block until
+                        // the buffer accepts new data again. Hence, the data is not deleted in the actual
+                        // Measurement function after it emitted the notify signal.
+                        while(!m_pCircularEvokedBuffer->push(pFiffEvokedSet->evoked.at(i).pick_channels(m_qListPickChannels))) {
+                            //Do nothing until the circular buffer is ready to accept new data again
+                        }
+
+                            //qDebug()<<"RtcMne::updateRTE - average found type" << m_sAvrType;
+                            break;
+                        }
+                    }
+                }
+            }
+    }
+}
+
+//=============================================================================================================
+
 
 void RtBeamformer::run()
 {
