@@ -79,6 +79,7 @@ using namespace Eigen;
 RtBeamformer::RtBeamformer()
     : m_pCircularMatrixBuffer(CircularBuffer_Matrix_double::SPtr(new CircularBuffer_Matrix_double(40)))
     , m_bRawInput(false)
+    , m_bEvokedInput(false)
     , m_iNumAverages(1)
 {
 
@@ -88,13 +89,19 @@ RtBeamformer::RtBeamformer()
 
 RtBeamformer::~RtBeamformer()
 {
-    //TODO
+    //HINT:copied from rtmne
+    m_future.waitForFinished();
+
+    if(this->isRunning()) {
+        stop();
+    }
 }
 
 //=============================================================================================================
 
 QSharedPointer<AbstractPlugin> RtBeamformer::clone() const
 {
+    //HINT:copied from rtmne
     QSharedPointer<RtBeamformer> pRtBeamformerClone(new RtBeamformer());
     return pRtBeamformerClone;
 }
@@ -136,6 +143,7 @@ void RtBeamformer::unload()
 
 bool RtBeamformer::start()
 {
+     //HINT:copied from rtmne
     QThread::start();
     return true;
 }
@@ -144,7 +152,15 @@ bool RtBeamformer::start()
 
 bool RtBeamformer::stop()
 {
-    //TODO
+     //HINT:copied from rtmne
+    requestInterruption();
+    wait(500);
+
+    m_qListCovChNames.clear();
+    m_bEvokedInput = false;
+    m_bRawInput = false;
+    m_bPluginControlWidgetsInit = false;
+
     return true;
 }
 
@@ -152,6 +168,7 @@ bool RtBeamformer::stop()
 
 AbstractPlugin::PluginType RtBeamformer::getType() const
 {
+     //HINT:copied from rtmne
     return _IAlgorithm;
 }
 
@@ -184,6 +201,8 @@ void RtBeamformer::initPluginControlWidgets()
 
 bool RtBeamformer::calcFiffInfo()
 {
+    //HINT:copied from rtmne
+
     QMutexLocker locker(&m_qMutex);
 
     if(m_qListCovChNames.size() > 0 && m_pFiffInfoInput && m_pFiffInfoForward) {
@@ -339,12 +358,17 @@ void RtBeamformer::run()
     while(!calcFiffInfo()) {
         msleep(200);
     }
+
+    while(!isInterruptionRequested()) {
+    //TODO
+    }
 }
 
 //=============================================================================================================
 
 QString RtBeamformer::getBuildInfo()
 {
+    //HINT: copied from rtcmne
     return QString(RTBEAMFORMERPLUGIN::buildDateTime()) + QString(" - ")  + QString(RTBEAMFORMERPLUGIN::buildHash());
 
 }
