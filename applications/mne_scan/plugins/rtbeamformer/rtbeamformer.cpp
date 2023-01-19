@@ -69,6 +69,7 @@ using namespace SCMEASLIB;
 using namespace UTILSLIB;
 using namespace MNELIB;
 using namespace FIFFLIB;
+using namespace Eigen;
 
 
 //=============================================================================================================
@@ -135,7 +136,7 @@ void RtBeamformer::unload()
 
 bool RtBeamformer::start()
 {
-    //TODO
+    QThread::start();
     return true;
 }
 
@@ -178,6 +179,105 @@ void RtBeamformer::initPluginControlWidgets()
 
     //TODO
 }
+
+//=============================================================================================================
+
+bool RtBeamformer::calcFiffInfo()
+{
+    QMutexLocker locker(&m_qMutex);
+
+    if(m_qListCovChNames.size() > 0 && m_pFiffInfoInput && m_pFiffInfoForward) {
+        qDebug() << "[RtBeamformer::calcFiffInfo] Fiff Infos available";
+
+//        qDebug() << "RtcMne::calcFiffInfo - m_qListCovChNames" << m_qListCovChNames;
+//        qDebug() << "RtcMne::calcFiffInfo - m_pFiffInfoForward->ch_names" << m_pFiffInfoForward->ch_names;
+//        qDebug() << "RtcMne::calcFiffInfo - m_pFiffInfoInput->ch_names" << m_pFiffInfoInput->ch_names;
+
+        // Align channel names of the forward solution to the incoming averaged (currently acquired) data
+        // Find out whether the forward solution depends on only MEG, EEG or both MEG and EEG channels
+        QStringList forwardChannelsTypes;
+        m_pFiffInfoForward->ch_names.clear();
+        int counter = 0;
+
+        for(qint32 x = 0; x < m_pFiffInfoForward->chs.size(); ++x) {
+            if(forwardChannelsTypes.contains("MEG") && forwardChannelsTypes.contains("EEG"))
+                break;
+
+            if(m_pFiffInfoForward->chs[x].kind == FIFFV_MEG_CH && !forwardChannelsTypes.contains("MEG"))
+                forwardChannelsTypes<<"MEG";
+
+            if(m_pFiffInfoForward->chs[x].kind == FIFFV_EEG_CH && !forwardChannelsTypes.contains("EEG"))
+                forwardChannelsTypes<<"EEG";
+        }
+
+        //If only MEG channels are used
+        if(forwardChannelsTypes.contains("MEG") && !forwardChannelsTypes.contains("EEG")) {
+            for(qint32 x = 0; x < m_pFiffInfoInput->chs.size(); ++x)
+            {
+                if(m_pFiffInfoInput->chs[x].kind == FIFFV_MEG_CH) {
+                    m_pFiffInfoForward->chs[counter].ch_name = m_pFiffInfoInput->chs[x].ch_name;
+                    m_pFiffInfoForward->ch_names << m_pFiffInfoInput->chs[x].ch_name;
+                    counter++;
+                }
+            }
+        }
+
+        //If only EEG channels are used
+        if(!forwardChannelsTypes.contains("MEG") && forwardChannelsTypes.contains("EEG")) {
+            for(qint32 x = 0; x < m_pFiffInfoInput->chs.size(); ++x)
+            {
+                if(m_pFiffInfoInput->chs[x].kind == FIFFV_EEG_CH) {
+                    m_pFiffInfoForward->chs[counter].ch_name = m_pFiffInfoInput->chs[x].ch_name;
+                    m_pFiffInfoForward->ch_names << m_pFiffInfoInput->chs[x].ch_name;
+                    counter++;
+                }
+            }
+        }
+
+        //If both MEG and EEG channels are used
+        if(forwardChannelsTypes.contains("MEG") && forwardChannelsTypes.contains("EEG")) {
+            //qDebug()<<"RtcMne::calcFiffInfo - MEG EEG fwd solution";
+            for(qint32 x = 0; x < m_pFiffInfoInput->chs.size(); ++x)
+            {
+                if(m_pFiffInfoInput->chs[x].kind == FIFFV_MEG_CH || m_pFiffInfoInput->chs[x].kind == FIFFV_EEG_CH) {
+                    m_pFiffInfoForward->chs[counter].ch_name = m_pFiffInfoInput->chs[x].ch_name;
+                    m_pFiffInfoForward->ch_names << m_pFiffInfoInput->chs[x].ch_name;
+                    counter++;
+                }
+            }
+        }
+
+        //Pick only channels which are present in all data structures (covariance, evoked and forward)
+        QStringList tmp_pick_ch_names;
+        foreach (const QString &ch, m_pFiffInfoForward->ch_names)
+        {
+            if(m_pFiffInfoInput->ch_names.contains(ch))
+                tmp_pick_ch_names << ch;
+        }
+        m_qListPickChannels.clear();
+
+        foreach (const QString &ch, tmp_pick_ch_names)
+        {
+            if(m_qListCovChNames.contains(ch))
+                m_qListPickChannels << ch;
+        }
+        RowVectorXi sel = m_pFiffInfoInput->pick_channels(m_qListPickChannels);
+
+        //qDebug() << "RtcMne::calcFiffInfo - m_qListPickChannels.size()" << m_qListPickChannels.size();
+        //qDebug() << "RtcMne::calcFiffInfo - m_qListPickChannels" << m_qListPickChannels;
+
+        m_pFiffInfo = QSharedPointer<FiffInfo>(new FiffInfo(m_pFiffInfoInput->pick_info(sel)));
+
+        m_pRTSEOutput->measurementData()->setFiffInfo(m_pFiffInfo);
+
+        // qDebug() << "RtcMne::calcFiffInfo - m_pFiffInfo" << m_pFiffInfo->ch_names;
+
+        return true;
+    }
+
+    return false;
+}
+
 
 //=============================================================================================================
 
@@ -234,6 +334,11 @@ void RtBeamformer::updateRTMSA(SCMEASLIB::Measurement::SPtr pMeasurement)
 void RtBeamformer::run()
 {
      //TODO
+
+    // Wait for fiff info to arrive
+    while(!calcFiffInfo()) {
+        msleep(200);
+    }
 }
 
 //=============================================================================================================

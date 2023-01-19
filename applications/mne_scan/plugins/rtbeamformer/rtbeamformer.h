@@ -141,6 +141,12 @@ public:
 
     //=========================================================================================================
     /**
+     * Slot called when the fiff info is to be calculated.
+     */
+    bool calcFiffInfo();
+
+    //=========================================================================================================
+    /**
      * Slot to update the real time multi sample array data
      */
     void updateRTMSA(SCMEASLIB::Measurement::SPtr pMeasurement);
@@ -170,7 +176,7 @@ protected:
 
 
 
-
+    QSharedPointer<FIFFLIB::FiffInfoBase>                                                   m_pFiffInfoForward;         /**< Fiff information of the forward solution. */
     QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfo;                /**< Fiff information. */
     QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfoInput;           /**< Fiff information of the evoked. */
 
@@ -180,6 +186,9 @@ protected:
     QMutex                          m_qMutex;                   /**< The mutex ensuring thread safety. */
 
     qint32                          m_iNumAverages;             /**< The number of trials/averages to store. */
+
+    QStringList                     m_qListCovChNames;          /**< Covariance channel names. */
+    QStringList                     m_qListPickChannels;        /**< Channels to pick. */
 
 
 };
