@@ -44,16 +44,35 @@
 
 #include <scShared/Plugins/abstractalgorithm.h>
 
+#include "scMeas/realtimemultisamplearray.h"
+#include <utils/generics/circularbuffer.h>
+
+#include <fiff/fiff_evoked.h>
+
 //=============================================================================================================
 // QT INCLUDES
 //=============================================================================================================
 
-
+#include <QFuture>
+#include <QPointer>
+#include <QSharedPointer>
 
 //=============================================================================================================
 // FORWARD DECLARATIONS
 //=============================================================================================================
 
+namespace SCMEASLIB {
+    class RealTimeMultiSampleArray;
+    class RealTimeSourceEstimate;
+}
+
+namespace MNELIB {
+    class MNEForwardSolution;
+}
+
+namespace FIFFLIB {
+    class FiffInfo;
+}
 
 
 //=============================================================================================================
@@ -64,14 +83,14 @@ namespace RTBEAMFORMERPLUGIN
 {
 
 //=============================================================================================================
-// RTCRTCMNEPLUGIN FORWARD DECLARATIONS
+// RTBEAMFORMERPLUGIN FORWARD DECLARATIONS
 //=============================================================================================================
 
 //=============================================================================================================
 /**
  * DECLARE CLASS RtBeamformer
  *
- * @brief The RtBeamformer class provides a plugin for estimating source localization in real-time using beamformer algorithms.
+ * @brief The RtBeamformer class provides a plugin for estimating source localization in real-time using a beamformer.
  *
  */
 
@@ -113,11 +132,21 @@ public:
     virtual QWidget* setupWidget();
     virtual QString getBuildInfo();
 
+
     //=========================================================================================================
     /**
      * Inits widgets which are used to control this plugin, then emits them in form of a QList.
      */
     void initPluginControlWidgets();
+
+    //=========================================================================================================
+    /**
+     * Slot to update the real time multi sample array data
+     */
+    void updateRTMSA(SCMEASLIB::Measurement::SPtr pMeasurement);
+
+    //=========================================================================================================
+
 
 protected:
 
@@ -129,6 +158,28 @@ protected:
     virtual void run();
 
     //=========================================================================================================
+
+    QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeMultiSampleArray> >      m_pRTMSAInput;              /**< The RealTimeMultiSampleArray input.*/
+
+    QSharedPointer<UTILSLIB::CircularBuffer_Matrix_double >                                 m_pCircularMatrixBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
+
+
+    QSharedPointer<SCSHAREDLIB::PluginOutputData<SCMEASLIB::RealTimeSourceEstimate> >       m_pRTSEOutput;              /**< The RealTimeSourceEstimate output.*/
+
+    QSharedPointer<MNELIB::MNEForwardSolution>                                              m_pFwd;                     /**< Forward solution. */
+
+
+
+
+    QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfo;                /**< Fiff information. */
+    QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfoInput;           /**< Fiff information of the evoked. */
+
+    bool                            m_bRawInput;                /**< Flag whether a raw data input was received. */
+
+
+    QMutex                          m_qMutex;                   /**< The mutex ensuring thread safety. */
+
+    qint32                          m_iNumAverages;             /**< The number of trials/averages to store. */
 
 
 };

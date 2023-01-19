@@ -36,7 +36,7 @@ include(../../../../mne-cpp.pri)
 
 TEMPLATE = lib
 
-QT += core widgets
+QT += core widgets concurrent
 
 CONFIG += skip_target_version_ext plugin
 
@@ -61,10 +61,14 @@ CONFIG(debug, debug|release) {
     LIBS += -lscSharedd \
             -lscDispd \
             -lscMeasd \
+            -lmnecppFiffd \
+            -lmnecppMned \
 } else {
     LIBS += -lscShared \
             -lscDisp \
             -lscMeas \
+            -lmnecppFiff \
+            -lmnecppMne \
 }
 
 
@@ -75,6 +79,11 @@ SOURCES += \
 HEADERS += \
     rtbeamformer_global.h \
     rtbeamformer.h
+
+DISTFILES += \
+    rtbeamformer.json
+
+
 
 
 clang {
@@ -152,5 +161,3 @@ unix {
 }
 !isEmpty(target.path): INSTALLS += target
 
-DISTFILES += \
-    rtbeamformer.json

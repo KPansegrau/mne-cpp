@@ -38,6 +38,16 @@
 
 #include "rtbeamformer.h"
 
+#include <fiff/fiff_info.h>
+
+#include <mne/mne_forwardsolution.h>
+#include <mne/mne_sourceestimate.h>
+#include <mne/mne_epoch_data_list.h>
+
+#include <scMeas/realtimesourceestimate.h>
+#include <scMeas/realtimemultisamplearray.h>
+
+
 
 
 
@@ -45,7 +55,9 @@
 // QT INCLUDES
 //=============================================================================================================
 
-
+#include <QtCore/QtPlugin>
+#include <QtConcurrent>
+#include <QDebug>
 
 //=============================================================================================================
 // USED NAMESPACES
@@ -53,6 +65,10 @@
 
 using namespace RTBEAMFORMERPLUGIN;
 using namespace SCSHAREDLIB;
+using namespace SCMEASLIB;
+using namespace UTILSLIB;
+using namespace MNELIB;
+using namespace FIFFLIB;
 
 
 //=============================================================================================================
@@ -60,6 +76,9 @@ using namespace SCSHAREDLIB;
 //=============================================================================================================
 
 RtBeamformer::RtBeamformer()
+    : m_pCircularMatrixBuffer(CircularBuffer_Matrix_double::SPtr(new CircularBuffer_Matrix_double(40)))
+    , m_bRawInput(false)
+    , m_iNumAverages(1)
 {
 
 }
@@ -68,7 +87,7 @@ RtBeamformer::RtBeamformer()
 
 RtBeamformer::~RtBeamformer()
 {
-
+    //TODO
 }
 
 //=============================================================================================================
@@ -84,19 +103,39 @@ QSharedPointer<AbstractPlugin> RtBeamformer::clone() const
 void RtBeamformer::init()
 {
 
+    //TODO
+
+    // Inits
+
+
+    //Input
+    m_pRTMSAInput = PluginInputData<RealTimeMultiSampleArray>::create(this, "RTBEAMFORMER RTMSA In", "RTBEAMFORMER real-time multi sample array input data");
+    connect(m_pRTMSAInput.data(), &PluginInputConnector::notify,
+            this, &RtBeamformer::updateRTMSA, Qt::DirectConnection);
+    m_inputConnectors.append(m_pRTMSAInput);
+
+    //Output
+    m_pRTSEOutput = PluginOutputData<RealTimeSourceEstimate>::create(this, "RTBEAMFORMER Out", "RTBEAMFORMER output data");
+    m_outputConnectors.append(m_pRTSEOutput);
+    m_pRTSEOutput->measurementData()->setName(this->getName());//Provide name to auto store widget settings
+
+
+    // Set the annotation and surface data and mri-head transformation
+
 }
 
 //=============================================================================================================
 
 void RtBeamformer::unload()
 {
-
+    //TODO
 }
 
 //=============================================================================================================
 
 bool RtBeamformer::start()
 {
+    //TODO
     return true;
 }
 
@@ -104,6 +143,7 @@ bool RtBeamformer::start()
 
 bool RtBeamformer::stop()
 {
+    //TODO
     return true;
 }
 
@@ -125,7 +165,8 @@ QString RtBeamformer::getName() const
 
 QWidget* RtBeamformer::setupWidget()
 {
-    //placeholder. This is where the UI will be setup later
+    //TODO
+    //placeholder. This is where the UI will be setup later.
     QWidget* setupWidget = new QWidget();
     return setupWidget;
 }
@@ -135,13 +176,64 @@ QWidget* RtBeamformer::setupWidget()
 void RtBeamformer::initPluginControlWidgets()
 {
 
+    //TODO
+}
+
+//=============================================================================================================
+
+void RtBeamformer::updateRTMSA(SCMEASLIB::Measurement::SPtr pMeasurement)
+{
+
+    if(m_pFwd) {
+        QSharedPointer<RealTimeMultiSampleArray> pRTMSA = pMeasurement.dynamicCast<RealTimeMultiSampleArray>();
+
+        if(pRTMSA && this->isRunning()) {
+            //Fiff Information of the RTMSA
+            m_qMutex.lock();
+            if(!m_pFiffInfoInput) {
+                m_pFiffInfoInput = pRTMSA->info();
+                m_iNumAverages = 1;
+                m_bRawInput = true;
+            }
+            m_qMutex.unlock();
+
+            if(!m_bPluginControlWidgetsInit) {
+                //TODO: following method still does nothing
+                initPluginControlWidgets();
+            }
+
+            if(this->isRunning()) {
+                // Check for artifacts
+                QMap<QString,double> mapReject;
+                mapReject.insert("eog", 150e-06);
+
+                for(qint32 i = 0; i < pRTMSA->getMultiSampleArray().size(); ++i) {
+                    //linker errors occur in the following line
+                    bool bArtifactDetected = MNEEpochDataList::checkForArtifact(pRTMSA->getMultiSampleArray()[i],
+                                                                                *m_pFiffInfoInput,
+                                                                                mapReject);
+
+                    if(!bArtifactDetected) {
+                        // Please note that we do not need a copy here since this function will block until
+                        // the buffer accepts new data again. Hence, the data is not deleted in the actual
+                        // Measurement function after it emitted the notify signal.
+                        while(!m_pCircularMatrixBuffer->push(pRTMSA->getMultiSampleArray()[i])) {
+                            //Do nothing until the circular buffer is ready to accept new data again
+                        }
+                    } else {
+                        qDebug() << "RtBeamformer::updateRTMSA - Reject data block";
+                    }
+                }
+            }
+        }
+    }
 }
 
 //=============================================================================================================
 
 void RtBeamformer::run()
 {
-
+     //TODO
 }
 
 //=============================================================================================================
