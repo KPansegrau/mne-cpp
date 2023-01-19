@@ -144,7 +144,8 @@ void RtBeamformer::init()
 
 void RtBeamformer::unload()
 {
-    //TODO
+    //HINT: copied form rtcmne
+    m_future.waitForFinished();
 }
 
 //=============================================================================================================
