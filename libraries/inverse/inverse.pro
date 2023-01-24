@@ -76,6 +76,7 @@ CONFIG(debug, debug|release) {
 }
 
 SOURCES += \
+    beamformer/beamformer.cpp \
     hpiFit/hpidataupdater.cpp \
     hpiFit/hpimodelparameters.cpp \
     hpiFit/signalmodel.cpp \
@@ -99,6 +100,7 @@ SOURCES += \
     hpiFit/sensorset.cpp \
 
 HEADERS +=\
+    beamformer/beamformer.h \
     hpiFit/hpidataupdater.h \
     hpiFit/hpimodelparameters.h \
     hpiFit/signalmodel.h \

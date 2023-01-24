@@ -75,6 +75,10 @@ namespace FIFFLIB {
     class FiffInfo;
 }
 
+namespace INVERSELIB {
+    class Beamformer;
+}
+
 
 //=============================================================================================================
 // DEFINE NAMESPACE RTBEAMFORMERPLUGIN

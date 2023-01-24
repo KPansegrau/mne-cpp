@@ -73,6 +73,7 @@ CONFIG(debug, debug|release) {
 
 SOURCES += \
     mne.cpp \
+    mne_beamformer_weights.cpp \
     mne_global.cpp \
     mne_sourcespace.cpp \
     mne_forwardsolution.cpp \
@@ -123,6 +124,7 @@ SOURCES += \
 
 HEADERS += \
     mne.h \
+    mne_beamformer_weights.h \
     mne_global.h \
     mne_sourcespace.h \
     mne_hemisphere.h \

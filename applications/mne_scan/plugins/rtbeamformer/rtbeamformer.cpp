@@ -69,6 +69,7 @@ using namespace SCMEASLIB;
 using namespace UTILSLIB;
 using namespace MNELIB;
 using namespace FIFFLIB;
+using namespace INVERSELIB;
 using namespace Eigen;
 
 
@@ -203,7 +204,7 @@ QWidget* RtBeamformer::setupWidget()
 void RtBeamformer::initPluginControlWidgets()
 {
 
-    //TODO
+    //TODO: s. notes 20.01.2023 (what can be copied)
 }
 
 //=============================================================================================================
@@ -311,6 +312,7 @@ bool RtBeamformer::calcFiffInfo()
 
 void RtBeamformer::updateRTMSA(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
+    //HINT: copied from rtcmne
 
     if(m_pFwd) {
         QSharedPointer<RealTimeMultiSampleArray> pRTMSA = pMeasurement.dynamicCast<RealTimeMultiSampleArray>();
@@ -336,7 +338,6 @@ void RtBeamformer::updateRTMSA(SCMEASLIB::Measurement::SPtr pMeasurement)
                 mapReject.insert("eog", 150e-06);
 
                 for(qint32 i = 0; i < pRTMSA->getMultiSampleArray().size(); ++i) {
-                    //linker errors occur in the following line
                     bool bArtifactDetected = MNEEpochDataList::checkForArtifact(pRTMSA->getMultiSampleArray()[i],
                                                                                 *m_pFiffInfoInput,
                                                                                 mapReject);
@@ -428,13 +429,116 @@ void RtBeamformer::run()
      //TODO
 
     // Wait for fiff info to arrive
+    //HINT: copied from rtcmne
     while(!calcFiffInfo()) {
         msleep(200);
     }
 
+    // Init parameters
+    //HINT: copied from rtcmne (modification: pBeamformer instead of pMinimumNorm)
+    qint32 skip_count = 0;
+    FiffEvoked evoked;
+    MatrixXd matData;
+    MatrixXd matDataResized;
+    qint32 j;
+    int iTimePointSps = 0;
+    int iNumberChannels = 0;
+    int iDownSample = 1;
+    float tstep;
+    float lambda2 = 1.0f / pow(1.0f, 2); //ToDo estimate lambda using covariance
+    MNESourceEstimate sourceEstimate;
+    bool bEvokedInput = false;
+    bool bRawInput = false;
+    bool bUpdateBeamformer = false;
+    QSharedPointer<INVERSELIB::Beamformer> pBeamformer;
+    QStringList lChNamesFiffInfo;
+    QStringList lChNamesInvOp;
+
+/*    // Start processing data
+    // HINT: copied from rtcmne
+    // modifications:
     while(!isInterruptionRequested()) {
-    //TODO
+        m_qMutex.lock();
+        iTimePointSps = m_iTimePointSps;
+        bEvokedInput = m_bEvokedInput;
+        bRawInput = m_bRawInput;
+        iDownSample = m_iDownSample;
+        iNumberChannels = m_invOp.noise_cov->names.size();
+        tstep = 1.0f / m_pFiffInfoInput->sfreq;
+        lChNamesFiffInfo = m_pFiffInfoInput->ch_names;
+        lChNamesInvOp = m_invOp.noise_cov->names;
+        bUpdateMinimumNorm = m_bUpdateMinimumNorm;
+        m_qMutex.unlock();
+
+        if(bUpdateMinimumNorm) {
+            m_qMutex.lock();
+            pMinimumNorm = MinimumNorm::SPtr(new MinimumNorm(m_invOp, lambda2, m_sMethod));
+            m_bUpdateMinimumNorm = false;
+            m_qMutex.unlock();
+
+            // Set up the inverse according to the parameters.
+            // Use 1 nave here because in case of evoked data as input the minimum norm will always be updated when the source estimate is calculated (see run method).
+            pMinimumNorm->doInverseSetup(1,true);
+        }
+
+        //Process data from raw data input
+        if(bRawInput && pMinimumNorm) {
+            if(((skip_count % iDownSample) == 0)) {
+                // Get the current raw data
+                if(m_pCircularMatrixBuffer->pop(matData)) {
+                    //Pick the same channels as in the inverse operator
+                    matDataResized.resize(iNumberChannels, matData.cols());
+
+                    for(j = 0; j < iNumberChannels; ++j) {
+                        matDataResized.row(j) = matData.row(lChNamesFiffInfo.indexOf(lChNamesInvOp.at(j)));
+                    }
+
+                    //TODO: Add picking here. See evoked part as input.
+                    sourceEstimate = pMinimumNorm->calculateInverse(matDataResized,
+                                                                    0.0f,
+                                                                    tstep,
+                                                                    true);
+
+                    if(!sourceEstimate.isEmpty()) {
+                        if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {
+                            sourceEstimate = sourceEstimate.reduce(iTimePointSps,1);
+                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
+                        } else {
+                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
+                        }
+                    }
+                }
+            } else {
+                m_pCircularMatrixBuffer->pop(matData);
+            }
+        }
+
+        //Process data from averaging input
+        if(bEvokedInput && pMinimumNorm) {
+            if(m_pCircularEvokedBuffer->pop(evoked)) {
+                // Get the current evoked data
+                if(((skip_count % iDownSample) == 0)) {
+                    sourceEstimate = pMinimumNorm->calculateInverse(evoked);
+
+                    if(!sourceEstimate.isEmpty()) {
+                        if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {
+                            sourceEstimate = sourceEstimate.reduce(iTimePointSps,1);
+                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
+                        } else {
+                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
+                        }
+                    }
+                } else {
+                    m_pCircularEvokedBuffer->pop(evoked);
+                }
+            }
+        }
+
+        ++skip_count;
     }
+
+*/
+
 }
 
 //=============================================================================================================
