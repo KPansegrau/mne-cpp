@@ -67,11 +67,11 @@ using namespace MNELIB;
 // DEFINE MEMBER METHODS
 //=============================================================================================================
 
-Beamformer::Beamformer(const MNEInverseOperator &p_inverseOperator, float lambda)
-    : m_inverseOperator(p_inverseOperator)
-    , inverseSetup(false)
+Beamformer::Beamformer(const MNEBeamformerWeights &p_beamformerWeights, float lambda)
+
 {
-    this->setRegularization(lambda);
+
+    //TODO: make beamformer object resembling the Beamformer object in mnepy
 }
 
 //=============================================================================================================

@@ -39,8 +39,8 @@
 // INCLUDES
 //=============================================================================================================
 
-#include "mne_forwardsolution.h"
 #include "mne_global.h"
+#include "mne_forwardsolution.h"
 
 #include <fiff/fiff_types.h>
 #include <fiff/fiff_cov.h>
@@ -137,7 +137,7 @@ public:
      *
      * @return the assembled inverse operator.
      */
-    static MNEBeamformerWeights make_beamformer_weights();
+    static MNEBeamformerWeights make_beamformer_weights(const FIFFLIB::FiffInfo &info, MNEForwardSolution forward, const FIFFLIB::FiffCov &p_data_cov, float regularizationFactor, const FIFFLIB::FiffCov &p_noise_cov, float depth);
 
 
     //=========================================================================================================
