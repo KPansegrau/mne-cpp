@@ -83,16 +83,37 @@ MNEBeamformerWeights::~MNEBeamformerWeights()
 
 //=============================================================================================================
 
+QStringList MNEBeamformerWeights::pick_channels(const QStringList &ch_names,
+                                                   const QStringList &include,
+                                                   const QStringList &exclude) const
+{
+    //TODO maybe move this to fiff library in the end
+    QStringList qSelectedNames;
+    for(qint32 i = 0; i < ch_names.size(); i++)
+    {
+        if((include.size() == 0 || include.contains(ch_names[i])) && !exclude.contains(ch_names[i])){
+            qSelectedNames.append(ch_names[i]);
+        }
+    }
+
+    return qSelectedNames;
+}
+
+
+
+//=============================================================================================================
+
 QStringList MNEBeamformerWeights::compare_ch_names(const QStringList &chNamesA,
-                                                   const QStringList &chNamesB) const
+                                                   const QStringList &chNamesB,
+                                                   const QStringList &bads) const
 {
 
-    // HINT: adapted from inverse operator check_ch_names
-    // HINt: similar to compare_channel_names form mnepy but without handling of bads
+    //HINT: similar to compare_channel_names form mnepy
+    //HINT: code adapted from check_ch_names of inverse operator
     QStringList ch_names; //list of common channels
 
     for(qint32 i = 0; i < chNamesA.size(); ++i){
-        if(chNamesB.contains(chNamesA[i])){
+        if((!bads.contains(chNamesA[i])) && chNamesB.contains(chNamesA[i])){
             ch_names.append(chNamesA[i]);
         }
     }
@@ -103,36 +124,53 @@ QStringList MNEBeamformerWeights::compare_ch_names(const QStringList &chNamesA,
 
 //=============================================================================================================
 
-QStringList MNEBeamformerWeights::get_common_channels(const FiffInfo &info,
+RowVectorXi MNEBeamformerWeights::check_info_bf(const FiffInfo &info,
                                                  const MNEForwardSolution &forward,
                                                  const FiffCov &p_data_cov,
                                                  const FiffCov &p_noise_cov) const
 
 {
-    //TODO: compare channels and return QStringList of common channels
+    //TODO: compare channels and return row vector of common good channel indices
     //HINT: Steps analog to _check_info_inv of mnepy
 
-    QStringList qCommonChNames;
-
-    QStringList qDataChNames = info.ch_names;
-    QStringList qFwdChNames = forward.info.ch_names;
-    QStringList qDataCovChNames = p_data_cov.names;
-    QStringList qNoiseCovChNames = p_noise_cov.names;
+    QStringList qCommonChNames; //list of common and good channels
 
     //compare data to fwd (return all channels in data that are not bad and are present in fwd in ch_names)
-    qCommonChNames = compare_ch_names(qDataChNames,qFwdChNames);
+    qCommonChNames = compare_ch_names(info.ch_names,forward.info.ch_names,info.bads);
 
-    //TODO start here next time
+    //make sure no meg reference channels are left
+    QStringList qRefCh; // list of reference channels that should be excluded
+    fiff_int_t kind;
+    for(qint32 i = 0; i < info.chs.size(); ++i){
+        kind = info.chs[i].kind;
+        if(kind == FIFFV_REF_MEG_CH){
+            qRefCh.append(info.ch_names[i]);
+        }
+    }
+    // exclude reference channels from list of common good channels
+    qCommonChNames = pick_channels(qCommonChNames,defaultQStringList,qRefCh);
 
-    //see notes 26.01.2023 use pick_info from fiff_info_base
+    //inform if bad channels of data cov and noise cov do not align with bad channels in data and that all bad channels are to be excluded
+    if(info.bads != p_data_cov.bads)
+    {
+        qWarning("List of bad channels of data and data covariance matrix do not match, excluding bad channels from both.");
+    }
+    if(info.bads != p_noise_cov.bads)
+    {
+        qWarning("List of bad channels of data and noise covariance matrix do not match, excluding bad channels from both.");
+    }
+
+    //compare current list of common good channels to data covariance channels (return all channels in current list that are present in data cov and are not bad)
+    qCommonChNames = compare_ch_names(qCommonChNames,p_data_cov.names,p_data_cov.bads);
+
+    //compare current list of common good channels to noise covariance channels (return all channels in current list that are present in noise cov and are not bad)
+    qCommonChNames = compare_ch_names(qCommonChNames,p_noise_cov.names,p_data_cov.bads);
 
 
-    //make sure no reference channels are left
-    //handle if data cov and noise cov have no bads -> set bads to data bad channels
-    //if data cov not none: compare channels common to fwd that are in data cov and not are not bad, update ch_names
-    //if noise cov not none: same procedure as for data cov
+    RowVectorXi picks;
+    picks = FiffInfoBase::pick_channels(qCommonChNames);
 
-    return qCommonChNames;
+    return picks;
 }
 
 
@@ -157,14 +195,22 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     //bool is_fixed_ori = forward.isFixedOrient();
     MNEBeamformerWeights p_MNEBeamformerWeights; //HINT: named similar to p_MNEInverseOperator, dont understand why p_ yet
 
-    //Step 1: ensure that measurement data channels match forward model, noise covariance matrix and data covariance matrix channels
-    // return the channels that are common to all four objects
-    //compare p_data_cov.names p_noise_cov.names and info.ch_names
+    //TODO: Step 0: check number of sensor types present in the data and ensure a noise cov
 
+
+    //Step 1: ensure that measurement data channels match forward model, noise covariance matrix and data covariance matrix channels
+    //TODO: channel selection stuff is performerd in miminumnorms calculate Inverse, move it?
+    // return the channels that are common to all four objects
+
+    //TODOOOO: start here next time, fix error in following line
+
+    RowVectorXi picks = check_info_bf(info,forward,p_data_cov,p_noise_cov);
 
 
 
     //Step 2: restrict info to the common channels in forward model, noise and data covariance matrix
+    //see notes 26.01.2023 use pick_info from fiff_info_base
+    info.pick_info(picks); //modify info to selected channels in picks
 
     //Step 3: compute rank of data and noise covariance matrix, error if they do not match, set rank to data cov rank
 

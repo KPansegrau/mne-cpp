@@ -44,12 +44,14 @@
 
 #include <fiff/fiff_types.h>
 #include <fiff/fiff_cov.h>
+#include <fiff/fiff_info.h>
 
 //=============================================================================================================
 // QT INCLUDES
 //=============================================================================================================
 
 #include <QSharedPointer>
+#include <QStringList>
 
 //=============================================================================================================
 // EIGEN INCLUDES
@@ -60,7 +62,6 @@
 //=============================================================================================================
 // FORWARD DECLARATIONS
 //=============================================================================================================
-
 
 
 //=============================================================================================================
@@ -133,11 +134,63 @@ public:
     /**
      * TODO: edit docu
      *
+     * Pick desired channels from list of channel names.
+     *
+     * @param[in] ch_names  - The channel name list to consult.
+     * @param[in] include   - Channels to include (if empty, include all available).
+     * @param[in] exclude   - Channels to exclude (if empty, do not exclude any).
+     *
+     */
+
+    QStringList pick_channels(const QStringList &ch_names,
+                                const QStringList &include = FIFFLIB::defaultQStringList,
+                                const QStringList &exclude = FIFFLIB::defaultQStringList) const;
+
+    //=========================================================================================================
+    /**
+     * TODO: edit docu
+     *
+     * Compare two lists of channel names and return the common good channels.
+     *
+     */
+
+    QStringList compare_ch_names(const QStringList &chNamesA,
+                                const QStringList &chNamesB,
+                                const QStringList &badsA) const;
+
+    //=========================================================================================================
+    /**
+     * TODO: edit docu
+     *
+     * Check that channels in measurement data, forward solution, data covariance matrix and noise covariance matrix are common.
+     *
+     * @param[in] info      The measurement info.
+     * @param[in] forward   The forward solution.
+     * @param[in] data_cov  The data covariance matrix.
+     * @param[in] noise_cov The noise covariance matrix.
+     *
+     * @return true when successful, false otherwise.
+     */
+    Eigen::RowVectorXi check_info_bf(const FIFFLIB::FiffInfo &info,
+                                const MNEForwardSolution &forward,
+                                const FIFFLIB::FiffCov &p_data_cov,
+                                const FIFFLIB::FiffCov &p_noise_cov) const;
+
+    //=========================================================================================================
+    /**
+     * TODO: edit docu
+     *
      * Assembles the inverse operator.
      *
      * @return the assembled inverse operator.
      */
-    static MNEBeamformerWeights make_beamformer_weights(const FIFFLIB::FiffInfo &info, MNEForwardSolution forward, const FIFFLIB::FiffCov &p_data_cov, float regularizationFactor, const FIFFLIB::FiffCov &p_noise_cov, float depth);
+    static MNEBeamformerWeights make_beamformer_weights(const FIFFLIB::FiffInfo &info,
+                                                        MNEForwardSolution forward,
+                                                        const FIFFLIB::FiffCov &p_data_cov,
+                                                        float regularizationFactor,
+                                                        const FIFFLIB::FiffCov &p_noise_cov,
+                                                        bool reduce_rank,
+                                                        float depth);
 
 
     //=========================================================================================================
@@ -153,11 +206,10 @@ public:
 
 
 public:
-
-    FIFFLIB::fiff_int_t nave;                       /**< Number of averages used to regularize the solution. Set to 1 on single Epoch by default.*/
-    FIFFLIB::FiffCov::SDPtr noise_cov;              /**< Noise covariance matrix. */
+    //TODO: use mne make_lcmv docu for variable description
 
 
+    FIFFLIB::fiff_int_t m_sensorTypes;                /**< MEG, EEG or both. */
 
 
 protected:
