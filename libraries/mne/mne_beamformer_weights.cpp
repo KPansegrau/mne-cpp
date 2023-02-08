@@ -69,15 +69,48 @@ using namespace UTILSLIB;
 // DEFINE MEMBER METHODS
 //=============================================================================================================
 
-MNEBeamformerWeights::MNEBeamformerWeights()
+MNEBeamformerWeights::MNEBeamformerWeights(const FiffInfo &p_dataInfo,
+                                           MNEForwardSolution &p_forward,
+                                           FiffCov &p_dataCov,
+                                           const FiffCov &p_noiseCov,
+                                           QString p_sPowMethod,
+                                           bool p_bFixedOri,
+                                           bool p_bEstNoisePow,
+                                           bool p_bProjectMom,
+                                           QString p_sWeightnorm,
+                                           qint32 p_iRegParam)
 {
+    *this = MNEBeamformerWeights::make_beamformer_weights(p_dataInfo,p_forward,p_dataCov,p_noiseCov,p_sPowMethod,p_bFixedOri,p_bEstNoisePow,p_bProjectMom,p_sWeightnorm,p_iRegParam);
+   qRegisterMetaType<QSharedPointer<MNELIB::MNEBeamformerWeights> >("QSharedPointer<MNELIB::MNEBeamformerWeights>");
+   qRegisterMetaType<MNELIB::MNEBeamformerWeights>("MNELIB::MNEBeamformerWeights");
 }
+
 
 //=============================================================================================================
 
+//HINT this constructor is analog to constructor in inverse operator class
+
 MNEBeamformerWeights::MNEBeamformerWeights(const MNEBeamformerWeights &p_MNEBeamformerWeights)
+    : info(p_MNEBeamformerWeights.info)
+    , weights(p_MNEBeamformerWeights.weights)
+    , data_cov(p_MNEBeamformerWeights.data_cov)
+    , noise_cov(p_MNEBeamformerWeights.noise_cov)
+    , weightNorm(p_MNEBeamformerWeights.weightNorm)
+    , whitener(p_MNEBeamformerWeights.whitener)
+    , fixedOri(p_MNEBeamformerWeights.fixedOri)
+    , optOri(p_MNEBeamformerWeights.optOri)
+    , nsource(p_MNEBeamformerWeights.nsource)
+    , nchan(p_MNEBeamformerWeights.nchan)
+    , sourcePowEst(p_MNEBeamformerWeights.sourcePowEst)
+    , noisePowEst(p_MNEBeamformerWeights.noisePowEst)
+
 {
+    qRegisterMetaType<QSharedPointer<MNELIB::MNEBeamformerWeights> >("QSharedPointer<MNELIB::MNEBeamformerWeights>");
+    qRegisterMetaType<MNELIB::MNEBeamformerWeights>("MNELIB::MNEBeamformerWeights");
+
 }
+
+
 
 //=============================================================================================================
 
