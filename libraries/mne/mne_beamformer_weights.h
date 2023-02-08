@@ -42,6 +42,8 @@
 #include "mne_global.h"
 #include "mne_forwardsolution.h"
 
+
+
 #include <fiff/fiff_types.h>
 #include <fiff/fiff_cov.h>
 #include <fiff/fiff_info.h>
@@ -132,6 +134,29 @@ public:
 
     //=========================================================================================================
     /**
+     * TODO: edit docu, compute Moore Penrose pseudo inverse of matrix
+     *
+     *
+     */
+
+
+    Eigen::MatrixXd compute_pseudo_inverse(const Eigen::MatrixXd &p_matrix,
+                                            double p_dEpsilon = std::numeric_limits<double>::epsilon()) const;
+
+
+    //=========================================================================================================
+    /**
+     * TODO: edit docu, invert regularized data covariance matrix
+     *
+     *
+     */
+
+
+    Eigen::MatrixXd invert_data_cov_mat(const FIFFLIB::FiffCov &p_dataCov);
+
+
+    //=========================================================================================================
+    /**
      * TODO: edit docu
      *
      * Pick desired channels from list of channel names.
@@ -169,47 +194,54 @@ public:
      * @param[in] data_cov  The data covariance matrix.
      * @param[in] noise_cov The noise covariance matrix.
      *
-     * @return true when successful, false otherwise.
+     * @return
      */
-    Eigen::RowVectorXi check_info_bf(const FIFFLIB::FiffInfo &info,
-                                const MNEForwardSolution &forward,
+    QStringList check_info_bf(const FIFFLIB::FiffInfo &p_info,
+                                const MNEForwardSolution &p_forward,
                                 const FIFFLIB::FiffCov &p_data_cov,
                                 const FIFFLIB::FiffCov &p_noise_cov) const;
 
     //=========================================================================================================
     /**
-     * TODO: edit docu
+     * TODO: edit docu, see .cpp file, check default value for RegParam
      *
      * Assembles the inverse operator.
      *
      * @return the assembled inverse operator.
      */
-    static MNEBeamformerWeights make_beamformer_weights(const FIFFLIB::FiffInfo &info,
-                                                        MNEForwardSolution forward,
-                                                        const FIFFLIB::FiffCov &p_data_cov,
-                                                        float regularizationFactor,
-                                                        const FIFFLIB::FiffCov &p_noise_cov,
-                                                        bool reduce_rank,
-                                                        float depth);
 
+    MNEBeamformerWeights make_beamformer_weights(const FIFFLIB::FiffInfo &p_dataInfo,
+                                                 MNEForwardSolution &p_forward,
+                                                   FIFFLIB::FiffCov &p_dataCov,
+                                                 const FIFFLIB::FiffCov &p_noiseCov,
+                                                   QString p_sPowMethod = "trace",
+                                                   bool p_bFixedOri = false,
+                                                   bool p_bEstNoisePow = true,
+                                                   bool p_bProjectMom = false,
+                                                 //bool p_bKurtosis = false,
+                                                   QString p_sWeightnorm = "no",
+                                                   //qint32 &p_iLambda,
+                                                   //qint32 &p_iKappa,
+                                                   //qint32 &p_iTol
+                                                    qint32 p_iRegParam = 0) const;
 
-    //=========================================================================================================
-    /**
-     * TODO: edit docu
-     *
-     * @param[in] nave      Number of averages (scales the noise covariance).
-     * @param[in] lambda2   The regularization factor.
-     *
-     */
-    MNEBeamformerWeights prepare_beamformer_weights(qint32 nave,
-                                                    float lambda2) const;
 
 
 public:
-    //TODO: use mne make_lcmv docu for variable description
 
+    FIFFLIB::FiffInfoBase info;                     /**< Modified measurement info (contains only common good channels of forward solution, covariance matrices and measurement). */
+    Eigen::MatrixXd weights;                        /**< Beamformer weights */
+    FIFFLIB::FiffCov::SDPtr data_cov;               /**< Data covariance matrix used to compute the filters. */
+    FIFFLIB::FiffCov::SDPtr noise_cov;              /**< Noise covariance matrix used to compute the filters. */
+    QString weightNorm;                             /**< Type of applied weight normalization. */
+    Eigen::MatrixXd whitener;                       /**< Whitens the data. */
+    bool fixedOri;                                  /**< Whether the beamformer was computed for fixed source orientation */
+    Eigen::VectorXd optOri;                         /**< If fixedOri, this field contains the estimated optimal orientation the beamformer is computed for (dependent on weightNorm) */
+    FIFFLIB::fiff_int_t nsource;                    /**< Number of source points. */
+    FIFFLIB::fiff_int_t nchan;                      /**< Number of channels. */
+    Eigen::VectorXd sourcePowEst;                   /**< estimates of source power for each source location */
+    Eigen::VectorXd noisePowEst;                    /**< Estimates of noise power projected through the filter for each source location */
 
-    FIFFLIB::fiff_int_t m_sensorTypes;                /**< MEG, EEG or both. */
 
 
 protected:
