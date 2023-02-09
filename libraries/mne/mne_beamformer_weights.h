@@ -46,7 +46,7 @@
 #include <fiff/fiff_types.h>
 #include <fiff/fiff_cov.h>
 #include <fiff/fiff_info.h>
-//#include <fiff/fiff_named_matrix.h>
+#include <fiff/fiff_proj.h>
 
 #include <utils/mnemath.h>
 
@@ -234,6 +234,23 @@ public:
                                                     qint32 p_iRegParam = 0);
 
 
+    //=========================================================================================================
+    /**
+     *
+     * Prepare computed beamformer weights for actually computing the inverse solution.
+     * TODO: edit docu here
+     *
+     * @param[in] nave      Number of averages (scales the noise covariance).
+     * @param[in] lambda2   The regularization factor.
+     * @param[in] dSPM      Compute the noise-normalization factors for dSPM?.
+     * @param[in] sLORETA   Compute the noise-normalization factors for sLORETA?.
+     *
+     * @return the prepared inverse operator.
+     */
+    MNEBeamformerWeights prepare_beamformer_weights() const;
+
+    //=========================================================================================================
+
 
 public:
 
@@ -249,6 +266,11 @@ public:
     FIFFLIB::fiff_int_t nchan;                      /**< Number of channels. */
     Eigen::VectorXd sourcePowEst;                   /**< estimates of source power for each source location */
     Eigen::VectorXd noisePowEst;                    /**< Estimates of noise power projected through the filter for each source location */
+    QList<FIFFLIB::FiffProj> projs;                 /**< SSP operator. */
+    Eigen::MatrixXd proj;                           /**< The projector to apply to the data. */
+
+    //TODO: check why we need the ssp operator
+
 //TODO we need the source_ori field analog to inverse operator field here
 
 

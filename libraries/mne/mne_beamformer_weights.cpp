@@ -129,6 +129,8 @@ MNEBeamformerWeights::MNEBeamformerWeights(const MNEBeamformerWeights &p_MNEBeam
     , nchan(p_MNEBeamformerWeights.nchan)
     , sourcePowEst(p_MNEBeamformerWeights.sourcePowEst)
     , noisePowEst(p_MNEBeamformerWeights.noisePowEst)
+    , projs(p_MNEBeamformerWeights.projs)
+    , proj(p_MNEBeamformerWeights.proj)
 
 {
     qRegisterMetaType<QSharedPointer<MNELIB::MNEBeamformerWeights> >("QSharedPointer<MNELIB::MNEBeamformerWeights>");
@@ -673,6 +675,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
     p_MNEBeamformerWeights.nchan = p_forward.nchan;
     p_MNEBeamformerWeights.sourcePowEst = vecSourcePow;
     p_MNEBeamformerWeights.noisePowEst = vecNoisePow;
+    p_MNEBeamformerWeights.projs = p_dataInfo.projs;
 
 
     qInfo("MNEBeamformerWeights::make_beamformer_weights Finished calculation of beamformer weights.");
@@ -680,6 +683,41 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
     return p_MNEBeamformerWeights;
 
 }
+
+//=============================================================================================================
+
+MNEBeamformerWeights MNEBeamformerWeights::prepare_beamformer_weights() const
+{
+
+    // TODO: this method is implemented because the inverse operator routine includes one similar method,
+    // this inverse operator prepare method constructs the inverse operator by making one, (we need this for beamformer weights)
+    // does some scaling stuff dependent on the number of averages (might be necessary for lcmv too, but not sure -> first draft only for raw data),
+    // creates a regularized inverter (i think we dont need that here),
+    // an ssp projector (ssp for noise reduction might be helpful here (mnepy does include proj too),
+    // creates a whitener (we dont need that because whitener has to be constructed prior W computation)
+    // and creates noise normalization factors (not necessary for lcmv)
+
+
+    //construct MNEBeamformerWeights
+    //HINT: analog to prepare_inverse_operator
+    printf("Preparing the inverse operator for use...\n");
+    MNEBeamformerWeights p_MNEBeamformerWeights(*this);
+
+    //
+    //   Create the projection operator
+    // HINT: copied from prepare_inverse_operator
+    //
+    qint32 ncomp = FiffProj::make_projector(p_MNEBeamformerWeights.projs,p_MNEBeamformerWeights.noise_cov->names, p_MNEBeamformerWeights.proj);
+    if (ncomp > 0)
+        printf("\tCreated an SSP operator (subspace dimension = %d)\n",ncomp);
+
+    //TODO dont know whether we need a new whitener here since in prepare inverse operator the old whitener from make inverse operator is omitted and replaced by a new one
+
+    return p_MNEBeamformerWeights;
+
+}
+
+//=============================================================================================================
 
 
 
