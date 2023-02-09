@@ -131,6 +131,7 @@ MNEBeamformerWeights::MNEBeamformerWeights(const MNEBeamformerWeights &p_MNEBeam
     , noisePowEst(p_MNEBeamformerWeights.noisePowEst)
     , projs(p_MNEBeamformerWeights.projs)
     , proj(p_MNEBeamformerWeights.proj)
+    , src(p_MNEBeamformerWeights.src)
 
 {
     qRegisterMetaType<QSharedPointer<MNELIB::MNEBeamformerWeights> >("QSharedPointer<MNELIB::MNEBeamformerWeights>");
@@ -676,6 +677,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
     p_MNEBeamformerWeights.sourcePowEst = vecSourcePow;
     p_MNEBeamformerWeights.noisePowEst = vecNoisePow;
     p_MNEBeamformerWeights.projs = p_dataInfo.projs;
+    p_MNEBeamformerWeights.src = p_forward.src;
 
 
     qInfo("MNEBeamformerWeights::make_beamformer_weights Finished calculation of beamformer weights.");

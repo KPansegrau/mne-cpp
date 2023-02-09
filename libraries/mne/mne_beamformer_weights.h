@@ -268,6 +268,7 @@ public:
     Eigen::VectorXd noisePowEst;                    /**< Estimates of noise power projected through the filter for each source location */
     QList<FIFFLIB::FiffProj> projs;                 /**< SSP operator. */
     Eigen::MatrixXd proj;                           /**< The projector to apply to the data. */
+    MNESourceSpace src;                             /**< Source Space. */
 
     //TODO: check why we need the ssp operator
 

@@ -67,44 +67,16 @@ using namespace MNELIB;
 // DEFINE MEMBER METHODS
 //=============================================================================================================
 
-Beamformer::Beamformer(const MNEBeamformerWeights &p_beamformerWeights, float lambda)
-
+Beamformer::Beamformer(const MNEBeamformerWeights &p_beamformerWeights)
+    : m_beamformerWeights(p_beamformerWeights),
+      m_bBeamformerSetup(false)
 {
 
-    //TODO: make beamformer object resembling the Beamformer object in mnepy
+    //HINT: this constructor is similar to the ones in MinimumNorm, but without lambda and method parameters since we dont have them for beamformer
 }
 
-//=============================================================================================================
 
-MNESourceEstimate Beamformer::calculateInverse(const FiffEvoked &p_fiffEvoked, bool pick_normal)
-{
-    //HINT: copied from minimumnorm class
 
-    //
-    //   Set up the inverse according to the parameters
-    //
-    qint32 nave = p_fiffEvoked.nave;
-
-    if(!m_inverseOperator.check_ch_names(p_fiffEvoked.info)) {
-        qWarning("Channel name check failed.");
-        return MNESourceEstimate();
-    }
-
-    doInverseSetup(nave,pick_normal);
-
-    //
-    //   Pick the correct channels from the data
-    //
-    FiffEvoked t_fiffEvoked = p_fiffEvoked.pick_channels(inv.noise_cov->names);
-
-    printf("Picked %d channels from the data\n",t_fiffEvoked.info.nchan);
-
-    //Results
-    float tmin = p_fiffEvoked.times[0];
-    float tstep = 1/t_fiffEvoked.info.sfreq;
-
-    return calculateInverse(t_fiffEvoked.data, tmin, tstep, pick_normal);
-}
 //=============================================================================================================
 
 void Beamformer::doInverseSetup()
@@ -116,10 +88,10 @@ void Beamformer::doInverseSetup()
     //   Set up the beamformer weights
     //
     m_beamformerWeightsSetup = m_beamformerWeights.prepare_beamformer_weights();
-
     qInfo("Beamformer::doInverseSetup Prepared the beamformer weights.");
 
-    std::cout << "W^T " << m_beamformerWeightsSetup.weights.rows() << " x " << m_beamformerWeightsSetup.weights.cols() << std::endl;
+    m_W_transposed = m_beamformerWeightsSetup.weights;
+    std::cout << "W^T " << m_W_transposed.rows() << " x " << m_W_transposed.cols() << std::endl;
 
     m_bBeamformerSetup = true;
 }
