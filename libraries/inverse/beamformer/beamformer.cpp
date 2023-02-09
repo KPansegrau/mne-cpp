@@ -107,20 +107,19 @@ MNESourceEstimate Beamformer::calculateInverse(const FiffEvoked &p_fiffEvoked, b
 }
 //=============================================================================================================
 
-void Beamformer::doInverseSetup(qint32 nave, bool pick_normal)
+void Beamformer::doInverseSetup()
 {
 
-    //HINT: copied from minimumnorm
+    //HINT: copied from minimumnorm, adapted to beamformer weights preparation
 
     //
-    //   Set up the inverse according to the parameters
+    //   Set up the beamformer weights
     //
-    inv = m_inverseOperator.prepare_inverse_operator(nave, m_fLambda, m_bdSPM, m_bsLORETA);
+    m_beamformerWeightsSetup = m_beamformerWeights.prepare_beamformer_weights();
 
-    printf("Computing inverse...\n");
-    inv.assemble_kernel(label, m_sMethod, pick_normal, K, noise_norm, vertno);
+    qInfo("Beamformer::doInverseSetup Prepared the beamformer weights.");
 
-    std::cout << "K " << K.rows() << " x " << K.cols() << std::endl;
+    std::cout << "W^T " << m_beamformerWeightsSetup.weights.rows() << " x " << m_beamformerWeightsSetup.weights.cols() << std::endl;
 
-    inverseSetup = true;
+    m_bBeamformerSetup = true;
 }
