@@ -144,8 +144,6 @@ public:
     virtual const MNELIB::MNESourceSpace& getSourceSpace() const;
 
     //=========================================================================================================
-    // further member methods
-    //=========================================================================================================
 
     /**
      * TODO: edit docu
@@ -159,6 +157,9 @@ public:
     virtual void doInverseSetup();
 
     //=========================================================================================================
+    // further member methods
+    //=========================================================================================================
+
     /**
      * Get the prepared beamformer.
      *
@@ -182,6 +183,7 @@ private:
     MNELIB::MNEBeamformerWeights m_beamformerWeights;   /**< The beamformer weights. */
     bool m_bBeamformerSetup;                              /**< Whether the beamformer weights are set up. */
     MNELIB::MNEBeamformerWeights m_beamformerWeightsSetup;                 /**< The setup beamformer weights. */
+    Eigen::MatrixXd m_W_transposed;           /**< The beamformer filter weight matrix W^T (the one that is applied to the data). */
 
 };
 
@@ -192,7 +194,7 @@ private:
 inline Eigen::MatrixXd& Beamformer::getBeamformerWeights()
 {
     //HINT: similar to getKernel of minimum norm
-    return  m_beamformerWeightsSetup.weights;
+    return  m_W_transposed;
 }
 
 //=============================================================================================================
