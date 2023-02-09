@@ -43,10 +43,12 @@
 #include "mne_forwardsolution.h"
 
 
-
 #include <fiff/fiff_types.h>
 #include <fiff/fiff_cov.h>
 #include <fiff/fiff_info.h>
+//#include <fiff/fiff_named_matrix.h>
+
+#include <utils/mnemath.h>
 
 //=============================================================================================================
 // QT INCLUDES
@@ -67,14 +69,14 @@
 
 
 //=============================================================================================================
-// DEFINE NAMESPACE Cannot convert result of " Cpp.namespaces('MNEBeamformerWeights')[0]" to string.
+// DEFINE NAMESPACE
 //=============================================================================================================
 
 namespace MNELIB
 {
 
 //=============================================================================================================
-// Cannot convert result of " Cpp.namespaces('MNEBeamformerWeights')[0]" to string. FORWARD DECLARATIONS
+// FORWARD DECLARATIONS
 //=============================================================================================================
 
 //=============================================================================================================
@@ -110,7 +112,7 @@ public:
      * @param[in] fixed              Use fixed source orientations normal to the cortical mantle. If True, the loose parameter is ignored.
      * @param[in] limit_depth_chs    If True, use only grad channels in depth weighting (equivalent to MNE C code). If grad chanels aren't present, only mag channels will be used (if no mag, then eeg). If False, use all channels.
      */
-    MNEBeamformerWeights(const FIFFLIB::FiffInfo &p_dataInfo,
+    MNEBeamformerWeights(FIFFLIB::FiffInfo &p_dataInfo,
                             MNEForwardSolution &p_forward,
                             FIFFLIB::FiffCov &p_dataCov,
                             const FIFFLIB::FiffCov &p_noiseCov,
@@ -216,7 +218,7 @@ public:
      * @return the assembled inverse operator.
      */
 
-    MNEBeamformerWeights make_beamformer_weights(const FIFFLIB::FiffInfo &p_dataInfo,
+    MNEBeamformerWeights make_beamformer_weights(FIFFLIB::FiffInfo &p_dataInfo,
                                                  MNEForwardSolution &p_forward,
                                                    FIFFLIB::FiffCov &p_dataCov,
                                                  const FIFFLIB::FiffCov &p_noiseCov,
@@ -229,7 +231,7 @@ public:
                                                    //qint32 &p_iLambda,
                                                    //qint32 &p_iKappa,
                                                    //qint32 &p_iTol
-                                                    qint32 p_iRegParam = 0) const;
+                                                    qint32 p_iRegParam = 0);
 
 
 
@@ -247,7 +249,7 @@ public:
     FIFFLIB::fiff_int_t nchan;                      /**< Number of channels. */
     Eigen::VectorXd sourcePowEst;                   /**< estimates of source power for each source location */
     Eigen::VectorXd noisePowEst;                    /**< Estimates of noise power projected through the filter for each source location */
-
+//TODO we need the source_ori field analog to inverse operator field here
 
 
 protected:
@@ -261,5 +263,19 @@ private:
 //=============================================================================================================
 
 } //namespace
+
+//HINT: copied from mne_inverse_operator
+
+#ifndef metatype_mnebeamformerweightssptr
+#define metatype_mnebeamformerweightssptr
+Q_DECLARE_METATYPE(QSharedPointer<MNELIB::MNEBeamformerWeights>); /**< Provides QT META type declaration of the QSharedPointer<MNELIB::MNEBeamformerWeights> type. For signal/slot usage.*/
+#endif
+
+#ifndef metatype_mnebeamformerweightss
+#define metatype_mnebeamformerweightss
+Q_DECLARE_METATYPE(MNELIB::MNEBeamformerWeights); /**< Provides QT META type declaration of the MNELIB::MNEBeamformerWeights type. For signal/slot usage.*/
+#endif
+
+
 #endif // MNE_BEAMFORMER_WEIGHTS_H
 

@@ -39,7 +39,7 @@
 #include "mne_beamformer_weights.h"
 
 #include <math.h>
-#include <Eigen/Dense>
+
 
 //=============================================================================================================
 // QT INCLUDES
@@ -51,6 +51,9 @@
 //=============================================================================================================
 // EIGEN INCLUDES
 //=============================================================================================================
+
+#include <Eigen/Dense>
+#include <Eigen/SVD>
 
 //=============================================================================================================
 // USED NAMESPACES
@@ -69,7 +72,30 @@ using namespace UTILSLIB;
 // DEFINE MEMBER METHODS
 //=============================================================================================================
 
-MNEBeamformerWeights::MNEBeamformerWeights(const FiffInfo &p_dataInfo,
+//HINT this constructor is analog to the one for inverse operator class
+
+MNEBeamformerWeights::MNEBeamformerWeights()
+: weights(defaultMatrixXd)
+, data_cov(new FiffCov)
+, noise_cov(new FiffCov)
+, whitener(defaultMatrixXd)
+, fixedOri(false)
+, optOri(defaultMatrixXd)
+, nsource(-1)
+, nchan(-1)
+, sourcePowEst(defaultVectorXd)
+, noisePowEst(defaultVectorXd)
+{
+    qRegisterMetaType<QSharedPointer<MNELIB::MNEBeamformerWeights> >("QSharedPointer<MNELIB::MNEBeamformerWeights>");
+    qRegisterMetaType<MNELIB::MNEBeamformerWeights>("MNELIB::MNEBeamformerWeights");
+}
+
+
+
+//=============================================================================================================
+
+
+MNEBeamformerWeights::MNEBeamformerWeights(FiffInfo &p_dataInfo,
                                            MNEForwardSolution &p_forward,
                                            FiffCov &p_dataCov,
                                            const FiffCov &p_noiseCov,
@@ -115,8 +141,10 @@ MNEBeamformerWeights::MNEBeamformerWeights(const MNEBeamformerWeights &p_MNEBeam
 //=============================================================================================================
 
 MNEBeamformerWeights::~MNEBeamformerWeights()
+
 {
 }
+
 
 
 //=============================================================================================================
@@ -307,7 +335,7 @@ QStringList MNEBeamformerWeights::check_info_bf(const FiffInfo &p_info,
 //=============================================================================================================
 
 MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const MatrixXd &p_matData, //the measurement data matrix (input in fieldtrip, we dont need this because no subspace projection procedure in this first implementation)
-                                                                   const FiffInfo &p_dataInfo, //the info of the measurement data (no input in fieldtrip)
+                                                                   FiffInfo &p_dataInfo, //the info of the measurement data (no input in fieldtrip)
                                                                    MNEForwardSolution &p_forward, //the forward solution
                                                                    FiffCov &p_dataCov, //the data covariance matrix
                                                                    const FiffCov &p_noiseCov, //the noise covariance matrix (no input in fieldtrip but we need it for whitening)
@@ -320,7 +348,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
                                                                    qint32 p_iRegParam //the regularization parameter //called lambda in fieldtrip
                                                                    //qint32 &p_iKappa,
                                                                    //qint32 &p_iTol
-                                                                   ) const {
+                                                                   ) {
     //HINT: resemling the FieldTrip code in ft_inverse_lcmv.m
     //because mnepy code is highly modular and too complex for first lcmv implementation
     //decided on FieldTrip implementation because it is easier to understand (maybe less overload code)
@@ -631,13 +659,11 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
     qInfo("MNEBeamformerWeights::make_beamformer_weights Finished scanning the grid of source positions and calculating virtual sensors for each position.");
 
 
-    //store filter weights in member variable of MNEBeamformerWeights
-    //store leadfield used to compute W (check whether inverse operator has stored leadfield, maybe storing the modified leadfield results into errors if the original leadfield should be used for later steps but the modified and stored version here is used instead)
-
+    //store filter weights and additional info
     //HINT: partly copied from make_inverse_operator
     p_MNEBeamformerWeights.info = p_dataInfo;
     p_MNEBeamformerWeights.weights = matW;
-    p_MNEBeamformerWeights.data_cov = FiffCov::SDPtr(new FiffCov(p_dataCov));
+    p_MNEBeamformerWeights.data_cov = FiffCov::SDPtr(new FiffCov(p_dataCov)); //TODO check whether this creation of FiffCov matrix works correct here
     p_MNEBeamformerWeights.noise_cov = FiffCov::SDPtr(new FiffCov(outNoiseCov));
     p_MNEBeamformerWeights.weightNorm = p_sWeightnorm;
     p_MNEBeamformerWeights.whitener = matWhitener;

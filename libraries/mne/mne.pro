@@ -65,6 +65,7 @@ CONFIG(debug, debug|release) {
     LIBS += -lmnecppFiffd \
             -lmnecppFsd \
             -lmnecppUtilsd \
+
 } else {
     LIBS += -lmnecppFiff \
             -lmnecppFs \
