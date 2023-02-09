@@ -98,7 +98,7 @@ public:
      *
      */
 
-    explicit Beamformer(const MNEInverseOperator &p_inverseOperator, float lambda);
+    explicit Beamformer(const MNELIB::MNEBeamformerWeights &p_beamformerWeights);
 
     //=========================================================================================================
     /**
@@ -109,18 +109,6 @@ public:
      */
 
     virtual ~Beamformer(){}
-
-    //=========================================================================================================
-    /**
-     * TODO: edit docu
-     *
-     * @param[in] p_fiffEvoked   Evoked data.
-     * @param[in] pick_normal    If True, rather than pooling the orientations by taking the norm, only the.
-     *                           radial component is kept. This is only applied when working with loose orientations.
-     *
-     * @return the calculated source estimation.
-     */
-    virtual MNELIB::MNESourceEstimate calculateInverse(const FIFFLIB::FiffEvoked &p_fiffEvoked, bool pick_normal = false);
 
     //=========================================================================================================
     /**
@@ -168,18 +156,52 @@ public:
      * @param[in] pick_normal    If True, rather than pooling the orientations by taking the norm, only the.
      *                           radial component is kept. This is only applied when working with loose orientations.
      */
-    virtual void doInverseSetup(qint32 nave, bool pick_normal = false);
+    virtual void doInverseSetup();
+
+    //=========================================================================================================
+    /**
+     * Get the prepared beamformer.
+     *
+     * @return the prepared beamformer.
+     */
+    inline MNELIB::MNEBeamformerWeights & getPreparedBeamformer();
+
+    //=========================================================================================================
+    /**
+     * Get the beamformer filter weights
+     *
+     * @return the beamformer filter weights.
+     */
+    inline Eigen::MatrixXd& getBeamformerWeights();
 
 
 protected:
 
 private:
+    //TODO edit docu here
+    MNELIB::MNEBeamformerWeights m_beamformerWeights;   /**< The beamformer weights. */
+    bool m_bBeamformerSetup;                              /**< Whether the beamformer weights are set up. */
+    MNELIB::MNEBeamformerWeights m_beamformerWeightsSetup;                 /**< The setup beamformer weights. */
 
 };
 
 //=============================================================================================================
 // INLINE DEFINITIONS
 //=============================================================================================================
+
+inline Eigen::MatrixXd& Beamformer::getBeamformerWeights()
+{
+    //HINT: similar to getKernel of minimum norm
+    return  m_beamformerWeightsSetup.weights;
+}
+
+//=============================================================================================================
+
+inline MNELIB::MNEBeamformerWeights & Beamformer::getPreparedBeamformer()
+{
+    //HINT similar to getPreparedInverseOperator
+    return m_beamformerWeightsSetup;
+}
 
 } //namespace
 #endif // BEAMFORMER_H
