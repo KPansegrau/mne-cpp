@@ -137,9 +137,9 @@ public:
     /**
      * TODO: edit docu
      *
-     * Get the source space corresponding to this inverse operator.
+     * Get the source space corresponding to this beamformer.
      *
-     * @return the source space corresponding to this inverse operator.
+     * @return the source space corresponding to this beamformer.
      */
     virtual const MNELIB::MNESourceSpace& getSourceSpace() const;
 
@@ -158,6 +158,9 @@ public:
 
     //=========================================================================================================
     // further member methods
+    //=========================================================================================================
+
+
     //=========================================================================================================
 
     /**
