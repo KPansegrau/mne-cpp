@@ -121,7 +121,8 @@ public:
                             bool p_bEstNoisePow = true,
                             bool p_bProjectMom = false,
                             QString p_sWeightnorm = "no",
-                            qint32 p_iRegParam = 0);
+                            qint32 p_iRegParam = 0,
+                            qint32 p_iNAverages = 1);
 
 
     //=========================================================================================================
@@ -221,7 +222,7 @@ public:
     MNEBeamformerWeights make_beamformer_weights(FIFFLIB::FiffInfo &p_dataInfo,
                                                  MNEForwardSolution &p_forward,
                                                    FIFFLIB::FiffCov &p_dataCov,
-                                                 const FIFFLIB::FiffCov &p_noiseCov,
+                                                 FIFFLIB::FiffCov &p_noiseCov,
                                                    QString p_sPowMethod = "trace",
                                                    bool p_bFixedOri = false,
                                                    bool p_bEstNoisePow = true,
@@ -231,7 +232,9 @@ public:
                                                    //qint32 &p_iLambda,
                                                    //qint32 &p_iKappa,
                                                    //qint32 &p_iTol
-                                                    qint32 p_iRegParam = 0);
+                                                    qint32 p_iRegParam = 0,
+                                                 qint32 p_iNAverage = 1
+                                                 );
 
 
     //=========================================================================================================
@@ -254,6 +257,8 @@ public:
 
 public:
 
+    //TODO: edit docu here
+
     FIFFLIB::FiffInfoBase info;                     /**< Modified measurement info (contains only common good channels of forward solution, covariance matrices and measurement). */
     Eigen::MatrixXd weights;                        /**< Beamformer weights */
     FIFFLIB::FiffCov::SDPtr data_cov;               /**< Data covariance matrix used to compute the filters. */
@@ -269,6 +274,7 @@ public:
     QList<FIFFLIB::FiffProj> projs;                 /**< SSP operator. */
     Eigen::MatrixXd proj;                           /**< The projector to apply to the data. */
     MNESourceSpace src;                             /**< Source Space. */
+    FIFFLIB::fiff_int_t nave;                       /**< Number of averages used to regularize the solution. Set to 1 on single Epoch by default.*/
 
     //TODO: check why we need the ssp operator
 

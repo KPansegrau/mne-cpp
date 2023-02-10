@@ -85,6 +85,7 @@ MNEBeamformerWeights::MNEBeamformerWeights()
 , nchan(-1)
 , sourcePowEst(defaultVectorXd)
 , noisePowEst(defaultVectorXd)
+, nave(-1)
 {
     qRegisterMetaType<QSharedPointer<MNELIB::MNEBeamformerWeights> >("QSharedPointer<MNELIB::MNEBeamformerWeights>");
     qRegisterMetaType<MNELIB::MNEBeamformerWeights>("MNELIB::MNEBeamformerWeights");
@@ -104,9 +105,10 @@ MNEBeamformerWeights::MNEBeamformerWeights(FiffInfo &p_dataInfo,
                                            bool p_bEstNoisePow,
                                            bool p_bProjectMom,
                                            QString p_sWeightnorm,
-                                           qint32 p_iRegParam)
+                                           qint32 p_iRegParam,
+                                           qint32 p_iNAverages)
 {
-    *this = MNEBeamformerWeights::make_beamformer_weights(p_dataInfo,p_forward,p_dataCov,p_noiseCov,p_sPowMethod,p_bFixedOri,p_bEstNoisePow,p_bProjectMom,p_sWeightnorm,p_iRegParam);
+    *this = MNEBeamformerWeights::make_beamformer_weights(p_dataInfo,p_forward,p_dataCov,p_noiseCov,p_sPowMethod,p_bFixedOri,p_bEstNoisePow,p_bProjectMom,p_sWeightnorm,p_iRegParam,p_iNAverages);
    qRegisterMetaType<QSharedPointer<MNELIB::MNEBeamformerWeights> >("QSharedPointer<MNELIB::MNEBeamformerWeights>");
    qRegisterMetaType<MNELIB::MNEBeamformerWeights>("MNELIB::MNEBeamformerWeights");
 }
@@ -132,6 +134,7 @@ MNEBeamformerWeights::MNEBeamformerWeights(const MNEBeamformerWeights &p_MNEBeam
     , projs(p_MNEBeamformerWeights.projs)
     , proj(p_MNEBeamformerWeights.proj)
     , src(p_MNEBeamformerWeights.src)
+    , nave(p_MNEBeamformerWeights.nave)
 
 {
     qRegisterMetaType<QSharedPointer<MNELIB::MNEBeamformerWeights> >("QSharedPointer<MNELIB::MNEBeamformerWeights>");
@@ -341,16 +344,17 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
                                                                    FiffInfo &p_dataInfo, //the info of the measurement data (no input in fieldtrip)
                                                                    MNEForwardSolution &p_forward, //the forward solution
                                                                    FiffCov &p_dataCov, //the data covariance matrix
-                                                                   const FiffCov &p_noiseCov, //the noise covariance matrix (no input in fieldtrip but we need it for whitening)
+                                                                   FiffCov &p_noiseCov, //the noise covariance matrix (no input in fieldtrip but we need it for whitening)
                                                                    QString p_sPowMethod, //can be 'trace' (default s. Van Veen 1997) or 'lambda1'
                                                                    bool p_bFixedOri, // true for fixed orientation, false for free orientation (default=false)
                                                                    bool p_bEstNoisePow, // estimate noise power projected through filter (default=true)
                                                                    bool p_bProjectMom, // true: project the dipole moment time course on the direction of maximal power (default=false), TODO: check what this is for, when do we need it and why?
                                                                    //bool p_bKurtosis, //compute kurtosis of dipole timeseries (s. goodnotes zeigt ob time series spiked an betrachteter Position, s. Hall 2018)
                                                                    QString p_sWeightnorm, //normalize the beamformer weights ('no' (=unitgain,default), 'unitnoisegain', 'arraygain' or 'nai')
-                                                                   qint32 p_iRegParam //the regularization parameter //called lambda in fieldtrip
+                                                                   qint32 p_iRegParam, //the regularization parameter //called lambda in fieldtrip
                                                                    //qint32 &p_iKappa,
                                                                    //qint32 &p_iTol
+                                                                   qint32 p_iNAverage //number of averages if beamformer should be applied to evoked data
                                                                    ) {
     //HINT: resemling the FieldTrip code in ft_inverse_lcmv.m
     //because mnepy code is highly modular and too complex for first lcmv implementation
@@ -402,6 +406,13 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
         p_sWeightnorm = "no";
     }
 
+    //ensure that number of averages is positive
+    if(p_iNAverage <= 0)
+    {
+        qWarning("MNEBeamformerWeights::make_beamformer_weights The number of averages should be positive. Returned default MNEBeamformerWeights.\n");
+        return p_MNEBeamformerWeights;
+    }
+
 
     //TODO: do we need to ensure that there is only one channel type? check whether fieldtrip code is only for eeg or meg but not mixed channels
 
@@ -418,6 +429,24 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
     p_dataInfo.pick_info(picksCommonChan);
 
     qInfo("MNEBeamformerWeights::make_beamformer_weights Finished preparation of measurement info.\n");
+
+    //scaling with number of averages (necessary if W should be applied to averaged data later on, covariance matrices need to be scaled here because they are fundamental for W computation)
+    //HINT: copied from prepare_inverse_operator and adapted for the purposes here
+    if(p_iNAverage != 1){
+
+        qInfo("MNEBeamformerWeights::make_beamformer_weights Scale data and noise covariance matrix...\n");
+
+        float fScale     = 1/((float)p_iNAverage); //scaling factor
+        p_noiseCov.data  *= fScale; //scaling data and eigenvalues of noise covariance matrix
+        p_noiseCov.eig   *= fScale;
+        p_dataCov.data *= fScale; //scaling data and eigenvalues of data covariance matrix
+        p_dataCov.eig *= fScale; //TODO: check whether we need to scale the eigenvalues of data covariance matrix (are they used somewhere else? do we need them scaled for consistency)
+
+        printf("\tMNEBeamformerWeights::make_beamformer_weights Scaled noise and data covariance with scaling factor = %f (number of averages = %d)\n",fScale,p_iNAverage);
+        p_MNEBeamformerWeights.nave = p_iNAverage;
+
+        qInfo("MNEBeamformerWeights::make_beamformer_weights Finished scaling of data and noise covariance matrix.\n");
+    }
 
     qInfo("MNEBeamformerWeights::make_beamformer_weights Prepare forward solution...\n");
 
@@ -661,6 +690,9 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
 
     qInfo("MNEBeamformerWeights::make_beamformer_weights Finished scanning the grid of source positions and calculating virtual sensors for each position.");
 
+    //number of averages is considered in prepare_beamformer_weights for scaling (set it to 1 here)
+    qint32 iNAve = 1.0;
+
 
     //store filter weights and additional info
     //HINT: partly copied from make_inverse_operator
@@ -678,6 +710,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
     p_MNEBeamformerWeights.noisePowEst = vecNoisePow;
     p_MNEBeamformerWeights.projs = p_dataInfo.projs;
     p_MNEBeamformerWeights.src = p_forward.src;
+    p_MNEBeamformerWeights.nave = iNAve;
 
 
     qInfo("MNEBeamformerWeights::make_beamformer_weights Finished calculation of beamformer weights.");
@@ -696,13 +729,14 @@ MNEBeamformerWeights MNEBeamformerWeights::prepare_beamformer_weights() const
     // does some scaling stuff dependent on the number of averages (might be necessary for lcmv too, but not sure -> first draft only for raw data),
     // creates a regularized inverter (i think we dont need that here),
     // an ssp projector (ssp for noise reduction might be helpful here (mnepy does include proj too),
-    // creates a whitener (we dont need that because whitener has to be constructed prior W computation)
+    // creates a whitener (we dont need that because whitener has to be constructed prior W computation in make_beamformer_weights)
     // and creates noise normalization factors (not necessary for lcmv)
+
 
 
     //construct MNEBeamformerWeights
     //HINT: analog to prepare_inverse_operator
-    printf("Preparing the inverse operator for use...\n");
+    printf("MNEBeamformerWeights::prepare_beamformer_weights Preparing the inverse operator for use...\n");
     MNEBeamformerWeights p_MNEBeamformerWeights(*this);
 
     //
@@ -711,9 +745,8 @@ MNEBeamformerWeights MNEBeamformerWeights::prepare_beamformer_weights() const
     //
     qint32 ncomp = FiffProj::make_projector(p_MNEBeamformerWeights.projs,p_MNEBeamformerWeights.noise_cov->names, p_MNEBeamformerWeights.proj);
     if (ncomp > 0)
-        printf("\tCreated an SSP operator (subspace dimension = %d)\n",ncomp);
+        printf("\t MNEBeamformerWeights::prepare_beamformer_weights Created an SSP operator (subspace dimension = %d)\n",ncomp);
 
-    //TODO dont know whether we need a new whitener here since in prepare inverse operator the old whitener from make inverse operator is omitted and replaced by a new one
 
     return p_MNEBeamformerWeights;
 
