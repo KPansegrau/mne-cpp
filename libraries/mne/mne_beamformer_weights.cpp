@@ -99,7 +99,7 @@ MNEBeamformerWeights::MNEBeamformerWeights()
 MNEBeamformerWeights::MNEBeamformerWeights(FiffInfo &p_dataInfo,
                                            MNEForwardSolution &p_forward,
                                            FiffCov &p_dataCov,
-                                           const FiffCov &p_noiseCov,
+                                           FiffCov &p_noiseCov,
                                            QString p_sPowMethod,
                                            bool p_bFixedOri,
                                            bool p_bEstNoisePow,
@@ -430,7 +430,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
 
     qInfo("MNEBeamformerWeights::make_beamformer_weights Finished preparation of measurement info.\n");
 
-    //scaling with number of averages (necessary if W should be applied to averaged data later on, covariance matrices need to be scaled here because they are fundamental for W computation)
+    //scaling with number of averages (necessary if W should be applied to averaged data later on, covariance matrices need to be scaled here because they are fundamental for W computation (e.g. whitener depends on it))
     //HINT: copied from prepare_inverse_operator and adapted for the purposes here
     if(p_iNAverage != 1){
 
@@ -443,7 +443,6 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
         p_dataCov.eig *= fScale; //TODO: check whether we need to scale the eigenvalues of data covariance matrix (are they used somewhere else? do we need them scaled for consistency)
 
         printf("\tMNEBeamformerWeights::make_beamformer_weights Scaled noise and data covariance with scaling factor = %f (number of averages = %d)\n",fScale,p_iNAverage);
-        p_MNEBeamformerWeights.nave = p_iNAverage;
 
         qInfo("MNEBeamformerWeights::make_beamformer_weights Finished scaling of data and noise covariance matrix.\n");
     }
@@ -690,10 +689,6 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
 
     qInfo("MNEBeamformerWeights::make_beamformer_weights Finished scanning the grid of source positions and calculating virtual sensors for each position.");
 
-    //number of averages is considered in prepare_beamformer_weights for scaling (set it to 1 here)
-    qint32 iNAve = 1.0;
-
-
     //store filter weights and additional info
     //HINT: partly copied from make_inverse_operator
     p_MNEBeamformerWeights.info = p_dataInfo;
@@ -710,7 +705,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
     p_MNEBeamformerWeights.noisePowEst = vecNoisePow;
     p_MNEBeamformerWeights.projs = p_dataInfo.projs;
     p_MNEBeamformerWeights.src = p_forward.src;
-    p_MNEBeamformerWeights.nave = iNAve;
+    p_MNEBeamformerWeights.nave = p_iNAverage;
 
 
     qInfo("MNEBeamformerWeights::make_beamformer_weights Finished calculation of beamformer weights.");

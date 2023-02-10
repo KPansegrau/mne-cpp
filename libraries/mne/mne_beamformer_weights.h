@@ -115,7 +115,7 @@ public:
     MNEBeamformerWeights(FIFFLIB::FiffInfo &p_dataInfo,
                             MNEForwardSolution &p_forward,
                             FIFFLIB::FiffCov &p_dataCov,
-                            const FIFFLIB::FiffCov &p_noiseCov,
+                            FIFFLIB::FiffCov &p_noiseCov,
                             QString p_sPowMethod = "trace",
                             bool p_bFixedOri = false,
                             bool p_bEstNoisePow = true,
