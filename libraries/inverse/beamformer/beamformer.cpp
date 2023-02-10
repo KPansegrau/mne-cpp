@@ -82,36 +82,37 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
 {
 
     //TODO: where do we get tmin and tstep from? (they are calculated in the other calculateInverse for evoked data, maybe we need this other calculateInverse because of that)
+    //both values are set during run() of plug-in
 
-    //TODO: this parameter is unused in this function body but necessary in signature for correct overloading
+    //TODO: this parameter is unused in this function body but necessary in signature for correct overloading (idea from rtc music implementation of calculateInverse)
     //TODO: check whether pick_normal makes sense for the lcmv beamformer here, if it does, change this
     Q_UNUSED(pick_normal);
 
     //HINT: these ifs are copied from minimumnorm method calculateInverse and slightly adapted
     if(!m_bBeamformerSetup)
     {
-        qWarning("Beamformer::calculateInverse - Beamformer not setup -> call doInverseSetup first!");
+        qWarning("Beamformer::calculateInverse - Beamformer not setup -> call doInverseSetup first! Return default MNESourceEstimate");
         return MNESourceEstimate();
     }
 
     if(m_W_transposed.cols() != data.rows()) {
-        qWarning() << "Beamformer::calculateInverse - Dimension mismatch between m_W_transposed.cols() and data.rows() -" << m_W_transposed.cols() << "and" << data.rows();
+        qWarning() << "Beamformer::calculateInverse - Dimension mismatch between m_W_transposed.cols() and data.rows() -" << m_W_transposed.cols() << "and" << data.rows() << ". Return default MNESourceEstimate.\n";
         return MNESourceEstimate();
     }
 
-    //TODO: add some other output options (source power as estimated in vecSourcePow of MNEBeamformer)
+    //TODO: add some other output options (source power as estimated source activity in vecSourcePow of MNEBeamformer vs beamformer filter output)
     //these options should be user user adjustable similar to sLoreta etc methods
     //maybe in do Inverse setup and then if statement here (if filter output sol = Wt*data, if activity strengh sol = vecSourcePow etc)
 
     //apply beamformer filter matrix to data to get filter output
     //output matrix has dimension (3*nsource x ntimes)
-    MatrixXd sol = m_W_transposed * data; //filter output with dimension
-    std::cout << "Beamformer::calculateInverse: sol " << sol.rows() << " x " << sol.cols() << std::endl;
+    MatrixXd sol = m_W_transposed * data; //filter output
+    std::cout << "Beamformer::calculateInverse: Filter output dimension: sol " << sol.rows() << " x " << sol.cols() << std::endl;
 
     printf("Beamformer::calculateInverse [done]\n");
 
     //Results
-    //TODO: copied from calculateInverse of minimumnorm
+    //HINT: copied from calculateInverse of minimumnorm
     VectorXi p_vecVertices(m_beamformerWeightsSetup.src[0].vertno.size() + m_beamformerWeightsSetup.src[1].vertno.size());
     p_vecVertices << m_beamformerWeightsSetup.src[0].vertno, m_beamformerWeightsSetup.src[1].vertno;
 

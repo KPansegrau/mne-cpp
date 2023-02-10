@@ -211,23 +211,30 @@ void RtBeamformer::initPluginControlWidgets()
 
 bool RtBeamformer::calcFiffInfo()
 {
-    //HINT:copied from rtmne
+    //HINT:copied from rtmne, some modifications were made
 
+
+    //HINT: copied
     QMutexLocker locker(&m_qMutex);
 
-    if(m_qListCovChNames.size() > 0 && m_pFiffInfoInput && m_pFiffInfoForward) {
+    //added && m_qListDataCovChNames.size() > 0 because we have the data covariance matrix as input too
+    if(m_qListNoiseCovChNames.size() > 0 && m_qListDataCovChNames.size() > 0 && m_pFiffInfoInput && m_pFiffInfoForward){
+        //HINT: debug messages copied, added one for data cov channel names
         qDebug() << "[RtBeamformer::calcFiffInfo] Fiff Infos available";
+        qDebug() << "RtcBeamformer::calcFiffInfo - m_qListNoiseCovChNames" << m_qListNoiseCovChNames;
+        qDebug() << "RtcBeamformer::calcFiffInfo - m_qListDataCovChNames" << m_qListDataCovChNames;
+        qDebug() << "RtcBeamformer::calcFiffInfo - m_pFiffInfoForward->ch_names" << m_pFiffInfoForward->ch_names;
+        qDebug() << "RtcBeamformer::calcFiffInfo - m_pFiffInfoInput->ch_names" << m_pFiffInfoInput->ch_names;
 
-//        qDebug() << "RtcMne::calcFiffInfo - m_qListCovChNames" << m_qListCovChNames;
-//        qDebug() << "RtcMne::calcFiffInfo - m_pFiffInfoForward->ch_names" << m_pFiffInfoForward->ch_names;
-//        qDebug() << "RtcMne::calcFiffInfo - m_pFiffInfoInput->ch_names" << m_pFiffInfoInput->ch_names;
-
+        //HINT: copied
         // Align channel names of the forward solution to the incoming averaged (currently acquired) data
         // Find out whether the forward solution depends on only MEG, EEG or both MEG and EEG channels
         QStringList forwardChannelsTypes;
         m_pFiffInfoForward->ch_names.clear();
         int counter = 0;
 
+        //HINT: copied
+        //TODO: do we need differentatiation of magnetometer and gradiometers here? (constants does not have FIFFV_MAG_CH etc)
         for(qint32 x = 0; x < m_pFiffInfoForward->chs.size(); ++x) {
             if(forwardChannelsTypes.contains("MEG") && forwardChannelsTypes.contains("EEG"))
                 break;
@@ -239,6 +246,7 @@ bool RtBeamformer::calcFiffInfo()
                 forwardChannelsTypes<<"EEG";
         }
 
+        //HINT: copied
         //If only MEG channels are used
         if(forwardChannelsTypes.contains("MEG") && !forwardChannelsTypes.contains("EEG")) {
             for(qint32 x = 0; x < m_pFiffInfoInput->chs.size(); ++x)
@@ -251,6 +259,7 @@ bool RtBeamformer::calcFiffInfo()
             }
         }
 
+        //HINT: copied
         //If only EEG channels are used
         if(!forwardChannelsTypes.contains("MEG") && forwardChannelsTypes.contains("EEG")) {
             for(qint32 x = 0; x < m_pFiffInfoInput->chs.size(); ++x)
@@ -263,9 +272,10 @@ bool RtBeamformer::calcFiffInfo()
             }
         }
 
+        //HINT: copied
         //If both MEG and EEG channels are used
         if(forwardChannelsTypes.contains("MEG") && forwardChannelsTypes.contains("EEG")) {
-            //qDebug()<<"RtcMne::calcFiffInfo - MEG EEG fwd solution";
+            qDebug()<<"RtcBeamformer::calcFiffInfo - MEG EEG fwd solution";
             for(qint32 x = 0; x < m_pFiffInfoInput->chs.size(); ++x)
             {
                 if(m_pFiffInfoInput->chs[x].kind == FIFFV_MEG_CH || m_pFiffInfoInput->chs[x].kind == FIFFV_EEG_CH) {
@@ -276,35 +286,46 @@ bool RtBeamformer::calcFiffInfo()
             }
         }
 
+        //HINT Copied, but added data covariance matrix channels
         //Pick only channels which are present in all data structures (covariance, evoked and forward)
-        QStringList tmp_pick_ch_names;
+        QStringList tmp1_pick_ch_names;
+        QStringList tmp2_pick_ch_names; //new, we need this because temporary list should not be overwritten when comparing agains data cov channels
         foreach (const QString &ch, m_pFiffInfoForward->ch_names)
         {
             if(m_pFiffInfoInput->ch_names.contains(ch))
-                tmp_pick_ch_names << ch;
+                tmp1_pick_ch_names << ch; //add all channels to pick list that are common for forward and data info
         }
         m_qListPickChannels.clear();
 
-        foreach (const QString &ch, tmp_pick_ch_names)
+        foreach (const QString &ch, tmp1_pick_ch_names)
         {
-            if(m_qListCovChNames.contains(ch))
-                m_qListPickChannels << ch;
+            if(m_qListNoiseCovChNames.contains(ch))
+                tmp2_pick_ch_names << ch; //add all channels to pick list that are additionally common to noise covariance matrix
         }
+
+        foreach (const QString &ch, tmp1_pick_ch_names) //HINT: this part is new and checks the common channels with data cov matrix
+        {
+            if(m_qListDataCovChNames.contains(ch))
+                m_qListPickChannels << ch; //add all channels to pick list that are additionally common to data covariance matrix
+        }
+
+        //HINT: copied until return true
         RowVectorXi sel = m_pFiffInfoInput->pick_channels(m_qListPickChannels);
 
-        //qDebug() << "RtcMne::calcFiffInfo - m_qListPickChannels.size()" << m_qListPickChannels.size();
-        //qDebug() << "RtcMne::calcFiffInfo - m_qListPickChannels" << m_qListPickChannels;
+        qDebug() << "RtBeamformer::calcFiffInfo - m_qListPickChannels.size()" << m_qListPickChannels.size();
+        qDebug() << "RtcBeamformer::calcFiffInfo - m_qListPickChannels" << m_qListPickChannels;
 
         m_pFiffInfo = QSharedPointer<FiffInfo>(new FiffInfo(m_pFiffInfoInput->pick_info(sel)));
 
         m_pRTSEOutput->measurementData()->setFiffInfo(m_pFiffInfo);
 
-        // qDebug() << "RtcMne::calcFiffInfo - m_pFiffInfo" << m_pFiffInfo->ch_names;
+        qDebug() << "RtcBeamformer::calcFiffInfo - m_pFiffInfo" << m_pFiffInfo->ch_names;
 
         return true;
-    }
+      }
 
     return false;
+
 }
 
 

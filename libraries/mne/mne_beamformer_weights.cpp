@@ -161,8 +161,6 @@ MatrixXd MNEBeamformerWeights::compute_pseudo_inverse(const MatrixXd &p_matrix, 
     //HINT: similar to function pinv in ft_inverse_lcmv (same as Matlab but default tolerance is twice as high, but without handling of tolerance value as input
     //HINT: used this version for calculation with Eigen from GitHub https://gist.github.com/pshriwise/67c2ae78e5db3831da38390a8b2a209f, adapted it a bit
 
-
-
     //dimensions of input matrix
     qint32 nrows = p_matrix.rows();
     qint32 ncols = p_matrix.cols();
@@ -420,6 +418,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
 
     // ensure that measurement data channels match forward model, noise covariance matrix and data covariance matrix channels (from mnepy make inverse operator, first step there)
     //TODO: channel selection stuff is performerd in miminumnorms calculate Inverse, move it?
+    //TODO: calcFiffInfo should ensure that we have the same channels in all four instances, maybe leave this as double check or delete it and trust the calcFiff Implementation? (double check would be better I guess but it means a bit code overload)
     // return the channels that are common to all four objects
     //from mnepy
     QStringList lCommonChanNames = p_MNEBeamformerWeights.check_info_bf(p_dataInfo, p_forward, p_dataCov, p_noiseCov);
