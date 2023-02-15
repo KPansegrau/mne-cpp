@@ -162,11 +162,12 @@ bool RtBeamformer::start()
 
 bool RtBeamformer::stop()
 {
-     //HINT:copied from rtmne
+     //HINT:copied from rtmne, new clear for new list of data cov channel names
     requestInterruption();
     wait(500);
 
-    m_qListCovChNames.clear();
+    m_qListNoiseCovChNames.clear(); //member is renamed to differentiate data and noise cov channel name list
+    m_qListDataCovChNames.clear(); //This is new in comparison to rtmne
     m_bEvokedInput = false;
     m_bRawInput = false;
     m_bPluginControlWidgetsInit = false;

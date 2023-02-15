@@ -431,6 +431,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
 
     //scaling with number of averages (necessary if W should be applied to averaged data later on, covariance matrices need to be scaled here because they are fundamental for W computation (e.g. whitener depends on it))
     //HINT: copied from prepare_inverse_operator and adapted for the purposes here
+    //TODO: check whether we need this scaling her
     if(p_iNAverage != 1){
 
         qInfo("MNEBeamformerWeights::make_beamformer_weights Scale data and noise covariance matrix...\n");
@@ -497,6 +498,9 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
 
     //regularize data covariance matrix by adding values to diagonal entries
     //TODO: regularize takes further parameters that are added according to channel type, use them here
+    //TODO: noise covariance is regularized during its computation in covariance plugin
+    //for Noise Cov: computedCov = computedCov.regularize(m_fiffInfo, 0.05, 0.05, 0.1, doProj, exclude);
+    //TODO: for data cov its problematic to regularize during computation because we need to whiten the data cov matrix before regularization (i guess, check this in fieldtrip and mne and westner 2022)
     p_dataCov.regularize(p_dataInfo);
 
     //invert data covariance matrix

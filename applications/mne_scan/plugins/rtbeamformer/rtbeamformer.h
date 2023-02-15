@@ -211,7 +211,8 @@ protected:
     QString                         m_sAvrType;                 /**< The average type. */
 
 
-    QStringList                     m_qListCovChNames;          /**< Covariance channel names. */
+    QStringList                     m_qListNoiseCovChNames;          /**< Noise Covariance channel names. */
+    QStringList                     m_qListDataCovChNames;         /**< Data Covariance channel names. */  //HINT: new field here
     QStringList                     m_qListPickChannels;        /**< Channels to pick. */
 
 signals:
