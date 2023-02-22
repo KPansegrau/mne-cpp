@@ -1,8 +1,7 @@
 //=============================================================================================================
 /**
- * @file     covarianceevoked.h
- * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de;
- *
+ * @file     covarianceevokedsettingsview.h
+ * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>
  * @since    0.1.0
  * @date     February, 2023
  *
@@ -29,141 +28,144 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  *
- * @brief    Contains the declaration of the CovarianceEvoked class.
+ * @brief     CovarianceEvokedSettingsView class declaration.
  *
  */
 
-#ifndef COVARIANCEEVOKED_H
-#define COVARIANCEEVOKED_H
+#ifndef COVARIANCEEVOKEDSETTINGSVIEW_H
+#define COVARIANCEEVOKEDSETTINGSVIEW_H
 
 //=============================================================================================================
 // INCLUDES
 //=============================================================================================================
 
-#include "covarianceevoked_global.h"
+#include "../disp_global.h"
+#include "abstractview.h"
 
-#include <scShared/Plugins/abstractalgorithm.h>
-#include <utils/generics/circularbuffer.h>
 
+//=============================================================================================================
+// QT INCLUDES
+//=============================================================================================================
+
+#include <QWidget>
+#include <QSpinBox>
+#include <QPair>
+
+#include <QComboBox>
+#include <QCheckBox>
 
 //=============================================================================================================
 // EIGEN INCLUDES
 //=============================================================================================================
 
 //=============================================================================================================
-// QT INCLUDES
-//=============================================================================================================
-
-
-//=============================================================================================================
 // FORWARD DECLARATIONS
 //=============================================================================================================
 
-namespace FIFFLIB {
-    class FiffCov;
-    class FiffInfo;
-}
-
-namespace RTPROCESSINGLIB {
-    class RtCov;
-}
-
-namespace SCMEASLIB {
-    class RealTimeMultiSampleArray;
-    class RealTimeCov;
-}
-
 //=============================================================================================================
-// DEFINE NAMESPACE COVARIANCEPLUGIN
+// DEFINE NAMESPACE DISPLIB
 //=============================================================================================================
 
-namespace COVARIANCEEVOKEDPLUGIN
+namespace DISPLIB
 {
 
 //=============================================================================================================
-// COVARIANCEEVOKEDPLUGIN FORWARD DECLARATIONS
+// DISPLIB FORWARD DECLARATIONS
 //=============================================================================================================
 
 //=============================================================================================================
 /**
- * DECLARE CLASS CovarianceEvoked
+ * User GUI control for Covariance Evoked estimation.
  *
- * @brief The CovariancEvoked class provides a CovarianceEvoked algorithm structure.
+ * @brief User GUI control for Covariance Evoked estimation.
  */
-class COVARIANCEEVOKEDSHARED_EXPORT CovarianceEvoked : public SCSHAREDLIB::AbstractAlgorithm
+class DISPSHARED_EXPORT CovarianceEvokedSettingsView : public AbstractView
 {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID "scsharedlib/1.0" FILE "covarianceevoked.json") //New Qt5 Plugin system replaces Q_EXPORT_PLUGIN2 macro
-    // Use the Q_INTERFACES() macro to tell Qt's meta-object system about the interfaces
-    Q_INTERFACES(SCSHAREDLIB::AbstractAlgorithm)
-
-    friend class CovarianceEvoked;
 
 public:
-    //=========================================================================================================
-    /**
-     * Constructs a CovarianceEvoked.
-     */
-    CovarianceEvoked();
+    typedef QSharedPointer<CovarianceEvokedSettingsView> SPtr;            /**< Shared pointer type for CovarianceEvokedSettingsView. */
+    typedef QSharedPointer<const CovarianceEvokedSettingsView> ConstSPtr; /**< Const shared pointer type for CovarianceEvokedSettingsView. */
 
     //=========================================================================================================
     /**
-     * Destroys the Covariance.
-     */
-    ~CovarianceEvoked();
+    * Constructs a CovarianceEvokedSettingsView object.
+    */
+    explicit CovarianceEvokedSettingsView(const QString& sSettingsPath = "",
+                                          QWidget *parent = 0);
 
     //=========================================================================================================
     /**
-     * Initialise input and output connectors.
+     * Destroys the CovarianceSettingsView.
      */
-    virtual void init();
+    ~CovarianceEvokedSettingsView();
 
     //=========================================================================================================
     /**
-     * Inits widgets which are used to control this plugin, then emits them in form of a QList.
+     * Set current samples to gather until a new covariance is calculated.
+     *
+     * @param[in] iSamples     new number samples.
      */
-    void initPluginControlWidgets();
+    void setCurrentSamples(int iSamples);
 
     //=========================================================================================================
     /**
-     * Is called when plugin is detached of the stage. Can be used to safe settings.
+     * Set minimum number of samples to gather until a new covariance is calculated.
+     *
+     * @param[in] iSamples     new minimum number of samples.
      */
-    virtual void unload();
+    void setMinSamples(int iSamples);
 
     //=========================================================================================================
+    /**
+     * Saves all important settings of this view via QSettings.
+     */
+    void saveSettings();
 
-    //AbstractAlgorithm methods
+    //=========================================================================================================
+    /**
+     * Loads and inits all important settings of this view via QSettings.
+     */
+    void loadSettings();
 
-    virtual QSharedPointer<SCSHAREDLIB::AbstractPlugin> clone() const;
-
-    virtual bool start();
-    virtual bool stop();
-
-    virtual SCSHAREDLIB::AbstractPlugin::PluginType getType() const;
-    virtual QString getName() const;
-
-    virtual QWidget* setupWidget();
-
-    virtual QString getBuildInfo();
-
-    void showCovarianceEvokedWidget();
-
-    void changeSamples(qint32 samples);
+    //=========================================================================================================
+    /**
+     * Clears the view
+     */
+    void clearView();
 
 protected:
-    virtual void run();
+    //=========================================================================================================
+    /**
+     * Update the views GUI based on the set GuiMode (Clinical=0, Research=1).
+     *
+     * @param[in] mode     The new mode (Clinical=0, Research=1).
+     */
+    void updateGuiMode(GuiMode mode);
+
+    //=========================================================================================================
+    /**
+     * Update the views GUI based on the set ProcessingMode (RealTime=0, Offline=1).
+     *
+     * @param[in] mode     The new mode (RealTime=0, Offline=1).
+     */
+    void updateProcessingMode(ProcessingMode mode);
+
+signals:
+    void samplesChanged(int iSamples);
 
 private:
-    //TODO: edit/add docu here
-
-    qint32      m_iEstimationSamples;
-
-    UTILSLIB::CircularBuffer_Matrix_double::SPtr        m_pCircularBuffer;
-
-    QSharedPointer<FIFFLIB::FiffInfo>                   m_pFiffInfo;
+    QSpinBox*       m_pSpinBoxNumSamples;
+    QString         m_sSettingsPath;            /**< The settings path to store the GUI settings to. */
 
 };
 
-} // NAMESPACE
+//=============================================================================================================
+// INLINE DEFINITIONS
+//=============================================================================================================
 
-#endif // COVARIANCEEVOKED_H
+
+} //namespace
+
+#endif // COVARIANCEEVOKEDSETTINGSVIEW_H
+

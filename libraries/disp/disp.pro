@@ -102,6 +102,7 @@ SOURCES += \
     viewers/abstractview.cpp \
     viewers/applytoview.cpp \
     viewers/coregsettingsview.cpp \
+    viewers/covarianceevokedsettingsview.cpp \
     viewers/dipolefitview.cpp \
     viewers/filterdesignview.cpp \
     viewers/averagelayoutview.cpp \
@@ -161,6 +162,7 @@ HEADERS += \
     viewers/abstractview.h \
     viewers/applytoview.h \
     viewers/coregsettingsview.h \
+    viewers/covarianceevokedsettingsview.h \
     viewers/dipolefitview.h \
     viewers/filterdesignview.h \
     viewers/averagelayoutview.h \

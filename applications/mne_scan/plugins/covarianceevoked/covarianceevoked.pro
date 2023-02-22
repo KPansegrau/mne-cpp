@@ -62,11 +62,13 @@ CONFIG(debug, debug|release) {
     LIBS += -lscSharedd \
             -lscDispd \
             -lscMeasd \
+            -lmnecppDispd \
 
 } else {
     LIBS += -lscShared \
             -lscDisp \
             -lscMeas \
+            -lmnecppDisp \
 
 }
 
@@ -81,7 +83,8 @@ HEADERS += \
     covarianceevoked_global.h \
     covarianceevoked.h \
 
-
+FORMS += \
+    FormFiles/covarianceevokedsetupwidget.ui \
 
 clang {
     QMAKE_CXXFLAGS += -isystem $${EIGEN_INCLUDE_DIR}

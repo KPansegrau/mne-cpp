@@ -41,7 +41,14 @@
 
 #include "FormFiles/covarianceevokedsetupwidget.h"
 
+#include <disp/viewers/covarianceevokedsettingsview.h>
 
+#include <scMeas/realtimemultisamplearray.h>
+#include <scMeas/realtimecov.h>
+#include <rtprocessing/rtcov.h>
+
+#include <fiff/fiff_info.h>
+#include <fiff/fiff_cov.h>
 
 //=============================================================================================================
 // EIGEN INCLUDES
@@ -60,9 +67,13 @@
 //=============================================================================================================
 
 using namespace COVARIANCEEVOKEDPLUGIN;
+using namespace DISPLIB;
 using namespace SCSHAREDLIB;
+using namespace SCMEASLIB;
 using namespace UTILSLIB;
-
+using namespace RTPROCESSINGLIB;
+using namespace FIFFLIB;
+using namespace Eigen;
 
 //=============================================================================================================
 // DEFINE MEMBER METHODS
@@ -104,7 +115,26 @@ void CovarianceEvoked::init()
 
 void CovarianceEvoked::initPluginControlWidgets()
 {
-//TODO
+
+    //HINT: copied from Covariance::initPluginControlWidgets(), added the class CovarianceEvokedSettingsView to libraries/disp/viewers
+    if(m_pFiffInfo) {
+        QList<QWidget*> plControlWidgets;
+
+        CovarianceEvokedSettingsView* pCovarianceEvokedWidget = new CovarianceEvokedSettingsView(QString("MNESCAN/%1").arg(this->getName()));
+        connect(this, &CovarianceEvoked::guiModeChanged,
+                pCovarianceEvokedWidget, &CovarianceEvokedSettingsView::setGuiMode);
+        connect(pCovarianceEvokedWidget, &CovarianceEvokedSettingsView::samplesChanged,
+                this, &CovarianceEvoked::changeSamples);
+        pCovarianceEvokedWidget->setMinSamples(m_pFiffInfo->sfreq);
+        pCovarianceEvokedWidget->setCurrentSamples(m_iEstimationSamples);
+        pCovarianceEvokedWidget->setObjectName("group_Settings");
+        plControlWidgets.append(pCovarianceEvokedWidget);
+
+        emit pluginControlWidgetsChanged(plControlWidgets, this->getName());
+
+        m_bPluginControlWidgetsInit = true;
+    }
+
 }
 
 //=============================================================================================================
@@ -159,6 +189,13 @@ QString CovarianceEvoked::getName() const
 
 //=============================================================================================================
 
+void CovarianceEvoked::showCovarianceEvokedWidget()
+{
+}
+
+
+//=============================================================================================================
+
 QWidget* CovarianceEvoked::setupWidget()
 {
     //HINT: similar to covariance::setupWidget() but new class CovarianceEvokedSetupWidget
@@ -166,6 +203,13 @@ QWidget* CovarianceEvoked::setupWidget()
     return setupWidget;
 }
 
+//=============================================================================================================
+
+
+void CovarianceEvoked::changeSamples(qint32 samples)
+{
+    m_iEstimationSamples = samples;
+}
 
 //=============================================================================================================
 
