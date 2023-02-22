@@ -1,6 +1,6 @@
 //=============================================================================================================
 /**
- * @file     covarianceevoked.h
+ * @file     covarianceevokedsetupwidget.h
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de;
  *
  * @since    0.1.0
@@ -29,38 +29,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  *
- * @brief    Contains the declaration of the CovarianceEvoked class.
+ * @brief    Contains the declaration of the CovarianceEvokedSetupWidget class.
  *
  */
 
-#ifndef COVARIANCEEVOKED_H
-#define COVARIANCEEVOKED_H
+#ifndef COVARIANCEEVOKEDSETUPWIDGET_H
+#define COVARIANCEEVOKEDSETUPWIDGET_H
+
 
 //=============================================================================================================
 // INCLUDES
 //=============================================================================================================
 
-#include "covarianceevoked_global.h"
-
-#include <scShared/Plugins/abstractalgorithm.h>
-#include <utils/generics/circularbuffer.h>
-
-
-//=============================================================================================================
-// EIGEN INCLUDES
-//=============================================================================================================
+#include "ui_covarianceevokedsetupwidget.h"
 
 //=============================================================================================================
 // QT INCLUDES
 //=============================================================================================================
 
-
-
-//=============================================================================================================
-// FORWARD DECLARATIONS
-//=============================================================================================================
-
-
+#include <QtWidgets>
 
 //=============================================================================================================
 // DEFINE NAMESPACE COVARIANCEPLUGIN
@@ -70,84 +57,44 @@ namespace COVARIANCEEVOKEDPLUGIN
 {
 
 //=============================================================================================================
-// COVARIANCEEVOKEDPLUGIN FORWARD DECLARATIONS
+// FORWARD DECLARATIONS
 //=============================================================================================================
+
+class CovarianceEvoked;
 
 //=============================================================================================================
 /**
- * DECLARE CLASS CovarianceEvoked
+ * DECLARE CLASS CovarianceEvokedSetupWidget
  *
- * @brief The CovariancEvoked class provides a CovarianceEvoked algorithm structure.
+ * @brief The CovarianceEvokedSetupWidget class provides the CovarianceEvokedToolbox configuration window.
  */
-class COVARIANCEEVOKEDSHARED_EXPORT CovarianceEvoked : public SCSHAREDLIB::AbstractAlgorithm
+class CovarianceEvokedSetupWidget : public QWidget
 {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID "scsharedlib/1.0" FILE "covarianceevoked.json") //New Qt5 Plugin system replaces Q_EXPORT_PLUGIN2 macro
-    // Use the Q_INTERFACES() macro to tell Qt's meta-object system about the interfaces
-    Q_INTERFACES(SCSHAREDLIB::AbstractAlgorithm)
-
-    friend class CovarianceEvoked;
 
 public:
     //=========================================================================================================
     /**
-     * Constructs a CovarianceEvoked.
+     * Constructs a CovarianceEvokedSetupWidget which is a child of parent.
+     *
+     * @param[in] toolbox a pointer to the corresponding CovarianceEvoked toolbox.
+     * @param[in] parent pointer to parent widget; If parent is 0, the new CovarianceEvokedSetupWidget becomes a window. If parent is another widget, CovarianceEvokedSetupWidget becomes a child window inside parent. CovarianceEvokedSetupWidget is deleted when its parent is deleted.
      */
-    CovarianceEvoked();
+    CovarianceEvokedSetupWidget(CovarianceEvoked* toolbox, QWidget *parent = 0);
 
     //=========================================================================================================
     /**
-     * Destroys the Covariance.
+     * Destroys the CovarianceEvokedSetupWidget.
+     * All CovarianceEvokedSetupWidget's children are deleted first. The application exits if CovarianceEvokedSetupWidget is the main widget.
      */
-    ~CovarianceEvoked();
-
-    //=========================================================================================================
-    /**
-     * Initialise input and output connectors.
-     */
-    virtual void init();
-
-    //=========================================================================================================
-    /**
-     * Inits widgets which are used to control this plugin, then emits them in form of a QList.
-     */
-    void initPluginControlWidgets();
-
-    //=========================================================================================================
-    /**
-     * Is called when plugin is detached of the stage. Can be used to safe settings.
-     */
-    virtual void unload();
-
-    //=========================================================================================================
-
-    //AbstractAlgorithm methods
-
-    virtual QSharedPointer<SCSHAREDLIB::AbstractPlugin> clone() const;
-
-    virtual bool start();
-    virtual bool stop();
-
-    virtual SCSHAREDLIB::AbstractPlugin::PluginType getType() const;
-    virtual QString getName() const;
-
-    virtual QWidget* setupWidget();
-
-    virtual QString getBuildInfo();
-
-protected:
-    virtual void run();
+    ~CovarianceEvokedSetupWidget();
 
 private:
-    //TODO: edit/add docu here
 
-    qint32      m_iEstimationSamples;
+    CovarianceEvoked* m_pCovarianceEvoked;        /**< Holds a pointer to corresponding CovarianceEvoked.*/
 
-    UTILSLIB::CircularBuffer_Matrix_double::SPtr        m_pCircularBuffer;
-
-
+    Ui::CovarianceEvokedSetupWidgetClass ui;   /**< Holds the user interface for the CovarianceEvokedSetupWidget.*/
 };
-
 } // NAMESPACE
 
-#endif // COVARIANCEEVOKED_H
+#endif // COVARIANCEEVOKEDSETUPWIDGET_H

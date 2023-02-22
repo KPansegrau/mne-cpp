@@ -39,6 +39,8 @@
 
 #include "covarianceevoked.h"
 
+#include "FormFiles/covarianceevokedsetupwidget.h"
+
 
 
 //=============================================================================================================
@@ -159,8 +161,8 @@ QString CovarianceEvoked::getName() const
 
 QWidget* CovarianceEvoked::setupWidget()
 {
-    //this is only a place holder
-    QWidget* setupWidget = new QWidget();
+    //HINT: similar to covariance::setupWidget() but new class CovarianceEvokedSetupWidget
+    CovarianceEvokedSetupWidget* setupWidget = new CovarianceEvokedSetupWidget(this);//widget is later distroyed by CentralWidget - so it has to be created everytime new
     return setupWidget;
 }
 
