@@ -45,6 +45,8 @@
 #include <scShared/Plugins/abstractalgorithm.h>
 #include <utils/generics/circularbuffer.h>
 
+#include <fiff/fiff_evoked.h>
+
 
 //=============================================================================================================
 // EIGEN INCLUDES
@@ -69,7 +71,7 @@ namespace RTPROCESSINGLIB {
 }
 
 namespace SCMEASLIB {
-    class RealTimeMultiSampleArray;
+    class RealTimeEvokedSet;
     class RealTimeCov;
 }
 
@@ -146,6 +148,8 @@ public:
 
     virtual QString getBuildInfo();
 
+    void updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement);
+
     void showCovarianceEvokedWidget();
 
     void changeSamples(qint32 samples);
@@ -153,14 +157,38 @@ public:
 protected:
     virtual void run();
 
-private:
-    //TODO: edit/add docu here
+    //HINT: this variables are copied from rtcmne.h
+    //TODO: check whether we need all
+    QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedSet> >             m_pRTESInput;               /**< The RealTimeEvoked input.*/
+    QSharedPointer<UTILSLIB::CircularBuffer<FIFFLIB::FiffEvoked> >                          m_pCircularEvokedBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
+
+    QSharedPointer<FIFFLIB::FiffCov>                                                        m_pNoiseCov;                     /**< Noise Covariance Matrix. */
+
+    QSharedPointer<FIFFLIB::FiffInfo>                   m_pFiffInfoInput;
+
+    QMutex                          m_qMutex;                   /**< The mutex ensuring thread safety. */
+
+    FIFFLIB::FiffEvoked             m_currentEvoked;
 
     qint32      m_iEstimationSamples;
 
+    QString                         m_sAvrType;                 /**< The average type. */
+
+    QStringList                     m_qListCovChNames;          /**< Covariance channel names. */
+    QStringList                     m_qListPickChannels;        /**< Channels to pick. */
+
+
+private:
+    //TODO: edit/add docu here
+
+
+
     UTILSLIB::CircularBuffer_Matrix_double::SPtr        m_pCircularBuffer;
 
-    QSharedPointer<FIFFLIB::FiffInfo>                   m_pFiffInfo;
+
+
+signals:
+    void responsibleTriggerTypesChanged(const QStringList& lResponsibleTriggerTypes);
 
 };
 

@@ -45,6 +45,8 @@
 
 #include <scMeas/realtimemultisamplearray.h>
 #include <scMeas/realtimecov.h>
+#include <scMeas/realtimeevokedset.h>
+
 #include <rtprocessing/rtcov.h>
 
 #include <fiff/fiff_info.h>
@@ -117,7 +119,7 @@ void CovarianceEvoked::initPluginControlWidgets()
 {
 
     //HINT: copied from Covariance::initPluginControlWidgets(), added the class CovarianceEvokedSettingsView to libraries/disp/viewers
-    if(m_pFiffInfo) {
+    if(m_pFiffInfoInput) {
         QList<QWidget*> plControlWidgets;
 
         CovarianceEvokedSettingsView* pCovarianceEvokedWidget = new CovarianceEvokedSettingsView(QString("MNESCAN/%1").arg(this->getName()));
@@ -125,7 +127,7 @@ void CovarianceEvoked::initPluginControlWidgets()
                 pCovarianceEvokedWidget, &CovarianceEvokedSettingsView::setGuiMode);
         connect(pCovarianceEvokedWidget, &CovarianceEvokedSettingsView::samplesChanged,
                 this, &CovarianceEvoked::changeSamples);
-        pCovarianceEvokedWidget->setMinSamples(m_pFiffInfo->sfreq);
+        pCovarianceEvokedWidget->setMinSamples(m_pFiffInfoInput->sfreq);
         pCovarianceEvokedWidget->setCurrentSamples(m_iEstimationSamples);
         pCovarianceEvokedWidget->setObjectName("group_Settings");
         plControlWidgets.append(pCovarianceEvokedWidget);
@@ -202,6 +204,71 @@ QWidget* CovarianceEvoked::setupWidget()
     CovarianceEvokedSetupWidget* setupWidget = new CovarianceEvokedSetupWidget(this);//widget is later distroyed by CentralWidget - so it has to be created everytime new
     return setupWidget;
 }
+
+//=============================================================================================================
+
+void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
+{
+    //HINT: copied from RtcMne::updateRTE
+    //TODOOOO: start here next time with checking whether we need the channel picking here
+    if(QSharedPointer<RealTimeEvokedSet> pRTES = pMeasurement.dynamicCast<RealTimeEvokedSet>()) {
+        QStringList lResponsibleTriggerTypes = pRTES->getResponsibleTriggerTypes();
+        emit responsibleTriggerTypesChanged(lResponsibleTriggerTypes);
+
+        if(!m_bPluginControlWidgetsInit) {
+            initPluginControlWidgets();
+        }
+
+        if(!this->isRunning() || !lResponsibleTriggerTypes.contains(m_sAvrType)) {
+            return;
+        }
+
+        FiffEvokedSet::SPtr pFiffEvokedSet = pRTES->getValue();
+
+        //Fiff Information of the evoked
+        if(!m_pFiffInfoInput && pFiffEvokedSet->evoked.size() > 0) {
+            QMutexLocker locker(&m_qMutex);
+
+            for(int i = 0; i < pFiffEvokedSet->evoked.size(); ++i) {
+                if(pFiffEvokedSet->evoked.at(i).comment == m_sAvrType) {
+                    m_pFiffInfoInput = QSharedPointer<FiffInfo>(new FiffInfo(pFiffEvokedSet->evoked.at(i).info));
+                    break;
+                }
+            }
+
+            //HINT: we do not need this since the covariance evoked plugin always gets evoked input
+           // m_bEvokedInput = true;
+        }
+
+        if(!m_bPluginControlWidgetsInit) {
+            initPluginControlWidgets();
+        }
+
+        if(this->isRunning()) {
+            for(int i = 0; i < pFiffEvokedSet->evoked.size(); ++i) {
+                if(pFiffEvokedSet->evoked.at(i).comment == m_sAvrType) {
+                    // Store current evoked as member so we can dispatch it if the time pick by the user changed
+
+                    //TODO: check whether we need this picking here and below
+                    m_currentEvoked = pFiffEvokedSet->evoked.at(i).pick_channels(m_qListPickChannels);
+
+                    // Please note that we do not need a copy here since this function will block until
+                    // the buffer accepts new data again. Hence, the data is not deleted in the actual
+                    // Measurement function after it emitted the notify signal.
+                    while(!m_pCircularEvokedBuffer->push(pFiffEvokedSet->evoked.at(i).pick_channels(m_qListPickChannels))) {
+                        //Do nothing until the circular buffer is ready to accept new data again
+                    }
+
+                        //qDebug()<<"RtcMne::updateRTE - average found type" << m_sAvrType;
+                        break;
+                    }
+                }
+            }
+        }
+
+}
+
+
 
 //=============================================================================================================
 
