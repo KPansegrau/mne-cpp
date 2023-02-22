@@ -78,6 +78,7 @@ CovarianceEvoked::CovarianceEvoked()
 
 CovarianceEvoked::~CovarianceEvoked()
 {
+        //HINT: copied from Covariance::Covariance()
     if(this->isRunning())
         stop();
 }
@@ -108,6 +109,7 @@ void CovarianceEvoked::initPluginControlWidgets()
 
 void CovarianceEvoked::unload()
 {
+        //HINT: copied from Covariance::Covariance()
     // Save Settings
     QSettings settings("MNECPP");
     settings.setValue(QString("MNESCAN/%1/estimationSamples").arg(this->getName()), m_iEstimationSamples);
@@ -118,6 +120,7 @@ void CovarianceEvoked::unload()
 
 bool CovarianceEvoked::start()
 {
+        //HINT: copied from Covariance::Covariance()
     // Start thread
     QThread::start();
 
@@ -128,6 +131,7 @@ bool CovarianceEvoked::start()
 
 bool CovarianceEvoked::stop()
 {
+        //HINT: copied from Covariance::Covariance()
     requestInterruption();
     wait(500);
 
@@ -140,6 +144,7 @@ bool CovarianceEvoked::stop()
 
 AbstractPlugin::PluginType CovarianceEvoked::getType() const
 {
+        //HINT: copied from Covariance::Covariance()
     return _IAlgorithm;
 }
 
@@ -171,6 +176,7 @@ void CovarianceEvoked::run()
 
 QString CovarianceEvoked::getBuildInfo()
 {
+        //HINT: copied from Covariance::Covariance()
     return QString(COVARIANCEEVOKEDPLUGIN::buildDateTime()) + QString(" - ")  + QString(COVARIANCEEVOKEDPLUGIN::buildHash());
 }
 
