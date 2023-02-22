@@ -43,6 +43,7 @@
 #include "covarianceevoked_global.h"
 
 #include <scShared/Plugins/abstractalgorithm.h>
+#include <utils/generics/circularbuffer.h>
 
 
 //=============================================================================================================
@@ -134,6 +135,13 @@ public:
 
 protected:
     virtual void run();
+
+private:
+    //TODO: edit/add docu here
+
+    qint32      m_iEstimationSamples;
+
+    UTILSLIB::CircularBuffer_Matrix_double::SPtr        m_pCircularBuffer;
 
 
 };

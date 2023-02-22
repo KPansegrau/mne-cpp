@@ -151,6 +151,7 @@ void Covariance::unload()
     // Save Settings
     QSettings settings("MNECPP");
     settings.setValue(QString("MNESCAN/%1/estimationSamples").arg(this->getName()), m_iEstimationSamples);
+
 }
 
 //=============================================================================================================

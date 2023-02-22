@@ -59,6 +59,7 @@
 
 using namespace COVARIANCEEVOKEDPLUGIN;
 using namespace SCSHAREDLIB;
+using namespace UTILSLIB;
 
 
 //=============================================================================================================
@@ -66,15 +67,19 @@ using namespace SCSHAREDLIB;
 //=============================================================================================================
 
 CovarianceEvoked::CovarianceEvoked()
+: m_iEstimationSamples(2000)
+, m_pCircularBuffer(CircularBuffer_Matrix_double::SPtr::create(40))
 {
-
+    //HINT: copied from Covariance::Covariance()
+    // iEstimationSamples is used in Covariance::run() as minimum number of samples for new calculation of covariance (if the number of sample in the data is lower, empty covariance is returned)
 }
 
 //=============================================================================================================
 
 CovarianceEvoked::~CovarianceEvoked()
 {
-
+    if(this->isRunning())
+        stop();
 }
 
 //=============================================================================================================
@@ -89,20 +94,23 @@ QSharedPointer<AbstractPlugin> CovarianceEvoked::clone() const
 
 void CovarianceEvoked::init()
 {
-
+//TODO
 }
 
 //=============================================================================================================
 
 void CovarianceEvoked::initPluginControlWidgets()
 {
-
+//TODO
 }
 
 //=============================================================================================================
 
 void CovarianceEvoked::unload()
 {
+    // Save Settings
+    QSettings settings("MNECPP");
+    settings.setValue(QString("MNESCAN/%1/estimationSamples").arg(this->getName()), m_iEstimationSamples);
 
 }
 
@@ -110,7 +118,8 @@ void CovarianceEvoked::unload()
 
 bool CovarianceEvoked::start()
 {
-
+    // Start thread
+    QThread::start();
 
     return true;
 }
@@ -119,7 +128,10 @@ bool CovarianceEvoked::start()
 
 bool CovarianceEvoked::stop()
 {
+    requestInterruption();
+    wait(500);
 
+    m_bPluginControlWidgetsInit = false;
 
     return true;
 }
