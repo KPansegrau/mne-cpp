@@ -90,6 +90,9 @@ INCLUDEPATH += $${MNE_INCLUDE_DIR}
 INCLUDEPATH += $${MNE_SCAN_INCLUDE_DIR}
 
 
+OTHER_FILES += \
+    covarianceevoked.json
+
 unix:!macx {
     QMAKE_RPATHDIR += $ORIGIN/../../lib
 }
@@ -149,41 +152,3 @@ PRE_TARGETDEPS += phonyFileUpdater
 QMAKE_EXTRA_TARGETS += FileUpdater
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-QT -= gui
-
-TEMPLATE = lib
-DEFINES += COVARIANCEEVOKED_LIBRARY
-
-CONFIG += c++17
-
-# You can make your code fail to compile if it uses deprecated APIs.
-# In order to do so, uncomment the following line.
-#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
-
-SOURCES += \
-    covarianceevoked.cpp
-
-HEADERS += \
-    covarianceevoked_global.h \
-    covarianceevoked.h
-
-# Default rules for deployment.
-unix {
-    target.path = /usr/lib
-}
-!isEmpty(target.path): INSTALLS += target
-
-DISTFILES += \
-    covarianceevoked.json
