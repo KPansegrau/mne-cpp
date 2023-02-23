@@ -43,14 +43,14 @@
 
 #include <disp/viewers/covarianceevokedsettingsview.h>
 
-#include <scMeas/realtimemultisamplearray.h>
+//#include <scMeas/realtimemultisamplearray.h>
 #include <scMeas/realtimecov.h>
 #include <scMeas/realtimeevokedset.h>
 
-#include <rtprocessing/rtcov.h>
+//#include <rtprocessing/rtcov.h>
 
 #include <fiff/fiff_info.h>
-#include <fiff/fiff_cov.h>
+//#include <fiff/fiff_cov.h>
 
 //=============================================================================================================
 // EIGEN INCLUDES

@@ -37,7 +37,7 @@ include(../../../../mne-cpp.pri)
 
 TEMPLATE = lib
 
-QT += core widgets
+QT += core widgets concurrent
 
 CONFIG += skip_target_version_ext plugin
 
@@ -63,12 +63,14 @@ CONFIG(debug, debug|release) {
             -lscDispd \
             -lscMeasd \
             -lmnecppDispd \
+            -lmnecppFiffd \
 
 } else {
     LIBS += -lscShared \
             -lscDisp \
             -lscMeas \
             -lmnecppDisp \
+            -lmnecppFiff \
 
 }
 
