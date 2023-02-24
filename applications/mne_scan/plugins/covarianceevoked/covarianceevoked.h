@@ -168,9 +168,7 @@ protected:
 
     QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfoInput;           /**< Fiff information of the evoked. */
 
-    QSharedPointer<FIFFLIB::FiffCov>                                                        m_pNoiseCov;                     /**< Noise Covariance Matrix. */
-
-   QSharedPointer<UTILSLIB::CircularBuffer<FIFFLIB::FiffEvoked> > m_pCircularEvokedBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
+    QSharedPointer<UTILSLIB::CircularBuffer<FIFFLIB::FiffEvoked> > m_pCircularEvokedBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
 
     QMutex                          m_qMutex;                   /**< The mutex ensuring thread safety. */
 
@@ -179,11 +177,8 @@ protected:
 
     QString                         m_sAvrType;                 /**< The average type. */
 
-
-private:
-
-
-
+    quint32 m_iNumPreStimSamples;   /**< The number of pre stimulative samples. */
+    quint32 m_iNumPostStimSamples;  /**< The number of post stimulative samples. */
 
 signals:
     void responsibleTriggerTypesChanged(const QStringList& lResponsibleTriggerTypes);

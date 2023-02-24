@@ -46,9 +46,10 @@
 #include <scMeas/realtimeevokedcov.h>
 #include <scMeas/realtimeevokedset.h>
 
+#include <rtprocessing/rtcov.h>
 
 #include <fiff/fiff_info.h>
-
+#include <fiff/fiff_cov.h>
 
 //=============================================================================================================
 // EIGEN INCLUDES
@@ -83,6 +84,8 @@ using namespace Eigen;
 CovarianceEvoked::CovarianceEvoked()
     : m_pCircularEvokedBuffer(CircularBuffer<FIFFLIB::FiffEvoked>::SPtr::create(40))
     , m_iEstimationSamples(2000)
+    , m_iNumPreStimSamples(-1)
+    , m_iNumPostStimSamples(-1)
 {
     //HINT: copied from Covariance::Covariance()
     // iEstimationSamples is used in Covariance::run() as minimum number of samples for new calculation of covariance (if the number of sample in the data is lower, empty covariance is returned)
@@ -229,9 +232,10 @@ QWidget* CovarianceEvoked::setupWidget()
 
 void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
-    //HINT: copied from RtcMne::updateRTE, modifications: no setting of m_bEvokedInput, no channel picking
+    //HINT: copied from RtcMne::updateRTE, modifications: no setting of m_bEvokedInput, no channel picking, need to get the pre and post stimulative sample number
 
     if(QSharedPointer<RealTimeEvokedSet> pRTES = pMeasurement.dynamicCast<RealTimeEvokedSet>()) {
+
         QStringList lResponsibleTriggerTypes = pRTES->getResponsibleTriggerTypes();
         emit responsibleTriggerTypesChanged(lResponsibleTriggerTypes);
 
@@ -259,6 +263,13 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
             //HINT: we do not need this since the covariance evoked plugin always gets evoked input
            // m_bEvokedInput = true;
         }
+
+        //get number of pre and post stimulative samples
+        //HINT: this part is new, we need the number of pre and post stimulative samples for cutting the correct time window for computation of noise and data covariance matrix
+        //TODO: check whether this part works
+        m_iNumPreStimSamples = pRTES->getNumPreStimSamples();
+        m_iNumPostStimSamples = pFiffEvokedSet->evoked.size() - m_iNumPreStimSamples; //post stim sample number = all samples - pre stim samples
+
 
         if(!m_bPluginControlWidgetsInit) {
             initPluginControlWidgets();
@@ -306,8 +317,54 @@ void CovarianceEvoked::changeSamples(qint32 samples)
 void CovarianceEvoked::run()
 {
 //TODO
+    // Wait for fiff info
+    //HINT: this part is copied from Covariance::run()
+    while(true) {
+        m_qMutex.lock();
+        if(m_pFiffInfoInput) {
+            m_qMutex.unlock();
+            break;
+        }
+        m_qMutex.unlock();
+        msleep(100);
+    }
 
-    //set m_pFiffInfoInput first to all channels included in input evoked set
+    //init
+    FiffEvoked evokedData;
+    MatrixXd matPreStimData;
+    MatrixXd matPostStimData;
+    FiffCov fiffNoiseCov;
+    FiffCov fiffDataCov;
+    int iEstimationSamples;
+    //TODO: check if its correct to use the same fiff info in both cases
+    RTPROCESSINGLIB::RtCov rtNoiseCov(m_pFiffInfoInput);
+    RTPROCESSINGLIB::RtCov rtDataCov(m_pFiffInfoInput);
+
+    //start processing data
+    while(!isInterruptionRequested()) {
+        // Get the current data
+        if(m_pCircularEvokedBuffer->pop(evokedData)) {
+            m_qMutex.lock();
+            iEstimationSamples = m_iEstimationSamples;
+            m_qMutex.unlock();
+
+            //split evoked data into pre and post stimulative part
+            //TODO: maybe use evokedData.last for last entry in block for post stim part and delete variable poststimsamples
+            matPreStimData = evokedData.data.block(0,0,evokedData.data.rows(),m_iNumPreStimSamples);
+            matPostStimData = evokedData.data.block(0,m_iNumPreStimSamples,evokedData.data.rows(),m_iNumPostStimSamples);
+
+            //TODO: call estimateCovariance for parts of matData
+            //TODO: check whether part of evokedData causes issues with rtNoiseCov object because info is not manipulated
+            fiffNoiseCov = rtNoiseCov.estimateCovariance(matPreStimData, iEstimationSamples);
+            fiffDataCov = rtDataCov.estimateCovariance(matPostStimData, iEstimationSamples);
+            //TODO: do we need to set the h constant for covariance type somewhere?
+            if(!fiffNoiseCov.names.isEmpty() || !fiffDataCov.names.isEmpty()) {
+                m_pCovarianceEvokedOutput->measurementData()->setValue(fiffNoiseCov,fiffDataCov);
+            }
+        }
+    }
+
+
 }
 
 //=============================================================================================================
