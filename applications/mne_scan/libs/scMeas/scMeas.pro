@@ -71,6 +71,7 @@ CONFIG(debug, debug|release) {
 }
 
 SOURCES += \
+    realtimeevokedcov.cpp \
     realtimesourceestimate.cpp \
     realtimeconnectivityestimate.cpp \
     realtimemultisamplearray.cpp \
@@ -85,6 +86,7 @@ SOURCES += \
     realtimefwdsolution.cpp
 
 HEADERS += \
+    realtimeevokedcov.h \
     scmeas_global.h \
     realtimesourceestimate.h \
     realtimeconnectivityestimate.h \

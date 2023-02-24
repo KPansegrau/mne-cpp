@@ -43,14 +43,12 @@
 
 #include <disp/viewers/covarianceevokedsettingsview.h>
 
-//#include <scMeas/realtimemultisamplearray.h>
-#include <scMeas/realtimecov.h>
+#include <scMeas/realtimeevokedcov.h>
 #include <scMeas/realtimeevokedset.h>
 
-//#include <rtprocessing/rtcov.h>
 
 #include <fiff/fiff_info.h>
-//#include <fiff/fiff_cov.h>
+
 
 //=============================================================================================================
 // EIGEN INCLUDES
@@ -63,6 +61,7 @@
 #include <QtCore/QtPlugin>
 #include <QDebug>
 #include <QtWidgets>
+
 
 //=============================================================================================================
 // USED NAMESPACES
@@ -82,8 +81,8 @@ using namespace Eigen;
 //=============================================================================================================
 
 CovarianceEvoked::CovarianceEvoked()
-: m_iEstimationSamples(2000)
-, m_pCircularBuffer(CircularBuffer_Matrix_double::SPtr::create(40))
+    : m_pCircularEvokedBuffer(CircularBuffer<FIFFLIB::FiffEvoked>::SPtr::create(40))
+    , m_iEstimationSamples(2000)
 {
     //HINT: copied from Covariance::Covariance()
     // iEstimationSamples is used in Covariance::run() as minimum number of samples for new calculation of covariance (if the number of sample in the data is lower, empty covariance is returned)
@@ -110,7 +109,28 @@ QSharedPointer<AbstractPlugin> CovarianceEvoked::clone() const
 
 void CovarianceEvoked::init()
 {
-//TODO
+
+    //TODO: add those info messages to all methods here for debugging purposes
+    qInfo() << "[CovarianceEvoked::init] Initializing CovarianceEvoked plugin...";
+
+    //Load Settings
+    //HINT: copied form Covariance::init()
+    QSettings settings("MNECPP");
+    m_iEstimationSamples = settings.value(QString("MNESCAN/%1/estimationSamples").arg(this->getName()), 5000).toInt();
+
+    //Input
+    //HINT: analog to this part in RtcMne::init()
+    m_pCovarianceEvokedInput = PluginInputData<RealTimeEvokedSet>::create(this, "CovarianceEvoked In", "CovarianceEvoked real-time evoked input data");
+    connect(m_pCovarianceEvokedInput.data(), &PluginInputConnector::notify,
+            this, &CovarianceEvoked::updateRTE, Qt::DirectConnection);
+    m_inputConnectors.append(m_pCovarianceEvokedInput);
+
+    //Output
+    //HINT: new because we need pair of covariances as output
+    m_pCovarianceEvokedOutput = PluginOutputData<RealTimeEvokedCov>::create(this,"CovarianceEvoced Out","CovarianceEvoked output data");
+    m_pCovarianceEvokedOutput->measurementData()->setName(this->getName());//Provide name to auto store widget settings
+    m_outputConnectors.append(m_pCovarianceEvokedOutput);
+
 }
 
 //=============================================================================================================
@@ -209,8 +229,8 @@ QWidget* CovarianceEvoked::setupWidget()
 
 void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
-    //HINT: copied from RtcMne::updateRTE
-    //TODOOOO: start here next time with checking whether we need the channel picking here
+    //HINT: copied from RtcMne::updateRTE, modifications: no setting of m_bEvokedInput, no channel picking
+
     if(QSharedPointer<RealTimeEvokedSet> pRTES = pMeasurement.dynamicCast<RealTimeEvokedSet>()) {
         QStringList lResponsibleTriggerTypes = pRTES->getResponsibleTriggerTypes();
         emit responsibleTriggerTypesChanged(lResponsibleTriggerTypes);
@@ -249,17 +269,20 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
                 if(pFiffEvokedSet->evoked.at(i).comment == m_sAvrType) {
                     // Store current evoked as member so we can dispatch it if the time pick by the user changed
 
-                    //TODO: check whether we need this picking here and below
-                    m_currentEvoked = pFiffEvokedSet->evoked.at(i).pick_channels(m_qListPickChannels);
+                    //HINT: no channel picking in this plugin but in beamformer plugin (s. comment below)
+                    //m_currentEvoked = pFiffEvokedSet->evoked.at(i).pick_channels(m_qListPickChannels);
 
                     // Please note that we do not need a copy here since this function will block until
                     // the buffer accepts new data again. Hence, the data is not deleted in the actual
                     // Measurement function after it emitted the notify signal.
-                    while(!m_pCircularEvokedBuffer->push(pFiffEvokedSet->evoked.at(i).pick_channels(m_qListPickChannels))) {
+
+                    //HINT: we do not need channel picking here since it is perfomed in the rtbeamformer routines when it is known which channels are common to all beamformer inputs
+                    //original in RtcMne: while(!m_pCircularEvokedBuffer->push(pFiffEvokedSet->evoked.at(i).pick_channels(m_qListPickChannels))) {
+                    while(!m_pCircularEvokedBuffer->push(pFiffEvokedSet->evoked.at(i))) {
                         //Do nothing until the circular buffer is ready to accept new data again
                     }
 
-                        //qDebug()<<"RtcMne::updateRTE - average found type" << m_sAvrType;
+                        //qDebug()<<"CovarianceEvoked::updateRTE - average found type" << m_sAvrType;
                         break;
                     }
                 }
@@ -282,7 +305,9 @@ void CovarianceEvoked::changeSamples(qint32 samples)
 
 void CovarianceEvoked::run()
 {
+//TODO
 
+    //set m_pFiffInfoInput first to all channels included in input evoked set
 }
 
 //=============================================================================================================

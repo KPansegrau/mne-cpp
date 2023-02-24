@@ -75,7 +75,7 @@ namespace RTPROCESSINGLIB {
 
 namespace SCMEASLIB {
     class RealTimeEvokedSet;
-    class RealTimeCov;
+    class RealTimeEvokedCov;
 }
 
 //=============================================================================================================
@@ -162,31 +162,26 @@ protected:
 
     //HINT: this variables are copied from rtcmne.h
     //TODO: check whether we need all
-    QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedSet> >             m_pRTESInput;               /**< The RealTimeEvoked input.*/
-    QSharedPointer<UTILSLIB::CircularBuffer<FIFFLIB::FiffEvoked> >                          m_pCircularEvokedBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
+    QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedSet> >             m_pCovarianceEvokedInput;               /**< The CovarianceEvoked input.*/
+
+    QSharedPointer<SCSHAREDLIB::PluginOutputData<SCMEASLIB::RealTimeEvokedCov> > m_pCovarianceEvokedOutput;     /**< The CovarianceEvoked output.*/
+
+    QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfoInput;           /**< Fiff information of the evoked. */
 
     QSharedPointer<FIFFLIB::FiffCov>                                                        m_pNoiseCov;                     /**< Noise Covariance Matrix. */
 
-    QSharedPointer<FIFFLIB::FiffInfo>                   m_pFiffInfoInput;
+   QSharedPointer<UTILSLIB::CircularBuffer<FIFFLIB::FiffEvoked> > m_pCircularEvokedBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
 
     QMutex                          m_qMutex;                   /**< The mutex ensuring thread safety. */
 
-    FIFFLIB::FiffEvoked             m_currentEvoked;
 
     qint32      m_iEstimationSamples;
 
     QString                         m_sAvrType;                 /**< The average type. */
 
-    QStringList                     m_qListCovChNames;          /**< Covariance channel names. */
-    QStringList                     m_qListPickChannels;        /**< Channels to pick. */
-
 
 private:
-    //TODO: edit/add docu here
 
-
-
-    UTILSLIB::CircularBuffer_Matrix_double::SPtr        m_pCircularBuffer;
 
 
 
