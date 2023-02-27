@@ -52,6 +52,7 @@
 #include <scMeas/realtimesourceestimate.h>
 #include <scMeas/realtimemultisamplearray.h>
 #include <scMeas/realtimeevokedset.h>
+#include <scMeas/realtimeevokedcov.h>
 
 
 
@@ -78,6 +79,7 @@ using namespace FIFFLIB;
 using namespace INVERSELIB;
 using namespace Eigen;
 using namespace DISPLIB;
+using namespace FSLIB;
 
 
 //=============================================================================================================
@@ -89,12 +91,12 @@ RtBeamformer::RtBeamformer()
     , m_pCircularEvokedBuffer(CircularBuffer<FIFFLIB::FiffEvoked>::SPtr::create(40))
     , m_bRawInput(false)
     , m_bEvokedInput(false)
+    , m_bUpdateBeamformer(false)
     , m_iNumAverages(1)
     , m_sAvrType("3")
     , m_sAtlasDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/label")
     , m_sSurfaceDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/surf")
     , m_fMriHeadTrans(QCoreApplication::applicationDirPath() + "/MNE-sample-data/MEG/sample/all-trans.fif")
-
 {
 
 }
@@ -128,29 +130,59 @@ void RtBeamformer::init()
     //TODO
 
     // Inits
-
+    //HINT: copied from RtcMne::init()
+    m_pAnnotationSet = AnnotationSet::SPtr(new AnnotationSet(m_sAtlasDir+"/lh.aparc.a2009s.annot", m_sAtlasDir+"/rh.aparc.a2009s.annot"));
+    m_pSurfaceSet = SurfaceSet::SPtr(new SurfaceSet(m_sSurfaceDir+"/lh.orig", m_sSurfaceDir+"/rh.orig"));
+    m_mriHeadTrans = FIFFLIB::FiffCoordTrans(m_fMriHeadTrans);
 
     //Input
+    //HINT: copied from RtcMne::init(), changes are described below
+
     //TODO: this part is for raw data that is not averaged, first draft works only with evoked (averaged) input data
     m_pRTMSAInput = PluginInputData<RealTimeMultiSampleArray>::create(this, "RTBEAMFORMER RTMSA In", "RTBEAMFORMER real-time multi sample array input data");
     connect(m_pRTMSAInput.data(), &PluginInputConnector::notify,
             this, &RtBeamformer::updateRTMSA, Qt::DirectConnection);
     m_inputConnectors.append(m_pRTMSAInput);
 
+    //real-time evoked input
     m_pRTESInput = PluginInputData<RealTimeEvokedSet>::create(this, "RTBEAMFORMER RTE In", "RTBEAMFORMER real-time evoked input data");
     connect(m_pRTESInput.data(), &PluginInputConnector::notify,
             this, &RtBeamformer::updateRTE, Qt::DirectConnection);
     m_inputConnectors.append(m_pRTESInput);
 
+    //real-time covariance input
+    //HINT: this differs from cov input for rtcmne plugin
+    //TODO: updateRTC needs to be implemented
+    m_pRTCInput = PluginInputData<RealTimeEvokedCov>::create(this,"RTBEAMFORMERE RTC In", "RTBEAMFORMER real-time covariance input data");
+    connect(m_pRTCInput.data(), &PluginInputConnector::notify,
+            this, &RtBeamformer::updateRTC, Qt::DirectConnection);
+    m_inputConnectors.append(m_pRTCInput);
+
+    //real-time forward solution input
+    //TODO: updateRTFS needs to be implemented
+    m_pRTFSInput = PluginInputData<RealTimeFwdSolution>::create(this, "RTBEAMFORMERE RTFS In", "RTBEAMFORMERE real-time forward solution input data");
+    connect(m_pRTFSInput.data(), &PluginInputConnector::notify,
+            this, &RtBeamformer::updateRTFS, Qt::DirectConnection);
+    m_inputConnectors.append(m_pRTFSInput);
 
     //Output
     m_pRTSEOutput = PluginOutputData<RealTimeSourceEstimate>::create(this, "RTBEAMFORMER Out", "RTBEAMFORMER output data");
     m_outputConnectors.append(m_pRTSEOutput);
     m_pRTSEOutput->measurementData()->setName(this->getName());//Provide name to auto store widget settings
 
-
     // Set the annotation and surface data and mri-head transformation
+    //HINT: copied from RtcMne::init()
+    if(m_pAnnotationSet->size() != 0) {
+        m_pRTSEOutput->measurementData()->setAnnotSet(m_pAnnotationSet);
+    }
 
+    if(m_pSurfaceSet->size() != 0) {
+        m_pRTSEOutput->measurementData()->setSurfSet(m_pSurfaceSet);
+    }
+
+    if(!m_mriHeadTrans.isEmpty()) {
+        m_pRTSEOutput->measurementData()->setMriHeadTrans(m_mriHeadTrans);
+    }
 }
 
 //=============================================================================================================
@@ -453,6 +485,25 @@ void RtBeamformer::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
             }
     }
 }
+
+//=============================================================================================================
+
+void RtBeamformer::updateRTC(SCMEASLIB::Measurement::SPtr pMeasurement)
+{
+    //TODO
+
+
+}
+
+//=============================================================================================================
+
+void RtBeamformer::updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement)
+{
+    //TODO
+
+
+}
+
 
 //=============================================================================================================
 

@@ -84,6 +84,8 @@ namespace FSLIB {
 namespace SCMEASLIB {
     class RealTimeMultiSampleArray;
     class RealTimeEvokedSet;
+    class RealTimeEvokedCov;
+    class RealTimeFwdSolution;
     class RealTimeSourceEstimate;
 }
 
@@ -179,6 +181,19 @@ public:
     void updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement);
 
     //=========================================================================================================
+    /**
+     * Slot to update the fiff covariance
+     */
+    void updateRTC(SCMEASLIB::Measurement::SPtr pMeasurement);
+
+    //=========================================================================================================
+
+    /**
+     * Slot to update the real time forward solution
+     */
+    void updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement);
+
+    //=========================================================================================================
 
 
 protected:
@@ -194,6 +209,8 @@ protected:
 
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeMultiSampleArray> >      m_pRTMSAInput;              /**< The RealTimeMultiSampleArray input.*/
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedSet> >             m_pRTESInput;               /**< The RealTimeEvoked input.*/
+    QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedCov> >             m_pRTCInput;                /**< The RealTimeEvokedCov input.*/
+    QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeFwdSolution> >           m_pRTFSInput;               /**< The RealTimeFwdSolution input.*/
 
 
     QSharedPointer<UTILSLIB::CircularBuffer_Matrix_double >                                 m_pCircularMatrixBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
@@ -216,6 +233,7 @@ protected:
 
     bool                            m_bRawInput;                /**< Flag whether a raw data input was received. */
     bool                            m_bEvokedInput;             /**< Flag whether an evoked input was received. */
+    bool                            m_bUpdateBeamformer;       /**< Flag whether to update the beamformer object. */
 
 
     QMutex                          m_qMutex;                   /**< The mutex ensuring thread safety. */
