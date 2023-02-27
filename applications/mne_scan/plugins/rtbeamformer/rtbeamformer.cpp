@@ -63,6 +63,7 @@
 #include <QtCore/QtPlugin>
 #include <QtConcurrent>
 #include <QDebug>
+#include <QtWidgets>
 
 //=============================================================================================================
 // USED NAMESPACES
