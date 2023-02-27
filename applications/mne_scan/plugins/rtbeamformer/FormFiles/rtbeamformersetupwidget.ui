@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>RtcMneSetupWidgetClass</class>
- <widget class="QWidget" name="RtcMneSetupWidgetClass">
+ <class>RtBeamformerSetupWidgetClass</class>
+ <widget class="QWidget" name="RtBeamformerSetupWidgetClass">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -10,8 +10,11 @@
     <height>700</height>
    </rect>
   </property>
+  <property name="mouseTracking">
+   <bool>false</bool>
+  </property>
   <property name="windowTitle">
-   <string>MNESetupWidget</string>
+   <string>RtBeamformerSetupWidget</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -19,10 +22,11 @@
      <property name="font">
       <font>
        <bold>true</bold>
+       <kerning>true</kerning>
       </font>
      </property>
      <property name="text">
-      <string>Source Localization</string>
+      <string>Beamformer Source Localization</string>
      </property>
     </widget>
    </item>
@@ -44,53 +48,72 @@
    </item>
    <item>
     <layout class="QGridLayout" name="m_qGridLayout_main">
-     <item row="1" column="0">
-      <widget class="QGroupBox" name="m_qGroupBox_SurfaceDir">
+     <item row="3" column="0">
+      <widget class="QGroupBox" name="m_qGroupBox_Information">
        <property name="title">
-        <string>Surface Directory</string>
+        <string>Information</string>
        </property>
-       <layout class="QGridLayout" name="m_qGridLayout_SurfaceDir">
-        <item row="1" column="0" colspan="2">
-         <widget class="QLabel" name="m_qLabel_surface">
-          <property name="text">
-           <string>(lh + rh).inflated</string>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="0" column="0">
+         <widget class="QTextBrowser" name="m_qTextBrowser_Information">
+          <property name="markdown">
+           <string>**Description:**
+
+This plugin calculates a beamformer source localization estimate. For
+inspection this plugin visualizes the source localization estimate on top of
+the cortical mantle.
+
+**How to setup this plugin?**
+
+1. Load the atlas and surface data and mri - head transformation.
+
+**How to control this plugin during the measurement?**
+
+All control elements can be found in the QuickControlView's Beamformer Source
+Localization tab.
+
+**Input data type:**
+
+This plugin allows evoked responses from averaging plugin. In order to compute
+the beamformer weights it also needs a covariance estimation from the
+covariance evoked plugin (noise and data covariance). Further the connection to
+the forward plugin is required.
+
+**Output data type:**
+
+This plugin provides a beamformer source localization estimation.
+
+</string>
           </property>
-         </widget>
-        </item>
-        <item row="1" column="2">
-         <widget class="QLabel" name="m_qLabel_surfaceStat">
-          <property name="frameShape">
-           <enum>QFrame::Panel</enum>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Sunken</enum>
-          </property>
-          <property name="text">
-           <string>not loaded</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="2">
-         <widget class="QPushButton" name="m_qPushButton_SurfaceDirDialog">
-          <property name="text">
-           <string>...</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="0" colspan="2">
-         <widget class="QLineEdit" name="m_qLineEdit_SurfaceDirName">
-          <property name="minimumSize">
-           <size>
-            <width>140</width>
-            <height>0</height>
-           </size>
+          <property name="html">
+           <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+hr { height: 1px; border-width: 0; }
+li.unchecked::marker { content: &quot;\2610&quot;; }
+li.checked::marker { content: &quot;\2612&quot;; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI'; font-size:9.75pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:600;&quot;&gt;Description:&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;This plugin calculates a beamformer source localization estimate. For inspection this plugin visualizes the source localization estimate on top of the cortical mantle.&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:600;&quot;&gt;How to setup this plugin?&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;1. Load the atlas and surface data and mri - head transformation.&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'MS Shell Dlg 2'; font-size:7.875pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:600;&quot;&gt;How to control this plugin during the measurement?&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;All control elements can be found in the QuickControlView's Beamformer Source Localization tab.&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:600;&quot;&gt;Input data type:&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;This plugin allows evoked responses from averaging plugin. In order to compute the beamformer weights it also needs a covariance estimation from the covariance evoked plugin (noise and data covariance). Further the connection to the forward plugin is required.&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:600;&quot;&gt;Output data type:&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;This plugin provides a beamformer source localization estimation.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
        </layout>
       </widget>
      </item>
-     <item row="2" column="1">
+     <item row="0" column="1">
       <spacer name="horizontalSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -103,36 +126,72 @@
        </property>
       </spacer>
      </item>
-     <item row="3" column="0">
-      <widget class="QGroupBox" name="m_qGroupBox_Information">
+     <item row="2" column="0">
+      <widget class="QGroupBox" name="m_qGroupBox_MriHeadTrans">
        <property name="title">
-        <string>Information</string>
+        <string>MRI - Head Transformation</string>
        </property>
-       <layout class="QGridLayout" name="m_qGridLayout_Information">
+       <layout class="QGridLayout" name="gridLayout_3">
         <item row="0" column="0">
-         <widget class="QTextBrowser" name="m_qTextBrowser_Information">
-          <property name="html">
-           <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-hr { height: 1px; border-width: 0; }
-li.unchecked::marker { content: &quot;\2610&quot;; }
-li.checked::marker { content: &quot;\2612&quot;; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI'; font-size:9.75pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:600;&quot;&gt;Description:&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;This plugin calculates a source localization estimate. For inspection this plugin visualizes the source localization estimate on top of the cortical mantle.&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:600;&quot;&gt;How to setup this plugin?&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;1. Load the atlas and surface data and mri - head transformation.&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'MS Shell Dlg 2'; font-size:7.875pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:600;&quot;&gt;How to control this plugin during the measurement?&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;All control elements can be found in the QuickControlView's Source Localization tab.&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:600;&quot;&gt;Input data type:&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;This plugin allows raw data blocks, e.g., from a sensor plugin, or evoked responses. In order to compute the inverse operator it also needs a covariance estimation. Further the connection to the forward plugin is required.&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt; font-weight:600;&quot;&gt;Output data type:&lt;/span&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.25pt;&quot;&gt;This plugin provides a source localization estimation.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <widget class="QLineEdit" name="m_qLineEdit_MriHeadTrans">
+          <property name="minimumSize">
+           <size>
+            <width>134</width>
+            <height>0</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QPushButton" name="m_qPushButton_MriHeadTrans">
+          <property name="text">
+           <string>...</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QGroupBox" name="m_qGroupBox_SurfaceDir">
+       <property name="title">
+        <string>Surface Directory</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_4">
+        <item row="1" column="1">
+         <widget class="QLabel" name="m_qLabel_surfaceStat">
+          <property name="frameShape">
+           <enum>QFrame::Panel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Sunken</enum>
+          </property>
+          <property name="text">
+           <string>not loaded</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="m_qLabel_surface">
+          <property name="text">
+           <string>(lh + rh).inflated</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLineEdit" name="m_qLineEdit_SurfaceDirName">
+          <property name="minimumSize">
+           <size>
+            <width>140</width>
+            <height>0</height>
+           </size>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QPushButton" name="m_qPushButton_SurfaceDirDialog">
+          <property name="text">
+           <string>...</string>
           </property>
          </widget>
         </item>
@@ -144,15 +203,18 @@ li.checked::marker { content: &quot;\2612&quot;; }
        <property name="title">
         <string>Brain Atlas Directory</string>
        </property>
-       <layout class="QGridLayout" name="m_qGridLayout_AtlasDir">
-        <item row="0" column="2">
-         <widget class="QPushButton" name="m_qPushButton_AtlasDirDialog">
-          <property name="text">
-           <string>...</string>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="0">
+         <widget class="QLineEdit" name="m_qLineEdit_AtlasDirName">
+          <property name="minimumSize">
+           <size>
+            <width>140</width>
+            <height>0</height>
+           </size>
           </property>
          </widget>
         </item>
-        <item row="1" column="2">
+        <item row="1" column="1">
          <widget class="QLabel" name="m_qLabel_atlasStat">
           <property name="frameShape">
            <enum>QFrame::Panel</enum>
@@ -165,16 +227,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
           </property>
          </widget>
         </item>
-        <item row="0" column="0" colspan="2">
-         <widget class="QLineEdit" name="m_qLineEdit_AtlasDirName">
-          <property name="minimumSize">
-           <size>
-            <width>140</width>
-            <height>0</height>
-           </size>
-          </property>
-         </widget>
-        </item>
         <item row="1" column="0">
          <widget class="QLabel" name="m_qLabel_atlas">
           <property name="text">
@@ -182,27 +234,8 @@ li.checked::marker { content: &quot;\2612&quot;; }
           </property>
          </widget>
         </item>
-       </layout>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QGroupBox" name="m_qGroupBox_MriHeadTrans">
-       <property name="title">
-        <string>MRI - Head Transformation</string>
-       </property>
-       <layout class="QGridLayout" name="m_qGridLayout_SurfaceDir_3">
-        <item row="0" column="0" colspan="2">
-         <widget class="QLineEdit" name="m_qLineEdit_MriHeadTrans">
-          <property name="minimumSize">
-           <size>
-            <width>140</width>
-            <height>0</height>
-           </size>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="2">
-         <widget class="QPushButton" name="m_qPushButton_MriHeadTrans">
+        <item row="0" column="1">
+         <widget class="QPushButton" name="m_qPushButton_AtlasDirDialog">
           <property name="text">
            <string>...</string>
           </property>
@@ -231,7 +264,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </item>
   </layout>
  </widget>
- <layoutdefault spacing="6" margin="11"/>
  <resources/>
  <connections/>
 </ui>

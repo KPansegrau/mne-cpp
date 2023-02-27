@@ -38,6 +38,11 @@
 
 #include "rtbeamformer.h"
 
+#include "FormFiles/rtbeamformersetupwidget.h"
+
+#include <fs/annotationset.h>
+#include <fs/surfaceset.h>
+
 #include <fiff/fiff_info.h>
 
 #include <mne/mne_forwardsolution.h>
@@ -71,6 +76,7 @@ using namespace MNELIB;
 using namespace FIFFLIB;
 using namespace INVERSELIB;
 using namespace Eigen;
+using namespace DISPLIB;
 
 
 //=============================================================================================================
@@ -84,6 +90,10 @@ RtBeamformer::RtBeamformer()
     , m_bEvokedInput(false)
     , m_iNumAverages(1)
     , m_sAvrType("3")
+    , m_sAtlasDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/label")
+    , m_sSurfaceDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/surf")
+    , m_fMriHeadTrans(QCoreApplication::applicationDirPath() + "/MNE-sample-data/MEG/sample/all-trans.fif")
+
 {
 
 }
@@ -120,6 +130,7 @@ void RtBeamformer::init()
 
 
     //Input
+    //TODO: this part is for raw data that is not averaged, first draft works only with evoked (averaged) input data
     m_pRTMSAInput = PluginInputData<RealTimeMultiSampleArray>::create(this, "RTBEAMFORMER RTMSA In", "RTBEAMFORMER real-time multi sample array input data");
     connect(m_pRTMSAInput.data(), &PluginInputConnector::notify,
             this, &RtBeamformer::updateRTMSA, Qt::DirectConnection);
@@ -194,9 +205,8 @@ QString RtBeamformer::getName() const
 
 QWidget* RtBeamformer::setupWidget()
 {
-    //TODO
-    //placeholder. This is where the UI will be setup later.
-    QWidget* setupWidget = new QWidget();
+    RtBeamformerSetupWidget* setupWidget = new RtBeamformerSetupWidget(this);//widget is later distroyed by CentralWidget - so it has to be created everytime new
+
     return setupWidget;
 }
 
@@ -456,110 +466,7 @@ void RtBeamformer::run()
         msleep(200);
     }
 
-    // Init parameters
-    //HINT: copied from rtcmne (modification: pBeamformer instead of pMinimumNorm)
-    qint32 skip_count = 0;
-    FiffEvoked evoked;
-    MatrixXd matData;
-    MatrixXd matDataResized;
-    qint32 j;
-    int iTimePointSps = 0;
-    int iNumberChannels = 0;
-    int iDownSample = 1;
-    float tstep;
-    float lambda2 = 1.0f / pow(1.0f, 2); //ToDo estimate lambda using covariance
-    MNESourceEstimate sourceEstimate;
-    bool bEvokedInput = false;
-    bool bRawInput = false;
-    bool bUpdateBeamformer = false;
-    QSharedPointer<INVERSELIB::Beamformer> pBeamformer;
-    QStringList lChNamesFiffInfo;
-    QStringList lChNamesInvOp;
 
-/*    // Start processing data
-    // HINT: copied from rtcmne
-    // modifications:
-    while(!isInterruptionRequested()) {
-        m_qMutex.lock();
-        iTimePointSps = m_iTimePointSps;
-        bEvokedInput = m_bEvokedInput;
-        bRawInput = m_bRawInput;
-        iDownSample = m_iDownSample;
-        iNumberChannels = m_invOp.noise_cov->names.size();
-        tstep = 1.0f / m_pFiffInfoInput->sfreq;
-        lChNamesFiffInfo = m_pFiffInfoInput->ch_names;
-        lChNamesInvOp = m_invOp.noise_cov->names;
-        bUpdateMinimumNorm = m_bUpdateMinimumNorm;
-        m_qMutex.unlock();
-
-        if(bUpdateMinimumNorm) {
-            m_qMutex.lock();
-            pMinimumNorm = MinimumNorm::SPtr(new MinimumNorm(m_invOp, lambda2, m_sMethod));
-            m_bUpdateMinimumNorm = false;
-            m_qMutex.unlock();
-
-            // Set up the inverse according to the parameters.
-            // Use 1 nave here because in case of evoked data as input the minimum norm will always be updated when the source estimate is calculated (see run method).
-            pMinimumNorm->doInverseSetup(1,true);
-        }
-
-        //Process data from raw data input
-        if(bRawInput && pMinimumNorm) {
-            if(((skip_count % iDownSample) == 0)) {
-                // Get the current raw data
-                if(m_pCircularMatrixBuffer->pop(matData)) {
-                    //Pick the same channels as in the inverse operator
-                    matDataResized.resize(iNumberChannels, matData.cols());
-
-                    for(j = 0; j < iNumberChannels; ++j) {
-                        matDataResized.row(j) = matData.row(lChNamesFiffInfo.indexOf(lChNamesInvOp.at(j)));
-                    }
-
-                    //TODO: Add picking here. See evoked part as input.
-                    sourceEstimate = pMinimumNorm->calculateInverse(matDataResized,
-                                                                    0.0f,
-                                                                    tstep,
-                                                                    true);
-
-                    if(!sourceEstimate.isEmpty()) {
-                        if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {
-                            sourceEstimate = sourceEstimate.reduce(iTimePointSps,1);
-                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
-                        } else {
-                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
-                        }
-                    }
-                }
-            } else {
-                m_pCircularMatrixBuffer->pop(matData);
-            }
-        }
-
-        //Process data from averaging input
-        if(bEvokedInput && pMinimumNorm) {
-            if(m_pCircularEvokedBuffer->pop(evoked)) {
-                // Get the current evoked data
-                if(((skip_count % iDownSample) == 0)) {
-                    sourceEstimate = pMinimumNorm->calculateInverse(evoked);
-
-                    if(!sourceEstimate.isEmpty()) {
-                        if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {
-                            sourceEstimate = sourceEstimate.reduce(iTimePointSps,1);
-                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
-                        } else {
-                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
-                        }
-                    }
-                } else {
-                    m_pCircularEvokedBuffer->pop(evoked);
-                }
-            }
-        }
-
-        ++skip_count;
-    }
-
-*/
 
 }
 

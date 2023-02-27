@@ -44,7 +44,6 @@
 
 #include <scShared/Plugins/abstractalgorithm.h>
 
-#include "scMeas/realtimemultisamplearray.h"
 #include <utils/generics/circularbuffer.h>
 
 #include <fiff/fiff_evoked.h>
@@ -56,16 +55,13 @@
 #include <QFuture>
 #include <QPointer>
 #include <QSharedPointer>
+#include <QFile>
 
 //=============================================================================================================
 // FORWARD DECLARATIONS
 //=============================================================================================================
 
-namespace SCMEASLIB {
-    class RealTimeMultiSampleArray;
-    class RealTimeEvokedSet;
-    class RealTimeSourceEstimate;
-}
+
 
 namespace MNELIB {
     class MNEForwardSolution;
@@ -73,10 +69,22 @@ namespace MNELIB {
 
 namespace FIFFLIB {
     class FiffInfo;
+    class FiffInfoBase;
 }
 
 namespace INVERSELIB {
     class Beamformer;
+}
+
+namespace FSLIB {
+    class AnnotationSet;
+    class SurfaceSet;
+}
+
+namespace SCMEASLIB {
+    class RealTimeMultiSampleArray;
+    class RealTimeEvokedSet;
+    class RealTimeSourceEstimate;
 }
 
 
@@ -107,6 +115,8 @@ class RTBEAMFORMERSHARED_EXPORT RtBeamformer : public SCSHAREDLIB::AbstractAlgor
     // Use the Q_INTERFACES() macro to tell Qt's meta-object system about the interfaces
     Q_INTERFACES(SCSHAREDLIB::AbstractAlgorithm)
 
+    friend class RtBeamformerSetupWidget;
+
 
 public:
 
@@ -129,6 +139,14 @@ public:
 
     virtual QSharedPointer<SCSHAREDLIB::AbstractPlugin> clone() const;
     virtual void init();
+
+    //=========================================================================================================
+    /**
+     * Inits widgets which are used to control this plugin, then emits them in form of a QList.
+     */
+    void initPluginControlWidgets();
+
+
     virtual void unload();
     virtual bool start();
     virtual bool stop();
@@ -138,11 +156,6 @@ public:
     virtual QString getBuildInfo();
 
 
-    //=========================================================================================================
-    /**
-     * Inits widgets which are used to control this plugin, then emits them in form of a QList.
-     */
-    void initPluginControlWidgets();
 
     //=========================================================================================================
     /**
@@ -197,6 +210,10 @@ protected:
     QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfo;                /**< Fiff information. */
     QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfoInput;           /**< Fiff information of the evoked. */
 
+    QSharedPointer<FSLIB::AnnotationSet>                                                    m_pAnnotationSet;           /**< Annotation set. */
+    QSharedPointer<FSLIB::SurfaceSet>                                                       m_pSurfaceSet;              /**< Surface set. */
+
+
     bool                            m_bRawInput;                /**< Flag whether a raw data input was received. */
     bool                            m_bEvokedInput;             /**< Flag whether an evoked input was received. */
 
@@ -205,10 +222,14 @@ protected:
     QFuture<void>                   m_future;                   /**< The future monitoring the clustering. */
 
     FIFFLIB::FiffEvoked             m_currentEvoked;
+    FIFFLIB::FiffCoordTrans         m_mriHeadTrans;             /**< the Mri Head transformation. */
 
     qint32                          m_iNumAverages;             /**< The number of trials/averages to store. */
 
     QString                         m_sAvrType;                 /**< The average type. */
+    QString                         m_sAtlasDir;                /**< File to Atlas. */
+    QString                         m_sSurfaceDir;              /**< File to Surface. */
+    QFile                           m_fMriHeadTrans;            /**< The Head - Mri transformation. */
 
 
     QStringList                     m_qListNoiseCovChNames;          /**< Noise Covariance channel names. */

@@ -63,28 +63,37 @@ CONFIG(debug, debug|release) {
             -lscMeasd \
             -lmnecppFiffd \
             -lmnecppMned \
+            -lmnecppFsd \
+            -lmnecppInversed \
+            -lmnecppDispd \
+            -lmnecppFwdd \
+            -lmnecppUtilsd \
 } else {
     LIBS += -lscShared \
             -lscDisp \
             -lscMeas \
             -lmnecppFiff \
             -lmnecppMne \
+            -lmnecppFs \
+            -lmnecppInverse \
+            -lmnecppDisp \
+            -lmnecppFwd \
+            -lmnecppUtils \
 }
 
 
 SOURCES += \
+    FormFiles/rtbeamformersetupwidget.cpp \
     rtbeamformer.cpp \
     rtbeamformer_global.cpp
 
 HEADERS += \
+    FormFiles/rtbeamformersetupwidget.h \
     rtbeamformer_global.h \
     rtbeamformer.h
 
-DISTFILES += \
-    rtbeamformer.json
-
-
-
+FORMS += \
+    FormFiles/rtbeamformersetupwidget.ui
 
 clang {
     QMAKE_CXXFLAGS += -isystem $${EIGEN_INCLUDE_DIR}
@@ -94,6 +103,11 @@ clang {
 INCLUDEPATH += $${MNE_INCLUDE_DIR}
 INCLUDEPATH += $${MNE_SCAN_INCLUDE_DIR}
 
+
+
+
+OTHER_FILES += \
+    rtbeamformer.json
 
 unix:!macx {
     QMAKE_RPATHDIR += $ORIGIN/../../lib
@@ -124,9 +138,9 @@ contains(MNECPP_CONFIG, useFFTW):!contains(MNECPP_CONFIG, static) {
 FILE_TO_UPDATE = rtbeamformer_global.cpp
 win32 {
     CONFIG(debug, debug|release) {
-        OBJ_TARJET = debug\beamformer_global.obj
+        OBJ_TARJET = debug\rtbeamformer_global.obj
     } else {
-        OBJ_TARJET = release\beamformer_global.obj
+        OBJ_TARJET = release\rtbeamformer_global.obj
     }
 }
 
@@ -152,12 +166,4 @@ win32 {
 
 PRE_TARGETDEPS += phonyFileUpdater
 QMAKE_EXTRA_TARGETS += FileUpdater
-
-
-
-# Default rules for deployment.
-unix {
-    target.path = /usr/lib
-}
-!isEmpty(target.path): INSTALLS += target
 
