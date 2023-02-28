@@ -63,7 +63,9 @@
 // FORWARD DECLARATIONS
 //=============================================================================================================
 
-
+namespace DISPLIB {
+    class BeamformerSettingsView;
+}
 
 namespace MNELIB {
     class MNEForwardSolution;
@@ -212,6 +214,29 @@ public:
 
 
 protected:
+    //=========================================================================================================
+    /**
+     * Slot called when the weight normalization method changed.
+     *
+     * @param[in] method        The new weight normalization.
+     */
+    void onWeightnormChanged(const QString &weightnorm);
+
+    //=========================================================================================================
+    /**
+     * Slot called when the trigger type changed.
+     *
+     * @param[in] triggerType        The new trigger type.
+     */
+    void onTriggerTypeChanged(const QString& triggerType);
+
+    //=========================================================================================================
+    /**
+     * Slot called when the time point changes.
+     *
+     * @param[in] iTimePointMs        The new time point in ms.
+     */
+    void onTimePointValueChanged(int iTimePointMs);
 
     //=========================================================================================================
     /**
@@ -262,6 +287,9 @@ protected:
     FIFFLIB::FiffCoordTrans         m_mriHeadTrans;             /**< the Mri Head transformation. */
 
     qint32                          m_iNumAverages;             /**< The number of trials/averages to store. */
+    qint32                          m_iTimePointSps;            /**< The time point to pick from the data in samples. */
+
+    QString                         m_sWeightnorm;               /**< The method for Weight normalization: "no" | "unitnoisegain" | "arraygain" | "nai". */
 
     QString                         m_sAvrType;                 /**< The average type. */
     QString                         m_sAtlasDir;                /**< File to Atlas. */

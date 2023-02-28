@@ -101,6 +101,7 @@ SOURCES += \
     plots/helpers/colormap.cpp \
     viewers/abstractview.cpp \
     viewers/applytoview.cpp \
+    viewers/beamformersettingsview.cpp \
     viewers/coregsettingsview.cpp \
     viewers/covarianceevokedsettingsview.cpp \
     viewers/dipolefitview.cpp \
@@ -161,6 +162,7 @@ HEADERS += \
     plots/helpers/colormap.h \
     viewers/abstractview.h \
     viewers/applytoview.h \
+    viewers/beamformersettingsview.h \
     viewers/coregsettingsview.h \
     viewers/covarianceevokedsettingsview.h \
     viewers/dipolefitview.h \
@@ -225,6 +227,7 @@ qtHaveModule(charts) {
 }
 
 FORMS += \
+    viewers/formfiles/beamformersettingsview.ui \
     viewers/formfiles/dipolefitview.ui \
     viewers/formfiles/filterdesignview.ui \
     viewers/formfiles/channelselectionview.ui \

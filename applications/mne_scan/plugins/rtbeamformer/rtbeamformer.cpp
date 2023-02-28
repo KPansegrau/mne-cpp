@@ -39,7 +39,8 @@
 #include "rtbeamformer.h"
 
 #include "FormFiles/rtbeamformersetupwidget.h"
-#include "rtprocessing/rtbfweights.h"
+
+#include "disp/viewers/beamformersettingsview.h"
 
 #include <fs/annotationset.h>
 #include <fs/surfaceset.h>
@@ -49,6 +50,8 @@
 #include <mne/mne_forwardsolution.h>
 #include <mne/mne_sourceestimate.h>
 #include <mne/mne_epoch_data_list.h>
+
+#include "rtprocessing/rtbfweights.h"
 
 #include <scMeas/realtimesourceestimate.h>
 #include <scMeas/realtimemultisamplearray.h>
@@ -95,6 +98,8 @@ RtBeamformer::RtBeamformer()
     , m_bEvokedInput(false)
     , m_bUpdateBeamformer(false)
     , m_iNumAverages(1)
+    , m_iTimePointSps(0)
+    , m_sWeightnorm("no")
     , m_sAvrType("3")
     , m_sAtlasDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/label")
     , m_sSurfaceDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/surf")
@@ -248,7 +253,28 @@ QWidget* RtBeamformer::setupWidget()
 void RtBeamformer::initPluginControlWidgets()
 {
 
-    //TODO: s. notes 20.01.2023 (what can be copied)
+    //HINT: copied from rtcmne, changed names to beamformer
+    QList<QWidget*> plControlWidgets;
+
+    BeamformerSettingsView* pBeamformerSettingsView = new BeamformerSettingsView(QString("MNESCAN/%1").arg(this->getName()));
+    connect(this, &RtBeamformer::guiModeChanged,
+            pBeamformerSettingsView, &BeamformerSettingsView::setGuiMode);
+    pBeamformerSettingsView->setObjectName("group_tab_Settings_Beamformer Source Localization");
+
+    connect(pBeamformerSettingsView, &BeamformerSettingsView::weightnormChanged,
+            this, &RtBeamformer::onWeightnormChanged);
+    connect(pBeamformerSettingsView, &BeamformerSettingsView::triggerTypeChanged,
+            this, &RtBeamformer::onTriggerTypeChanged);
+    connect(pBeamformerSettingsView, &BeamformerSettingsView::timePointChanged,
+            this, &RtBeamformer::onTimePointValueChanged);
+    connect(this, &RtBeamformer::responsibleTriggerTypesChanged,
+            pBeamformerSettingsView, &BeamformerSettingsView::setTriggerTypes);
+
+    plControlWidgets.append(pBeamformerSettingsView);
+
+    emit pluginControlWidgetsChanged(plControlWidgets, this->getName());
+
+    m_bPluginControlWidgetsInit = true;
 }
 
 //=============================================================================================================
@@ -529,8 +555,6 @@ void RtBeamformer::updateRTC(SCMEASLIB::Measurement::SPtr pMeasurement)
 
 void RtBeamformer::updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
-    //TODO
-
     //HINT: copied from RtcMne::updateRTFS
     if(QSharedPointer<RealTimeFwdSolution> pRTFS = pMeasurement.dynamicCast<RealTimeFwdSolution>()) {
         if(pRTFS->isClustered()) {
@@ -541,7 +565,7 @@ void RtBeamformer::updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement)
             m_pFiffInfoForward = QSharedPointer<FiffInfoBase>(new FiffInfoBase(m_pFwd->info));
             m_qMutex.unlock();
 
-            // update inverse operator
+            // update beamformer weights
             if(this->isRunning() && m_pRtBfWeights) {
                 m_pRtBfWeights->setFwdSolution(m_pFwd);
                 m_pRtBfWeights->append(*m_pNoiseCov, *m_pDataCov);
@@ -557,13 +581,50 @@ void RtBeamformer::updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement)
 
 void RtBeamformer::updateBFWeights(const MNEBeamformerWeights& bfWeights)
 {
-    //TODO
     //HINT: copied and modified according to rtcmne::updateInvOp()
     QMutexLocker locker(&m_qMutex);
 
     m_bfWeights = bfWeights;
 
     m_bUpdateBeamformer = true;
+}
+
+//=============================================================================================================
+
+void RtBeamformer::onWeightnormChanged(const QString& weightnorm)
+{
+    //HINT: copied from rtcmne, changed names
+    QMutexLocker locker(&m_qMutex);
+
+    m_sWeightnorm = weightnorm;
+
+    m_bUpdateBeamformer = true;
+}
+
+//=============================================================================================================
+
+void RtBeamformer::onTriggerTypeChanged(const QString& triggerType)
+{
+    //HINT: copied from rtcmne
+    m_sAvrType = triggerType;
+}
+
+//=============================================================================================================
+
+void RtBeamformer::onTimePointValueChanged(int iTimePointMs)
+{
+    //HINT: copied from rtcmne
+    if(m_pFiffInfoInput && m_pCircularEvokedBuffer) {
+        m_qMutex.lock();
+        m_iTimePointSps = m_pFiffInfoInput->sfreq * (float)iTimePointMs * 0.001f;
+        m_qMutex.unlock();
+
+        if(this->isRunning()) {
+            while(!m_pCircularEvokedBuffer->push(m_currentEvoked)) {
+                //Do nothing until the circular buffer is ready to accept new data again
+            }
+        }
+    }
 }
 
 
