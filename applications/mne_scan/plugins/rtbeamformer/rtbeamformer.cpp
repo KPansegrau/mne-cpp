@@ -531,6 +531,25 @@ void RtBeamformer::updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
     //TODO
 
+    //HINT: copied from RtcMne::updateRTFS
+    if(QSharedPointer<RealTimeFwdSolution> pRTFS = pMeasurement.dynamicCast<RealTimeFwdSolution>()) {
+        if(pRTFS->isClustered()) {
+            m_pFwd = pRTFS->getValue();
+            m_pRTSEOutput->measurementData()->setFwdSolution(m_pFwd);
+
+            m_qMutex.lock();
+            m_pFiffInfoForward = QSharedPointer<FiffInfoBase>(new FiffInfoBase(m_pFwd->info));
+            m_qMutex.unlock();
+
+            // update inverse operator
+            if(this->isRunning() && m_pRtBfWeights) {
+                m_pRtBfWeights->setFwdSolution(m_pFwd);
+                m_pRtBfWeights->append(*m_pNoiseCov, *m_pDataCov);
+            }
+        } else if(!pRTFS->isClustered()) {
+            qWarning() << "[RtBeamformer::updateRTFS] The forward solution has not been clustered yet.";
+        }
+    }
 
 }
 
