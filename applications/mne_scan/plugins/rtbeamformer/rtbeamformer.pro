@@ -68,6 +68,7 @@ CONFIG(debug, debug|release) {
             -lmnecppDispd \
             -lmnecppFwdd \
             -lmnecppUtilsd \
+            -lmnecppRtProcessingd \
 } else {
     LIBS += -lscShared \
             -lscDisp \
@@ -79,6 +80,7 @@ CONFIG(debug, debug|release) {
             -lmnecppDisp \
             -lmnecppFwd \
             -lmnecppUtils \
+            -lmnecppRtProcessing \
 }
 
 

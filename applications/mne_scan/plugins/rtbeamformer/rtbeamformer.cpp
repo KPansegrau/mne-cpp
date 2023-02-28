@@ -39,6 +39,7 @@
 #include "rtbeamformer.h"
 
 #include "FormFiles/rtbeamformersetupwidget.h"
+#include "rtprocessing/rtbfweights.h"
 
 #include <fs/annotationset.h>
 #include <fs/surfaceset.h>
@@ -53,7 +54,7 @@
 #include <scMeas/realtimemultisamplearray.h>
 #include <scMeas/realtimeevokedset.h>
 #include <scMeas/realtimeevokedcov.h>
-
+#include <scMeas/realtimefwdsolution.h>
 
 
 
@@ -80,6 +81,7 @@ using namespace INVERSELIB;
 using namespace Eigen;
 using namespace DISPLIB;
 using namespace FSLIB;
+using namespace RTPROCESSINGLIB;
 
 
 //=============================================================================================================
@@ -126,8 +128,6 @@ QSharedPointer<AbstractPlugin> RtBeamformer::clone() const
 
 void RtBeamformer::init()
 {
-
-    //TODO
 
     // Inits
     //HINT: copied from RtcMne::init()
@@ -211,7 +211,7 @@ bool RtBeamformer::stop()
     wait(500);
 
     m_qListNoiseCovChNames.clear(); //member is renamed to differentiate data and noise cov channel name list
-    m_qListDataCovChNames.clear(); //This is new in comparison to rtmne
+    m_qListDataCovChNames.clear(); //HINT: This is new in comparison to rtmne
     m_bEvokedInput = false;
     m_bRawInput = false;
     m_bPluginControlWidgetsInit = false;
@@ -491,7 +491,39 @@ void RtBeamformer::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
 void RtBeamformer::updateRTC(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
     //TODO
+    //HINT: copied from rtcmne::updateRTC, changed realtimecov to realtimeevokedcov
+    if(m_pFwd) {
+        QSharedPointer<RealTimeEvokedCov> pRTC = pMeasurement.dynamicCast<RealTimeEvokedCov>();
 
+        if(pRTC && this->isRunning()) {
+            // Init Real-Time inverse estimator
+            //TODO: class RtBFWeights need to be implemented in rtprocessing lib
+            if(!m_pRtBfWeights && m_pFiffInfo && m_pFwd) {
+                m_pRtBfWeights = RtBfWeights::SPtr(new RtBfWeights(m_pFiffInfo, m_pFwd));
+                connect(m_pRtBfWeights.data(), &RtBfWeights::bfWeightsCalculated,
+                        this, &RtBeamformer::updateBFWeights);
+            }
+
+            //Fiff Information of the covariance
+            //HINT: modified to RealTimeEvokedCov
+            //TODO: access getValue()->first.names.size() might be wrong, check this
+            if(m_qListNoiseCovChNames.size() != pRTC->getValue()->first.names.size()) {
+                m_qListNoiseCovChNames = pRTC->getValue()->first.names;
+            }
+            if(m_qListDataCovChNames.size() != pRTC->getValue()->second.names.size()) {
+                m_qListDataCovChNames = pRTC->getValue()->second.names;
+            }
+
+            //HINT: added setting of data cov here
+            //TODO: fix problems with getValue first and second here
+            //HINT: we need a qShared pointer <Fiffcov> from the right side
+            if(this->isRunning() && m_pRtBfWeights){
+                m_pNoiseCov = QSharedPointer<FiffCov>(new FiffCov(pRTC->getValue()->first)); //we only want the first of the pair for the member
+                m_pDataCov = QSharedPointer<FiffCov>(new FiffCov(pRTC->getValue()->second));
+                m_pRtBfWeights->append(*m_pNoiseCov, *m_pDataCov);
+            }
+        }
+    }
 
 }
 
@@ -502,6 +534,19 @@ void RtBeamformer::updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement)
     //TODO
 
 
+}
+
+//=============================================================================================================
+
+void RtBeamformer::updateBFWeights(const MNEBeamformerWeights& bfWeights)
+{
+    //TODO
+    //HINT: copied and modified according to rtcmne::updateInvOp()
+    QMutexLocker locker(&m_qMutex);
+
+    m_bfWeights = bfWeights;
+
+    m_bUpdateBeamformer = true;
 }
 
 

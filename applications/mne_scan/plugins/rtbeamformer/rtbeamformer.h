@@ -48,6 +48,8 @@
 
 #include <fiff/fiff_evoked.h>
 
+#include <mne/mne_beamformer_weights.h>
+
 //=============================================================================================================
 // QT INCLUDES
 //=============================================================================================================
@@ -65,6 +67,7 @@
 
 namespace MNELIB {
     class MNEForwardSolution;
+    class MNEBeamformerWeights;
 }
 
 namespace FIFFLIB {
@@ -74,6 +77,10 @@ namespace FIFFLIB {
 
 namespace INVERSELIB {
     class Beamformer;
+}
+
+namespace RTPROCESSINGLIB {
+    class RtBfWeights;
 }
 
 namespace FSLIB {
@@ -194,6 +201,14 @@ public:
     void updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement);
 
     //=========================================================================================================
+    /**
+     * Slot to update the beamformer weights
+     *
+     * @param[in] invOp    The beamformer weights to update.
+     */
+    void updateBFWeights(const MNELIB::MNEBeamformerWeights& bfWeights);
+
+    //=========================================================================================================
 
 
 protected:
@@ -216,10 +231,14 @@ protected:
     QSharedPointer<UTILSLIB::CircularBuffer_Matrix_double >                                 m_pCircularMatrixBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
     QSharedPointer<UTILSLIB::CircularBuffer<FIFFLIB::FiffEvoked> >                          m_pCircularEvokedBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
 
+    QSharedPointer<RTPROCESSINGLIB::RtBfWeights>                                            m_pRtBfWeights;                 /**< Real-time beamformer weights. */
+
 
     QSharedPointer<SCSHAREDLIB::PluginOutputData<SCMEASLIB::RealTimeSourceEstimate> >       m_pRTSEOutput;              /**< The RealTimeSourceEstimate output.*/
 
     QSharedPointer<MNELIB::MNEForwardSolution>                                              m_pFwd;                     /**< Forward solution. */
+    QSharedPointer<FIFFLIB::FiffCov>                                                        m_pNoiseCov;                     /**< Noise Covariance Matrix. */
+    QSharedPointer<FIFFLIB::FiffCov>                                                        m_pDataCov;                     /**< Data Covariance Matrix. */
 
 
 
@@ -253,6 +272,9 @@ protected:
     QStringList                     m_qListNoiseCovChNames;          /**< Noise Covariance channel names. */
     QStringList                     m_qListDataCovChNames;         /**< Data Covariance channel names. */  //HINT: new field here
     QStringList                     m_qListPickChannels;        /**< Channels to pick. */
+
+    MNELIB::MNEBeamformerWeights      m_bfWeights;                    /**< The beamformer weights. */
+
 
 signals:
     void responsibleTriggerTypesChanged(const QStringList& lResponsibleTriggerTypes);

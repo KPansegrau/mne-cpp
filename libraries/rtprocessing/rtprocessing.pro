@@ -80,6 +80,7 @@ CONFIG(debug, debug|release) {
 
 SOURCES += \
     icp.cpp \
+    rtbfweights.cpp \
     rtcov.cpp \
     rtinvop.cpp \
     averaging.cpp \
@@ -99,6 +100,7 @@ SOURCES += \
 
 HEADERS +=  \
     icp.h \
+    rtbfweights.h \
     rtprocessing_global.h \
     rtcov.h \
     rtinvop.h \
