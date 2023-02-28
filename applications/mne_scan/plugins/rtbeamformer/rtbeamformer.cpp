@@ -515,8 +515,6 @@ void RtBeamformer::updateRTC(SCMEASLIB::Measurement::SPtr pMeasurement)
             }
 
             //HINT: added setting of data cov here
-            //TODO: fix problems with getValue first and second here
-            //HINT: we need a qShared pointer <Fiffcov> from the right side
             if(this->isRunning() && m_pRtBfWeights){
                 m_pNoiseCov = QSharedPointer<FiffCov>(new FiffCov(pRTC->getValue()->first)); //we only want the first of the pair for the member
                 m_pDataCov = QSharedPointer<FiffCov>(new FiffCov(pRTC->getValue()->second));
