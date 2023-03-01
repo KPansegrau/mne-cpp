@@ -108,7 +108,7 @@ MNEBeamformerWeights::MNEBeamformerWeights(const FiffInfo &p_dataInfo,
                                            qint32 p_iRegParam,
                                            qint32 p_iNAverages)
 {
-    *this = MNEBeamformerWeights::make_beamformer_weights(p_dataInfo,p_forward,p_dataCov,p_noiseCov,p_sPowMethod,p_bFixedOri,p_bEstNoisePow,p_bProjectMom,p_sWeightnorm,p_iRegParam,p_iNAverages);
+    *this = MNEBeamformerWeights::make_beamformer_weights(p_dataInfo,p_forward,p_dataCov,p_noiseCov,p_bFixedOri,p_bEstNoisePow,p_bProjectMom,p_sWeightnorm,p_iRegParam,p_iNAverages);
    qRegisterMetaType<QSharedPointer<MNELIB::MNEBeamformerWeights> >("QSharedPointer<MNELIB::MNEBeamformerWeights>");
    qRegisterMetaType<MNELIB::MNEBeamformerWeights>("MNELIB::MNEBeamformerWeights");
 }
@@ -336,25 +336,22 @@ QStringList MNEBeamformerWeights::check_info_bf(const FiffInfo &p_info,
     return qCommonChNames;
 }
 
+
+
 //=============================================================================================================
 
-MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const MatrixXd &p_matData, //the measurement data matrix (input in fieldtrip, we dont need this because no subspace projection procedure in this first implementation)
-                                                                   const FiffInfo &p_dataInfo, //the info of the measurement data (no input in fieldtrip)
+MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInfo &p_dataInfo, //the info of the measurement data (no input in fieldtrip)
                                                                    const MNEForwardSolution &p_forward, //the forward solution
                                                                    const FiffCov &p_dataCov, //the data covariance matrix
-                                                                   const FiffCov &p_noiseCov, //the noise covariance matrix (no input in fieldtrip but we need it for whitening)
-                                                                   QString p_sPowMethod, //can be 'trace' (default s. Van Veen 1997) or 'lambda1'
+                                                                   const FiffCov &p_noiseCov, //can be 'trace' (default s. Van Veen 1997) or 'lambda1'
                                                                    bool p_bFixedOri, // true for fixed orientation, false for free orientation (default=false)
                                                                    bool p_bEstNoisePow, // estimate noise power projected through filter (default=true)
                                                                    bool p_bProjectMom, // true: project the dipole moment time course on the direction of maximal power (default=false), TODO: check what this is for, when do we need it and why?
-                                                                   //bool p_bKurtosis, //compute kurtosis of dipole timeseries (s. goodnotes zeigt ob time series spiked an betrachteter Position, s. Hall 2018)
                                                                    QString p_sWeightnorm, //normalize the beamformer weights ('no' (=unitgain,default), 'unitnoisegain', 'arraygain' or 'nai')
                                                                    qint32 p_iRegParam, //the regularization parameter //called lambda in fieldtrip
-                                                                   //qint32 &p_iKappa,
-                                                                   //qint32 &p_iTol
                                                                    qint32 p_iNAverage //number of averages if beamformer should be applied to evoked data
                                                                    ) {
-    //HINT: resemling the FieldTrip code in ft_inverse_lcmv.m
+    //HINT: resembling the FieldTrip code in ft_inverse_lcmv.m
     //because mnepy code is highly modular and too complex for first lcmv implementation
     //decided on FieldTrip implementation because it is easier to understand (maybe less overload code)
     // TODO: add to outlook: for better symmetry to exsisting code in mnecpp, restructure code according to mnepy implementation
@@ -376,8 +373,6 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
     MNEBeamformerWeights p_MNEBeamformerWeights;
 
     //use this logical flags instead of string comparisons (idea from fieldtrip ft_inverse_lcmv, saves time during scanning loop)
-    bool bPowTrace = (p_sPowMethod == "trace");
-    bool bPowLambda1 = (p_sPowMethod == "lambda1");
     bool bNormNo = (p_sWeightnorm == "no");
     bool bNormUnitNoise = (p_sWeightnorm == "unitnoisegain");
     bool bNormArray = (p_sWeightnorm == "arraygain");
@@ -399,11 +394,6 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
         p_bFixedOri = true;
     }
 
-    //ensure that p_sPowMethod option is validm, if not set to default (trace).
-    if(!bPowTrace && !bPowLambda1){
-        qWarning("MNEBeamformerWeights::make_beamformer_weights Warning: Invalid option for p_sPowMethod. Setting p_sPowMethod = 'trace' (default).\n");
-        p_sPowMethod = "trace";
-    }
 
     //ensure that p_sWeightnorm option is valid, if not set to default (no weight normalization)
     if(!bNormNo && !bNormUnitNoise && !bNormArray && !bNormNai){
@@ -669,15 +659,8 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
             matLocVirtSens = vecMom.transpose() * matLocVirtSens; //TODO: find out why we modify  virtual sensor here
         }
 
-        //if powlambda1 elseif powtrace calculate lambda1 or trace of source covariance matrix
-        if(bPowLambda1){
-            // determine the largest singular value, which corresponds to the power along the dominant direction
-            JacobiSVD<MatrixXd> svd(matSourceCov);
-            VectorXd vecSingVals = svd.singularValues();
-            vecSourcePow[iPos] = vecSingVals[0];
-        }else{ //bPowTrace (default)
-            vecSourcePow[iPos] = matSourceCov.trace();
-        }
+        //HINT: in contrast to fieldtrip no option for power estimation, we use the trace method
+        vecSourcePow[iPos] = matSourceCov.trace();
 
 
         //if keepmom and we have data: estimate dipole moment at current position (filt*data; TODO: this in apply lcmv method)
@@ -685,14 +668,9 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(//const Matri
         //if compute kurtosis and we have data: caluclate kurtosis of dipole time series (moment computed before; kurt(filt*data), TODO: this in apply lcmv method)
 
         //if project noise: estimate noise power projected through the filter
+        //HINT: in contrast to fieldtrip we use the trace option for source power estimation
         if(p_bEstNoisePow){
-            if(bPowLambda1){
-                JacobiSVD<MatrixXd> svd(matLocVirtSens * matLocVirtSens.transpose());
-                VectorXd vecSingVals = svd.singularValues();
-                vecNoisePow[iPos] = iNoiseLevelDataCov * vecSingVals[0];
-            }else{//bPowTrace is true (default)
-                vecNoisePow[iPos] = iNoiseLevelDataCov * (matLocVirtSens * matLocVirtSens.transpose()).trace();
-            }
+            vecNoisePow[iPos] = iNoiseLevelDataCov * (matLocVirtSens * matLocVirtSens.transpose()).trace();
         }
 
     }//for iPos (scanning the source grid)
@@ -741,7 +719,7 @@ MNEBeamformerWeights MNEBeamformerWeights::prepare_beamformer_weights() const
 
     //construct MNEBeamformerWeights
     //HINT: analog to prepare_inverse_operator
-    printf("MNEBeamformerWeights::prepare_beamformer_weights Preparing the inverse operator for use...\n");
+    printf("MNEBeamformerWeights::prepare_beamformer_weights Preparing the beamformer weights for use...\n");
     MNEBeamformerWeights p_MNEBeamformerWeights(*this);
 
     //

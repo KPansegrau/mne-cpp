@@ -210,6 +210,7 @@ public:
                                 const FIFFLIB::FiffCov &p_data_cov,
                                 const FIFFLIB::FiffCov &p_noise_cov) const;
 
+
     //=========================================================================================================
     /**
      * TODO: edit docu, see .cpp file, check default value for RegParam
@@ -223,15 +224,10 @@ public:
                                                  const MNEForwardSolution &p_forward,
                                                    const FIFFLIB::FiffCov &p_dataCov,
                                                  const FIFFLIB::FiffCov &p_noiseCov,
-                                                   QString p_sPowMethod = "trace",
                                                    bool p_bFixedOri = false,
                                                    bool p_bEstNoisePow = true,
                                                    bool p_bProjectMom = false,
-                                                 //bool p_bKurtosis = false,
                                                    QString p_sWeightnorm = "no",
-                                                   //qint32 &p_iLambda,
-                                                   //qint32 &p_iKappa,
-                                                   //qint32 &p_iTol
                                                     qint32 p_iRegParam = 0,
                                                  qint32 p_iNAverage = 1
                                                  );
@@ -258,6 +254,7 @@ public:
 public:
 
     //TODO: edit docu here
+    //TODO chance member variable names to m_TypeName style
 
     FIFFLIB::FiffInfoBase info;                     /**< Modified measurement info (contains only common good channels of forward solution, covariance matrices and measurement). */
     Eigen::MatrixXd weights;                        /**< Beamformer weights */

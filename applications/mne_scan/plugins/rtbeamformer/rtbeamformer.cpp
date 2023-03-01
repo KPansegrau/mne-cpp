@@ -51,6 +51,8 @@
 #include <mne/mne_sourceestimate.h>
 #include <mne/mne_epoch_data_list.h>
 
+#include <inverse/beamformer/beamformer.h>
+
 #include "rtprocessing/rtbfweights.h"
 
 #include <scMeas/realtimesourceestimate.h>
@@ -99,6 +101,7 @@ RtBeamformer::RtBeamformer()
     , m_bUpdateBeamformer(false)
     , m_iNumAverages(1)
     , m_iTimePointSps(0)
+    , m_iDownSample(1)
     , m_sWeightnorm("no")
     , m_sAvrType("3")
     , m_sAtlasDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/label")
@@ -639,6 +642,126 @@ void RtBeamformer::run()
     //HINT: copied from rtcmne
     while(!calcFiffInfo()) {
         msleep(200);
+    }
+
+    // Init parameters
+    //HINT: copied from rtcmne, modifications: names
+    qint32 skip_count = 0;
+    FiffEvoked evoked;
+    MatrixXd matData;
+    MatrixXd matDataResized;
+    qint32 j;
+    int iTimePointSps = 0;
+    int iNumberChannels = 0;
+    int iDownSample = 1;
+    float tstep;
+    //HINT: in rtcmne this parameter is called lambda2
+    float regParam = 1.0f / pow(1.0f, 2); //ToDo estimate lambda using covariance.
+    MNESourceEstimate sourceEstimate;
+    bool bEvokedInput = false;
+    bool bRawInput = false;
+    bool bUpdateBeamformer = false; //HINT: changed it from bUpdateMinimumNorm
+    QSharedPointer<INVERSELIB::Beamformer> pBeamformer; //HINT: changed MinimumNorm to Beamformer here
+    QStringList lChNamesFiffInfo;
+    QStringList lChNamesBfWeights; //HINT: changed name form lChNamesInvOp
+
+
+    //Start processing data
+    //HINT: copied from rtcmne in parts
+    while(!isInterruptionRequested()){
+
+        //HINT: this part is copied from rtcmne, with only name modifications
+        m_qMutex.lock();
+        iTimePointSps = m_iTimePointSps;
+        bEvokedInput = m_bEvokedInput;
+        bRawInput = m_bRawInput;
+        iDownSample = m_iDownSample;
+        iNumberChannels = m_bfWeights.noise_cov->names.size();
+        tstep = 1.0f / m_pFiffInfoInput->sfreq;
+        lChNamesFiffInfo = m_pFiffInfoInput->ch_names;
+        lChNamesBfWeights = m_bfWeights.noise_cov->names;
+        bUpdateBeamformer = m_bUpdateBeamformer;
+        m_qMutex.unlock();
+
+        //HINT: this part is copied from rtcmne, changes: names
+        //TODO: fix errors with call of doInverseSetup
+        if(bUpdateBeamformer) {
+            m_qMutex.lock();
+            pBeamformer = Beamformer::SPtr(new Beamformer(m_bfWeights, regParam, m_sWeightnorm));
+            m_bUpdateBeamformer = false;
+            m_qMutex.unlock();
+
+            // Set up the inverse according to the parameters.
+            // in rtcmne::run: doInverseSetup(1,true) Use 1 nave here because in case of evoked data as input the beamformer will always be updated when the source estimate is calculated (see run method).
+            pBeamformer->doInverseSetup(1,true); //HINT: this parameters are not used in doInverseSetup
+        }
+
+        //Process data from raw data input
+        //HINT: copied from rtcmne::run, changes: names
+        //TODO: check out what to do in case of raw data (cov estimation?), check whether we need to make if statements in cov estimation methods? estimate cov matrices from raw data input somehow?
+        if(bRawInput && pBeamformer) {
+            //TODO: this warning is added and should stay here until Todo above is done
+            qWarning() << "[RtBeamformer::run()] The option for raw data input is not implemented yet.";
+            break;
+
+
+            if(((skip_count % iDownSample) == 0)) {
+                // Get the current raw data
+                if(m_pCircularMatrixBuffer->pop(matData)) {
+                    //Pick the same channels as in the inverse operator
+                    matDataResized.resize(iNumberChannels, matData.cols());
+
+                    for(j = 0; j < iNumberChannels; ++j) {
+                        matDataResized.row(j) = matData.row(lChNamesFiffInfo.indexOf(lChNamesBfWeights.at(j)));
+                    }
+
+                    //TODO: Add picking here. See evoked part as input.
+                    sourceEstimate = pBeamformer->calculateInverse(matDataResized,
+                                                                    0.0f,
+                                                                    tstep,
+                                                                    true);
+
+                    if(!sourceEstimate.isEmpty()) {
+                        if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {
+                            sourceEstimate = sourceEstimate.reduce(iTimePointSps,1);
+                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
+                        } else {
+                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
+                        }
+                    }
+                }
+            } else {
+                m_pCircularMatrixBuffer->pop(matData);
+            }
+        }
+
+
+        //Process data from averaging input
+        //HINT: copied from rtcmne::run, changes: names
+        if(bEvokedInput && pBeamformer) {
+            if(m_pCircularEvokedBuffer->pop(evoked)) {
+                // Get the current evoked data
+                if(((skip_count % iDownSample) == 0)) {
+                    sourceEstimate = pBeamformer->calculateInverse(evoked);
+
+                    if(!sourceEstimate.isEmpty()) {
+                        if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {
+                            sourceEstimate = sourceEstimate.reduce(iTimePointSps,1);
+                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
+                        } else {
+                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
+                        }
+                    }
+                } else {
+                    m_pCircularEvokedBuffer->pop(evoked);
+                }
+            }
+        }
+
+        ++skip_count;
+
+
+
     }
 
 

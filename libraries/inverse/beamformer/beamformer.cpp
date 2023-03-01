@@ -68,12 +68,51 @@ using namespace Eigen;
 // DEFINE MEMBER METHODS
 //=============================================================================================================
 
-Beamformer::Beamformer(const MNEBeamformerWeights &p_beamformerWeights)
+Beamformer::Beamformer(const MNEBeamformerWeights &p_beamformerWeights, float p_fLambda, const QString p_sWeightnorm)
     : m_beamformerWeights(p_beamformerWeights),
       m_bBeamformerSetup(false)
 {
+    //HINT: this constructor is similar to the ones in MinimumNorm, but lambda is p_lambda here and method is used for weight normalization option
+    //TODO: check whether we really need the regularization parameter here
+    this->setRegularization(p_fLambda);
+    this->setWeightnorm(p_sWeightnorm);
 
-    //HINT: this constructor is similar to the ones in MinimumNorm, but without lambda and method parameters since we dont have them for beamformer
+}
+
+//=============================================================================================================
+
+MNESourceEstimate Beamformer::calculateInverse(const FiffEvoked &p_fiffEvoked, bool pick_normal)
+{
+    Q_UNUSED(pick_normal);
+
+    //HINT: copied from MinimumNorm::calculateInverse for evoked input
+    //HINT: modifications: names, no channel checking
+
+    //
+    //   Set up the inverse according to the parameters
+    //
+    qint32 nave = p_fiffEvoked.nave;
+
+    //HINT: this part not necessary since channel checking was already performed during computation of beamformer weights
+/*    if(!m_beamformerWeights.check_ch_names(p_fiffEvoked.info)) {
+        qWarning("Channel name check failed.");
+        return MNESourceEstimate();
+    }
+*/
+    doInverseSetup(nave,pick_normal); //HINT: this parameters are not needed in doInverseSetup (but have to be function parameters since this is a virtual function)
+
+    //
+    //   Pick the correct channels from the data
+    //
+    FiffEvoked t_fiffEvoked = p_fiffEvoked.pick_channels(m_beamformerWeightsSetup.noise_cov->names);
+
+    printf("Picked %d channels from the data\n",t_fiffEvoked.info.nchan);
+
+    //Results
+    float tmin = p_fiffEvoked.times[0];
+    float tstep = 1/t_fiffEvoked.info.sfreq;
+
+    return calculateInverse(t_fiffEvoked.data, tmin, tstep, pick_normal);
 }
 
 //=============================================================================================================
@@ -81,11 +120,8 @@ Beamformer::Beamformer(const MNEBeamformerWeights &p_beamformerWeights)
 MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin, float tstep, bool pick_normal) const
 {
 
-    //TODO: where do we get tmin and tstep from? (they are calculated in the other calculateInverse for evoked data, maybe we need this other calculateInverse because of that)
-    //both values are set during run() of plug-in
 
     //TODO: this parameter is unused in this function body but necessary in signature for correct overloading (idea from rtc music implementation of calculateInverse)
-    //TODO: check whether pick_normal makes sense for the lcmv beamformer here, if it does, change this
     Q_UNUSED(pick_normal);
 
     //HINT: these ifs are copied from minimumnorm method calculateInverse and slightly adapted
@@ -104,12 +140,15 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
     //these options should be user user adjustable similar to sLoreta etc methods
     //maybe in do Inverse setup and then if statement here (if filter output sol = Wt*data, if activity strengh sol = vecSourcePow etc)
 
+    //TODO: we need to apply the SSP projector to the data first, do it here!
+    printf("Beamformer::calculateInverse TODO: Apply SSP projector to data...\n");
+
     //apply beamformer filter matrix to data to get filter output
     //output matrix has dimension (3*nsource x ntimes)
     MatrixXd sol = m_W_transposed * data; //filter output
     std::cout << "Beamformer::calculateInverse: Filter output dimension: sol " << sol.rows() << " x " << sol.cols() << std::endl;
 
-    printf("Beamformer::calculateInverse [done]\n");
+    printf("Beamformer::calculateInverse Source estimate (beamformer filter output) computed. \n");
 
     //Results
     //HINT: copied from calculateInverse of minimumnorm
@@ -125,16 +164,21 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
 
 //=============================================================================================================
 
-void Beamformer::doInverseSetup()
+void Beamformer::doInverseSetup(qint32 nave, bool pick_normal) //parameters are not used in this class
 {
-
+    Q_UNUSED(nave);
+    Q_UNUSED(pick_normal);
     //HINT: copied from minimumnorm, adapted to beamformer weights preparation
+
+    //TODO: check whether we need this pick_normal option for BF (does it make sense for BF?)
 
     //
     //   Set up the beamformer weights
     //
     m_beamformerWeightsSetup = m_beamformerWeights.prepare_beamformer_weights();
     qInfo("Beamformer::doInverseSetup Prepared the beamformer weights.");
+
+    //TODO: do we need a method assemble beamformer weights here similar to assemble kernel? (this should handle pick normal?)
 
     m_W_transposed = m_beamformerWeightsSetup.weights;
     std::cout << "Beamformer::doInverseSetup: W^T " << m_W_transposed.rows() << " x " << m_W_transposed.cols() << std::endl;
@@ -154,4 +198,33 @@ const char* Beamformer::getName() const
 const MNESourceSpace& Beamformer::getSourceSpace() const
 {
     return m_beamformerWeights.src;
+}
+
+//=============================================================================================================
+
+void Beamformer::setWeightnorm(QString weightnorm)
+{
+    if(weightnorm.compare("no") == 0)
+        m_sWeightnorm = QString("no");
+    else if(weightnorm.compare("unitnoisegain") == 0)
+        m_sWeightnorm = QString("unitnoisegain");
+    else if(weightnorm.compare("arraygain") == 0)
+        m_sWeightnorm = QString("arraygain");
+    else if(weightnorm.compare("nai") == 0)
+        m_sWeightnorm = QString("nai");
+    else
+    {
+        qWarning("Weight normalization method not recognized! Activating no weight normalization.");
+        m_sWeightnorm = QString("no");
+
+    }
+
+    printf("\tSet weight normalization method to %s.\n", m_sWeightnorm.toUtf8().constData());
+}
+
+//=============================================================================================================
+
+void Beamformer::setRegularization(float lambda)
+{
+    m_fLambda = lambda;
 }

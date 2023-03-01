@@ -251,6 +251,7 @@ protected:
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedSet> >             m_pRTESInput;               /**< The RealTimeEvoked input.*/
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedCov> >             m_pRTCInput;                /**< The RealTimeEvokedCov input.*/
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeFwdSolution> >           m_pRTFSInput;               /**< The RealTimeFwdSolution input.*/
+    QSharedPointer<SCSHAREDLIB::PluginOutputData<SCMEASLIB::RealTimeSourceEstimate> >       m_pRTSEOutput;              /**< The RealTimeSourceEstimate output.*/
 
 
     QSharedPointer<UTILSLIB::CircularBuffer_Matrix_double >                                 m_pCircularMatrixBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
@@ -259,7 +260,6 @@ protected:
     QSharedPointer<RTPROCESSINGLIB::RtBfWeights>                                            m_pRtBfWeights;                 /**< Real-time beamformer weights. */
 
 
-    QSharedPointer<SCSHAREDLIB::PluginOutputData<SCMEASLIB::RealTimeSourceEstimate> >       m_pRTSEOutput;              /**< The RealTimeSourceEstimate output.*/
 
     QSharedPointer<MNELIB::MNEForwardSolution>                                              m_pFwd;                     /**< Forward solution. */
     QSharedPointer<FIFFLIB::FiffCov>                                                        m_pNoiseCov;                     /**< Noise Covariance Matrix. */
@@ -288,6 +288,8 @@ protected:
 
     qint32                          m_iNumAverages;             /**< The number of trials/averages to store. */
     qint32                          m_iTimePointSps;            /**< The time point to pick from the data in samples. */
+    qint32                          m_iDownSample;              /**< Down sample factor. */
+
 
     QString                         m_sWeightnorm;               /**< The method for Weight normalization: "no" | "unitnoisegain" | "arraygain" | "nai". */
 

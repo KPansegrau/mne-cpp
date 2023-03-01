@@ -91,14 +91,16 @@ public:
 
 
     /**
-     * TODO: edit docu
-     *
      * Constructs beamformer inverse algorithm
      *
+     * @param[in] p_beamformerWeights   The beamformer weights.
+     * @param[in] p_fLambda              The regularization factor.
+     * @param[in] P_sWeightnorm          Used weight normalization. ("no" | "unitnoisegain" | "arraygain" | "nai").
      *
+     * @return the prepared beamformer.
      */
 
-    explicit Beamformer(const MNELIB::MNEBeamformerWeights &p_beamformerWeights);
+    explicit Beamformer(const MNELIB::MNEBeamformerWeights &p_beamformerWeights, float p_fLambda, const QString p_sWeightnorm);
 
     //=========================================================================================================
     /**
@@ -120,6 +122,8 @@ public:
      *
      * @return the calculated source estimation.
      */
+    virtual MNELIB::MNESourceEstimate calculateInverse(const FIFFLIB::FiffEvoked &p_fiffEvoked, bool pick_normal = false);
+
 
     virtual MNELIB::MNESourceEstimate calculateInverse(const Eigen::MatrixXd &data, float tmin, float tstep, bool pick_normal = false) const;
 
@@ -146,7 +150,7 @@ public:
     //=========================================================================================================
 
     /**
-     * TODO: edit docu
+     * TODO: edit docu, parameters are obligatory because of abstract class but are not used in this class
      *
      * Perform the inverse setup: Prepares this inverse operator and assembles the kernel.
      *
@@ -154,7 +158,7 @@ public:
      * @param[in] pick_normal    If True, rather than pooling the orientations by taking the norm, only the.
      *                           radial component is kept. This is only applied when working with loose orientations.
      */
-    virtual void doInverseSetup();
+    virtual void doInverseSetup(qint32 nave, bool pick_normal);
 
     //=========================================================================================================
     // further member methods
@@ -178,6 +182,22 @@ public:
      */
     inline Eigen::MatrixXd& getBeamformerWeights();
 
+    //=========================================================================================================
+    /**
+     * Set weight normalization method ("no" | "unitnoisegain" | "arraygain" | "nai")
+     *
+     * @param[in] weightnorm   Weight normalization method to use.
+     */
+    void setWeightnorm(QString weightnorm);
+
+    //=========================================================================================================
+    /**
+     * Set regularization factor
+     *
+     * @param[in] lambda   The regularization factor.
+     */
+    void setRegularization(float lambda);
+
 
 protected:
 
@@ -187,6 +207,9 @@ private:
     bool m_bBeamformerSetup;                              /**< Whether the beamformer weights are set up. */
     MNELIB::MNEBeamformerWeights m_beamformerWeightsSetup;                 /**< The setup beamformer weights. */
     Eigen::MatrixXd m_W_transposed;           /**< The beamformer filter weight matrix W^T (the one that is applied to the data). */
+
+    QString m_sWeightnorm;                              /**< Selected weight normalization method. */
+    float m_fLambda;                                /**< Regularization parameter. */
 
 };
 
