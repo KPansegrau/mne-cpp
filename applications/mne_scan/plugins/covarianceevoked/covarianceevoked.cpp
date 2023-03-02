@@ -130,9 +130,11 @@ void CovarianceEvoked::init()
 
     //Output
     //HINT: new because we need pair of covariances as output
-    m_pCovarianceEvokedOutput = PluginOutputData<RealTimeEvokedCov>::create(this,"CovarianceEvoced Out","CovarianceEvoked output data");
+    m_pCovarianceEvokedOutput = PluginOutputData<RealTimeEvokedCov>::create(this,"CovarianceEvoked Out","CovarianceEvoked output data");
     m_pCovarianceEvokedOutput->measurementData()->setName(this->getName());//Provide name to auto store widget settings
     m_outputConnectors.append(m_pCovarianceEvokedOutput);
+
+    qInfo() << "[CovarianceEvoked::init] Finished initializing CovarianceEvoked plugin.";
 
 }
 
@@ -233,6 +235,8 @@ QWidget* CovarianceEvoked::setupWidget()
 void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
     //HINT: copied from RtcMne::updateRTE, modifications: no setting of m_bEvokedInput, no channel picking, need to get the pre and post stimulative sample number
+    qDebug() << "[CovarianceEvoked::updateRTE] update real-time evoked input.";
+
 
     if(QSharedPointer<RealTimeEvokedSet> pRTES = pMeasurement.dynamicCast<RealTimeEvokedSet>()) {
 
@@ -357,7 +361,7 @@ void CovarianceEvoked::run()
             //TODO: check whether part of evokedData causes issues with rtNoiseCov object because info is not manipulated
             fiffNoiseCov = rtNoiseCov.estimateCovariance(matPreStimData, iEstimationSamples);
             fiffDataCov = rtDataCov.estimateCovariance(matPostStimData, iEstimationSamples);
-            //TODO: do we need to set the h constant for covariance type somewhere?
+            //TODO: do we need to set the h constant for covariance type somewhere? (is set in estimateCovariance so setting should be performed here)
             if(!fiffNoiseCov.names.isEmpty() || !fiffDataCov.names.isEmpty()) {
                 m_pCovarianceEvokedOutput->measurementData()->setValue(fiffNoiseCov,fiffDataCov);
             }

@@ -77,7 +77,9 @@ contains(MNECPP_CONFIG, static) {
             -lftbuffer \
             -lwritetofile \
 	    -lhpi \
-	    -lrtfwd
+            -lrtfwd \
+            -lrtbeamformer \
+            -lcovarianceevoked \
             #-ldummytoolbox
 
     contains(MNECPP_CONFIG, withGUSBAmp) {

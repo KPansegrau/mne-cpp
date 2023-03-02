@@ -74,6 +74,7 @@ enum ConnectorDataType
     _RTHR,      /**< Real-Time Hpi Result. */
     _RTFS,      /**< Real-Time Forward Solution. */
     _None,      /**< None. */
+    _RTCE,      /**< Real-Time Covariance Evoked. */ //HINT: new for covariance evoked plugin
 };
 
 //=============================================================================================================

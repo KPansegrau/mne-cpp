@@ -47,6 +47,7 @@
 #include <scMeas/realtimesourceestimate.h>
 #include <scMeas/realtimehpiresult.h>
 #include <scMeas/realtimefwdsolution.h>
+#include <scMeas/realtimeevokedcov.h>   //HINT: this is new here for the covariance evoked plugin
 
 //=============================================================================================================
 // USED NAMESPACES
@@ -144,6 +145,20 @@ bool PluginConnectorConnection::createConnection()
                 break;
             }
 
+            //Cast to RealTimeEvokedCov
+            //HINT: this is new for the covariance evoked plugin
+            QSharedPointer< PluginOutputData<RealTimeEvokedCov> > senderRTCE = m_pSender->getOutputConnectors()[i].dynamicCast< PluginOutputData<RealTimeEvokedCov> >();
+            QSharedPointer< PluginInputData<RealTimeEvokedCov> > receiverRTCE = m_pReceiver->getInputConnectors()[j].dynamicCast< PluginInputData<RealTimeEvokedCov> >();
+            if(senderRTCE && receiverRTCE)
+            {
+                m_qHashConnections.insert(QPair<QString,QString>(m_pSender->getOutputConnectors()[i]->getName(),
+                                                                 m_pReceiver->getInputConnectors()[j]->getName()),
+                                          connect(m_pSender->getOutputConnectors()[i].data(), &PluginOutputConnector::notify,
+                                                  m_pReceiver->getInputConnectors()[j].data(), &PluginInputConnector::update, Qt::BlockingQueuedConnection));
+                bConnected = true;
+                break;
+            }
+
             //Cast to RealTimeSourceEstimate
             QSharedPointer< PluginOutputData<RealTimeSourceEstimate> > senderRTSE = m_pSender->getOutputConnectors()[i].dynamicCast< PluginOutputData<RealTimeSourceEstimate> >();
             QSharedPointer< PluginInputData<RealTimeSourceEstimate> > receiverRTSE = m_pReceiver->getInputConnectors()[j].dynamicCast< PluginInputData<RealTimeSourceEstimate> >();
@@ -216,6 +231,12 @@ ConnectorDataType PluginConnectorConnection::getDataType(QSharedPointer<PluginCo
     QSharedPointer< PluginInputData<SCMEASLIB::RealTimeCov> > RTC_In = pPluginConnector.dynamicCast< PluginInputData<SCMEASLIB::RealTimeCov> >();
     if(RTC_Out || RTC_In)
         return ConnectorDataType::_RTC;
+
+    //HINT: this is new for the new covariance evoked plugin
+    QSharedPointer< PluginOutputData<SCMEASLIB::RealTimeEvokedCov> > RTCE_Out = pPluginConnector.dynamicCast< PluginOutputData<SCMEASLIB::RealTimeEvokedCov> >();
+    QSharedPointer< PluginInputData<SCMEASLIB::RealTimeEvokedCov> > RTCE_In = pPluginConnector.dynamicCast< PluginInputData<SCMEASLIB::RealTimeEvokedCov> >();
+    if(RTCE_Out || RTCE_In)
+        return ConnectorDataType::_RTCE;
 
     QSharedPointer< PluginOutputData<SCMEASLIB::RealTimeSourceEstimate> > RTSE_Out = pPluginConnector.dynamicCast< PluginOutputData<SCMEASLIB::RealTimeSourceEstimate> >();
     QSharedPointer< PluginInputData<SCMEASLIB::RealTimeSourceEstimate> > RTSE_In = pPluginConnector.dynamicCast< PluginInputData<SCMEASLIB::RealTimeSourceEstimate> >();

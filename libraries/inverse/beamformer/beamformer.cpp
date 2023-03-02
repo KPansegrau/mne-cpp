@@ -140,8 +140,6 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
     //these options should be user user adjustable similar to sLoreta etc methods
     //maybe in do Inverse setup and then if statement here (if filter output sol = Wt*data, if activity strengh sol = vecSourcePow etc)
 
-    //TODO: we need to apply the SSP projector to the data first, do it here!
-    printf("Beamformer::calculateInverse TODO: Apply SSP projector to data...\n");
 
     //apply beamformer filter matrix to data to get filter output
     //output matrix has dimension (3*nsource x ntimes)

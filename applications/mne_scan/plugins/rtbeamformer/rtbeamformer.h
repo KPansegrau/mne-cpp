@@ -193,7 +193,7 @@ public:
     /**
      * Slot to update the fiff covariance
      */
-    void updateRTC(SCMEASLIB::Measurement::SPtr pMeasurement);
+    void updateRTCE(SCMEASLIB::Measurement::SPtr pMeasurement);
 
     //=========================================================================================================
 
@@ -249,7 +249,7 @@ protected:
 
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeMultiSampleArray> >      m_pRTMSAInput;              /**< The RealTimeMultiSampleArray input.*/
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedSet> >             m_pRTESInput;               /**< The RealTimeEvoked input.*/
-    QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedCov> >             m_pRTCInput;                /**< The RealTimeEvokedCov input.*/
+    QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedCov> >             m_pRTCEInput;                /**< The RealTimeEvokedCov input.*/
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeFwdSolution> >           m_pRTFSInput;               /**< The RealTimeFwdSolution input.*/
     QSharedPointer<SCSHAREDLIB::PluginOutputData<SCMEASLIB::RealTimeSourceEstimate> >       m_pRTSEOutput;              /**< The RealTimeSourceEstimate output.*/
 

@@ -153,6 +153,7 @@ public:
 
     void updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement);
 
+    //TODO: maybe we can delete this method since it is not used (check and delete)
     void showCovarianceEvokedWidget();
 
     void changeSamples(qint32 samples);
@@ -160,11 +161,11 @@ public:
 protected:
     virtual void run();
 
+private:
     //HINT: this variables are copied from rtcmne.h
     //TODO: check whether we need all
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedSet> >             m_pCovarianceEvokedInput;               /**< The CovarianceEvoked input.*/
-
-    QSharedPointer<SCSHAREDLIB::PluginOutputData<SCMEASLIB::RealTimeEvokedCov> > m_pCovarianceEvokedOutput;     /**< The CovarianceEvoked output.*/
+    QSharedPointer<SCSHAREDLIB::PluginOutputData<SCMEASLIB::RealTimeEvokedCov> >            m_pCovarianceEvokedOutput;     /**< The CovarianceEvoked output.*/
 
     QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfoInput;           /**< Fiff information of the evoked. */
 
