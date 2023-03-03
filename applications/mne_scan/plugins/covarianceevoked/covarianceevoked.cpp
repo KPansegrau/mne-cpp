@@ -114,7 +114,7 @@ void CovarianceEvoked::init()
 {
 
     //TODO: add those info messages to all methods here for debugging purposes
-    qInfo() << "[CovarianceEvoked::init] Initializing CovarianceEvoked plugin...";
+    qDebug() << "[CovarianceEvoked::init] Initializing CovarianceEvoked plugin...";
 
     //Load Settings
     //HINT: copied form Covariance::init()
@@ -134,7 +134,7 @@ void CovarianceEvoked::init()
     m_pCovarianceEvokedOutput->measurementData()->setName(this->getName());//Provide name to auto store widget settings
     m_outputConnectors.append(m_pCovarianceEvokedOutput);
 
-    qInfo() << "[CovarianceEvoked::init] Finished initializing CovarianceEvoked plugin.";
+    qDebug() << "[CovarianceEvoked::init] Finished initializing CovarianceEvoked plugin.";
 
 }
 
@@ -142,6 +142,8 @@ void CovarianceEvoked::init()
 
 void CovarianceEvoked::initPluginControlWidgets()
 {
+
+    qDebug() << "[CovarianceEvoked::initPluginControlWidgets] Initializing control widgets...";
 
     //HINT: copied from Covariance::initPluginControlWidgets(), added the class CovarianceEvokedSettingsView to libraries/disp/viewers
     if(m_pFiffInfoInput) {
@@ -161,6 +163,8 @@ void CovarianceEvoked::initPluginControlWidgets()
 
         m_bPluginControlWidgetsInit = true;
     }
+
+    qDebug() << "[CovarianceEvoked::initPluginControlWidgets] Finished initializing control widgets.";
 
 }
 
@@ -235,7 +239,7 @@ QWidget* CovarianceEvoked::setupWidget()
 void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
     //HINT: copied from RtcMne::updateRTE, modifications: no setting of m_bEvokedInput, no channel picking, need to get the pre and post stimulative sample number
-    qDebug() << "[CovarianceEvoked::updateRTE] update real-time evoked input.";
+    qDebug() << "[CovarianceEvoked::updateRTE] Updating RTE input...";
 
 
     if(QSharedPointer<RealTimeEvokedSet> pRTES = pMeasurement.dynamicCast<RealTimeEvokedSet>()) {
@@ -273,11 +277,9 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
         //TODO: check whether this part works
         m_iNumPreStimSamples = pRTES->getNumPreStimSamples();
         m_iNumPostStimSamples = pFiffEvokedSet->evoked.size() - m_iNumPreStimSamples; //post stim sample number = all samples - pre stim samples
+        qDebug() << "[CovarianceEvoked::updateRTE] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
+        qDebug() << "[CovarianceEvoked::updateRTE] m_iNumPostStimSamples = " << m_iNumPostStimSamples;
 
-
-        if(!m_bPluginControlWidgetsInit) {
-            initPluginControlWidgets();
-        }
 
         if(this->isRunning()) {
             for(int i = 0; i < pFiffEvokedSet->evoked.size(); ++i) {
@@ -304,6 +306,8 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
             }
         }
 
+    qDebug() << "[CovarianceEvoked::updateRTE] Finished updating RTE input.";
+
 }
 
 
@@ -320,7 +324,9 @@ void CovarianceEvoked::changeSamples(qint32 samples)
 
 void CovarianceEvoked::run()
 {
-//TODO
+
+    qDebug() << "[CovarianceEvoked::run] Running covariance evoked plugin...";
+
     // Wait for fiff info
     //HINT: this part is copied from Covariance::run()
     while(true) {
@@ -344,6 +350,10 @@ void CovarianceEvoked::run()
     RTPROCESSINGLIB::RtCov rtNoiseCov(m_pFiffInfoInput);
     RTPROCESSINGLIB::RtCov rtDataCov(m_pFiffInfoInput);
 
+    qDebug() << "[CovarianceEvoked::run] Created local variables.";
+
+    qDebug() << "[CovarianceEvoked::run] Start processing data.";
+
     //start processing data
     while(!isInterruptionRequested()) {
         // Get the current data
@@ -361,14 +371,21 @@ void CovarianceEvoked::run()
             //TODO: check whether part of evokedData causes issues with rtNoiseCov object because info is not manipulated
             fiffNoiseCov = rtNoiseCov.estimateCovariance(matPreStimData, iEstimationSamples);
             fiffDataCov = rtDataCov.estimateCovariance(matPostStimData, iEstimationSamples);
+
+            qDebug() << "[CovarianceEvoked::run] Estimated noise covariance matrix " << fiffNoiseCov.data.rows() << " x " << fiffNoiseCov.data.cols();
+            qDebug() << "[CovarianceEvoked::run] Estimated data covariance matrix " << fiffDataCov.data.rows() << " x " << fiffDataCov.data.cols();
+
+
             //TODO: do we need to set the h constant for covariance type somewhere? (is set in estimateCovariance so setting should be performed here)
             if(!fiffNoiseCov.names.isEmpty() || !fiffDataCov.names.isEmpty()) {
                 m_pCovarianceEvokedOutput->measurementData()->setValue(fiffNoiseCov,fiffDataCov);
+                qDebug() << "[CovarianceEvoked::run] Finished m_pCovarianceEvokedOutput->measurementData()->setValue(fiffNoiseCov,fiffDataCov);.";
             }
         }
     }
+    qDebug() << "[CovarianceEvoked::run] Finished processing data.";
 
-
+    qDebug() << "[CovarianceEvoked::run] Finished running covariance evoked plugin.";
 }
 
 //=============================================================================================================

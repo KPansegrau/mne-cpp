@@ -39,13 +39,43 @@
      </item>
      <item row="0" column="1">
       <widget class="QComboBox" name="m_comboBox_method">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="currentText">
+        <string>no</string>
+       </property>
+       <item>
+        <property name="text">
+         <string>no</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>unitnoisegain</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>arraygain</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>nai</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="m_comboBox_triggerType">
        <property name="currentText">
         <string/>
        </property>
       </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QComboBox" name="m_comboBox_triggerType"/>
      </item>
      <item row="2" column="1">
       <widget class="QSpinBox" name="m_spinBox_timepoint">

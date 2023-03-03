@@ -70,7 +70,7 @@
 #include <QtCore/QtPlugin>
 #include <QtConcurrent>
 #include <QDebug>
-#include <QtWidgets>
+#include <QtWidgets> //TODO check why we need this include here but not in rtcmne
 
 //=============================================================================================================
 // USED NAMESPACES
@@ -137,7 +137,7 @@ QSharedPointer<AbstractPlugin> RtBeamformer::clone() const
 void RtBeamformer::init()
 {
 
-    qInfo() << "[RtBeamformer::init] Initializing RtBeamformer plugin...";
+    qDebug() << "[RtBeamformer::init] Initializing RtBeamformer plugin...";
 
     // Inits
     //HINT: copied from RtcMne::init()
@@ -192,7 +192,7 @@ void RtBeamformer::init()
         m_pRTSEOutput->measurementData()->setMriHeadTrans(m_mriHeadTrans);
     }
 
-    qInfo() << "[RtBeamformer::init] Finished initializing RtBeamformer plugin.";
+    qDebug() << "[RtBeamformer::init] Finished initializing RtBeamformer plugin.";
 }
 
 //=============================================================================================================
@@ -257,6 +257,7 @@ QWidget* RtBeamformer::setupWidget()
 
 void RtBeamformer::initPluginControlWidgets()
 {
+    qDebug() << "[RtBeamformer::initPluginControlWidgets] Initializing ControlWidgets...";
 
     //HINT: copied from rtcmne, changed names to beamformer
     QList<QWidget*> plControlWidgets;
@@ -280,6 +281,8 @@ void RtBeamformer::initPluginControlWidgets()
     emit pluginControlWidgetsChanged(plControlWidgets, this->getName());
 
     m_bPluginControlWidgetsInit = true;
+
+    qDebug() << "[RtBeamformer::initPluginControlWidgets] Finished initializing ControlWidgets.";
 }
 
 //=============================================================================================================
@@ -295,12 +298,12 @@ bool RtBeamformer::calcFiffInfo()
     //added && m_qListDataCovChNames.size() > 0 because we have the data covariance matrix as input too
     if(m_qListNoiseCovChNames.size() > 0 && m_qListDataCovChNames.size() > 0 && m_pFiffInfoInput && m_pFiffInfoForward){
         //HINT: debug messages copied, added one for data cov channel names
-        qDebug() << "[RtBeamformer::calcFiffInfo] Fiff Infos available";
+ /*       qDebug() << "[RtBeamformer::calcFiffInfo] Fiff Infos available";
         qDebug() << "RtcBeamformer::calcFiffInfo - m_qListNoiseCovChNames" << m_qListNoiseCovChNames;
         qDebug() << "RtcBeamformer::calcFiffInfo - m_qListDataCovChNames" << m_qListDataCovChNames;
         qDebug() << "RtcBeamformer::calcFiffInfo - m_pFiffInfoForward->ch_names" << m_pFiffInfoForward->ch_names;
         qDebug() << "RtcBeamformer::calcFiffInfo - m_pFiffInfoInput->ch_names" << m_pFiffInfoInput->ch_names;
-
+*/
         //HINT: copied
         // Align channel names of the forward solution to the incoming averaged (currently acquired) data
         // Find out whether the forward solution depends on only MEG, EEG or both MEG and EEG channels
@@ -388,13 +391,14 @@ bool RtBeamformer::calcFiffInfo()
         RowVectorXi sel = m_pFiffInfoInput->pick_channels(m_qListPickChannels);
 
         qDebug() << "RtBeamformer::calcFiffInfo - m_qListPickChannels.size()" << m_qListPickChannels.size();
-        qDebug() << "RtcBeamformer::calcFiffInfo - m_qListPickChannels" << m_qListPickChannels;
+        qDebug() << "RtBeamformer::calcFiffInfo - m_qListPickChannels" << m_qListPickChannels;
 
         m_pFiffInfo = QSharedPointer<FiffInfo>(new FiffInfo(m_pFiffInfoInput->pick_info(sel)));
 
         m_pRTSEOutput->measurementData()->setFiffInfo(m_pFiffInfo);
 
         qDebug() << "RtcBeamformer::calcFiffInfo - m_pFiffInfo" << m_pFiffInfo->ch_names;
+
 
         return true;
       }
@@ -409,6 +413,7 @@ bool RtBeamformer::calcFiffInfo()
 void RtBeamformer::updateRTMSA(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
     //HINT: copied from rtcmne
+    qDebug() << "[RtBeamformer::updateRTMSA] Updating RTMSA...";
 
     if(m_pFwd) {
         QSharedPointer<RealTimeMultiSampleArray> pRTMSA = pMeasurement.dynamicCast<RealTimeMultiSampleArray>();
@@ -452,6 +457,8 @@ void RtBeamformer::updateRTMSA(SCMEASLIB::Measurement::SPtr pMeasurement)
             }
         }
     }
+
+    qDebug() << "[RtBeamformer::updateRTMSA] Finished updating RTMSA.";
 }
 
 //=============================================================================================================
@@ -459,6 +466,8 @@ void RtBeamformer::updateRTMSA(SCMEASLIB::Measurement::SPtr pMeasurement)
 void RtBeamformer::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
     //HINT: copied from rtcmne
+
+    qDebug() << "[RtBeamformer::updateRTE] Updating RTE....";
 
     if(m_pFwd) {
         if(QSharedPointer<RealTimeEvokedSet> pRTES = pMeasurement.dynamicCast<RealTimeEvokedSet>()) {
@@ -515,6 +524,8 @@ void RtBeamformer::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
                 }
             }
     }
+
+        qDebug() << "[RtBeamformer::updateRTE] Finished updating RTE.";
 }
 
 //=============================================================================================================
@@ -523,6 +534,8 @@ void RtBeamformer::updateRTCE(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
     //TODO
     //HINT: copied from rtcmne::updateRTC, changed realtimecov to realtimeevokedcov
+    qDebug() << "[RtBeamformer::updateRTCE] Updating RTCE....";
+
     if(m_pFwd) {
         QSharedPointer<RealTimeEvokedCov> pRTCE = pMeasurement.dynamicCast<RealTimeEvokedCov>();
 
@@ -554,6 +567,8 @@ void RtBeamformer::updateRTCE(SCMEASLIB::Measurement::SPtr pMeasurement)
         }
     }
 
+    qDebug() << "[RtBeamformer::updateRTCE] Finished updating RTCE.";
+
 }
 
 //=============================================================================================================
@@ -561,6 +576,9 @@ void RtBeamformer::updateRTCE(SCMEASLIB::Measurement::SPtr pMeasurement)
 void RtBeamformer::updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
     //HINT: copied from RtcMne::updateRTFS
+
+    qDebug() << "[RtBeamformer::updateRTFS] Updating RTFS....";
+
     if(QSharedPointer<RealTimeFwdSolution> pRTFS = pMeasurement.dynamicCast<RealTimeFwdSolution>()) {
         if(pRTFS->isClustered()) {
             m_pFwd = pRTFS->getValue();
@@ -579,6 +597,8 @@ void RtBeamformer::updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement)
             qWarning() << "[RtBeamformer::updateRTFS] The forward solution has not been clustered yet.";
         }
     }
+
+    qDebug() << "[RtBeamformer::updateRTFS] Finished updating RTFS.";
 
 }
 
@@ -640,11 +660,15 @@ void RtBeamformer::run()
 {
      //TODO
 
+    qDebug() << "[RtBeamformer::run] Running RtBeamformer plugin....";
+
     // Wait for fiff info to arrive
     //HINT: copied from rtcmne
     while(!calcFiffInfo()) {
         msleep(200);
     }
+
+
 
     // Init parameters
     //HINT: copied from rtcmne, modifications: names
@@ -667,6 +691,10 @@ void RtBeamformer::run()
     QStringList lChNamesFiffInfo;
     QStringList lChNamesBfWeights; //HINT: changed name form lChNamesInvOp
 
+    qDebug() << "[RtBeamformer::run] Created internal variables.";
+
+
+    qDebug() << "[RtBeamformer::run] Start processing data....";
 
     //Start processing data
     //HINT: copied from rtcmne in parts
@@ -685,25 +713,30 @@ void RtBeamformer::run()
         bUpdateBeamformer = m_bUpdateBeamformer;
         m_qMutex.unlock();
 
+
         //HINT: this part is copied from rtcmne, changes: names
-        //TODO: fix errors with call of doInverseSetup
         if(bUpdateBeamformer) {
+            qDebug() << "[RtBeamformer::run] bUpdateBeamformer = true.";
             m_qMutex.lock();
             pBeamformer = Beamformer::SPtr(new Beamformer(m_bfWeights, regParam, m_sWeightnorm));
+            qDebug() << "[RtBeamformer::run] Created pBeamformer.";
             m_bUpdateBeamformer = false;
             m_qMutex.unlock();
 
             // Set up the inverse according to the parameters.
             // in rtcmne::run: doInverseSetup(1,true) Use 1 nave here because in case of evoked data as input the beamformer will always be updated when the source estimate is calculated (see run method).
             pBeamformer->doInverseSetup(1,true); //HINT: this parameters are not used in doInverseSetup
+            qDebug() << "[RtBeamformer::run] Finished pBeamformer->doInverseSetup().";
+
         }
 
         //Process data from raw data input
         //HINT: copied from rtcmne::run, changes: names
         //TODO: check out what to do in case of raw data (cov estimation?), check whether we need to make if statements in cov estimation methods? estimate cov matrices from raw data input somehow?
         if(bRawInput && pBeamformer) {
+
             //TODO: this warning is added and should stay here until Todo above is done
-            qWarning() << "[RtBeamformer::run()] The option for raw data input is not implemented yet.";
+            qWarning() << "[RtBeamformer::run] The option for raw data input is not implemented yet. TODO";
             break;
 
 
@@ -741,18 +774,22 @@ void RtBeamformer::run()
         //Process data from averaging input
         //HINT: copied from rtcmne::run, changes: names
         if(bEvokedInput && pBeamformer) {
+            qDebug() << "[RtBeamformer::run] bEvokedInput = true. Process data from averaging input.";
             if(m_pCircularEvokedBuffer->pop(evoked)) {
                 // Get the current evoked data
                 if(((skip_count % iDownSample) == 0)) {
                     sourceEstimate = pBeamformer->calculateInverse(evoked);
+                    qDebug() << "[RtBeamformer::run] Finished sourceEstimate = pBeamformer->calculateInverse(evoked).";
 
                     if(!sourceEstimate.isEmpty()) {
                         if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {
                             sourceEstimate = sourceEstimate.reduce(iTimePointSps,1);
+                            qDebug() << "[RtBeamformer::run] Finished sourceEstimate.reduce(iTimePointSps,1).";
                             m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
                         } else {
                             m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
                         }
+                        qDebug() << "[RtBeamformer::run] Finished m_pRTSEOutput->measurementData()->setValue(sourceEstimate).";
                     }
                 } else {
                     m_pCircularEvokedBuffer->pop(evoked);
@@ -766,7 +803,9 @@ void RtBeamformer::run()
 
     }
 
+    qDebug() << "[RtBeamformer::run] Stopped processing data.";
 
+    qDebug() << "[RtBeamformer::run] Finished running RtBeamformer plugin....";
 
 }
 
