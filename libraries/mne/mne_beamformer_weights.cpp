@@ -366,7 +366,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
     //TODO: include number of averages for the evoked input data
 
-    qInfo("MNEBeamformerWeights::make_beamformer_weights Start calculation of beamformer weights...\n");
+    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Start calculation of beamformer weights...\n");
 
 
     //prepare output
@@ -387,31 +387,31 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
     //check invalid parameter combinations (partly copied from make_inverse_operator mnecpp)
     bool is_fixed_ori = forward.isFixedOrient();
-    std::cout << "ToDo MNEBeamformerWeights::make_beamformer_weights: do surf_ori check\n"; //TODO: this warning was copied from make_inverse_operator, check whether we need it here too
+    std::cout << "ToDo [MNEBeamformerWeights::make_beamformer_weights]: do surf_ori check\n"; //TODO: this warning was copied from make_inverse_operator, check whether we need it here too
     if(is_fixed_ori && !p_bFixedOri)
     {
-        qWarning("MNEBeamformerWeights::make_beamformer_weights Warning: Setting p_bFixedOri parameter = true. Because the given forward operator has fixed orientation and can only be used to make a fixed-orientation beamformer weights.\n");
+        qWarning("[MNEBeamformerWeights::make_beamformer_weights] Setting p_bFixedOri parameter = true. Because the given forward operator has fixed orientation and can only be used to make a fixed-orientation beamformer weights.\n");
         p_bFixedOri = true;
     }
 
 
     //ensure that p_sWeightnorm option is valid, if not set to default (no weight normalization)
     if(!bNormNo && !bNormUnitNoise && !bNormArray && !bNormNai){
-        qWarning("MNEBeamformerWeights::make_beamformer_weights Warning: Invalid weightnorm option. Set p_sWeightnorm = 'no' (default) and compute a unit-gain beamformer without weight normalization.\n");
+        qWarning("[MNEBeamformerWeights::make_beamformer_weights] Invalid weightnorm option. Set p_sWeightnorm = 'no' (default) and compute a unit-gain beamformer without weight normalization.\n");
         p_sWeightnorm = "no";
     }
 
     //ensure that number of averages is positive
     if(p_iNAverage <= 0)
     {
-        qWarning("MNEBeamformerWeights::make_beamformer_weights The number of averages should be positive. Returned default MNEBeamformerWeights.\n");
+        qWarning("[MNEBeamformerWeights::make_beamformer_weights] The number of averages should be positive. Returned default MNEBeamformerWeights.\n");
         return p_MNEBeamformerWeights;
     }
 
 
     //TODO: do we need to ensure that there is only one channel type? check whether fieldtrip code is only for eeg or meg but not mixed channels
 
-    qInfo("MNEBeamformerWeights::make_beamformer_weights Prepare measurement info...\n");
+    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Prepare measurement info...\n");
 
     // ensure that measurement data channels match forward model, noise covariance matrix and data covariance matrix channels (from mnepy make inverse operator, first step there)
     //TODO: channel selection stuff is performerd in miminumnorms calculate Inverse, move it?
@@ -424,14 +424,14 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     picksCommonChan = FiffInfoBase::pick_channels(lCommonChanNames);
     dataInfo.pick_info(picksCommonChan);
 
-    qInfo("MNEBeamformerWeights::make_beamformer_weights Finished preparation of measurement info.\n");
+    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Finished preparation of measurement info.\n");
 
     //scaling with number of averages (necessary if W should be applied to averaged data later on, covariance matrices need to be scaled here because they are fundamental for W computation (e.g. whitener depends on it))
     //HINT: copied from prepare_inverse_operator and adapted for the purposes here
     //TODO: check whether we need this scaling her
     if(p_iNAverage != 1){
 
-        qInfo("MNEBeamformerWeights::make_beamformer_weights Scale data and noise covariance matrix...\n");
+        qInfo("[MNEBeamformerWeights::make_beamformer_weights] Scale data and noise covariance matrix...\n");
 
         float fScale     = 1/((float)p_iNAverage); //scaling factor
         noiseCov.data  *= fScale; //scaling data and eigenvalues of noise covariance matrix
@@ -439,12 +439,12 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
         dataCov.data *= fScale; //scaling data and eigenvalues of data covariance matrix
         dataCov.eig *= fScale; //TODO: check whether we need to scale the eigenvalues of data covariance matrix (are they used somewhere else? do we need them scaled for consistency)
 
-        printf("\tMNEBeamformerWeights::make_beamformer_weights Scaled noise and data covariance with scaling factor = %f (number of averages = %d)\n",fScale,p_iNAverage);
+        printf("[MNEBeamformerWeights::make_beamformer_weights] Scaled noise and data covariance with scaling factor = %f (number of averages = %d)\n",fScale,p_iNAverage);
 
-        qInfo("MNEBeamformerWeights::make_beamformer_weights Finished scaling of data and noise covariance matrix.\n");
+        qInfo("[MNEBeamformerWeights::make_beamformer_weights] Finished scaling of data and noise covariance matrix.\n");
     }
 
-    qInfo("MNEBeamformerWeights::make_beamformer_weights Prepare forward solution...\n");
+    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Prepare forward solution...\n");
 
     //prepare forward operator: we use the prepare_forward method form MNEForwardSolution
     //existing prepare_forward method: selects common channel, prepares noise cov matrix, calculates whitener from noise cov, gain matrix
@@ -459,10 +459,10 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     //Whiten the forward solution with whitener
     matLeadfield = matWhitener * matLeadfield;
 
-    qInfo("MNEBeamformerWeights::make_beamformer_weights Finished preparation of forward solution.\n");
+    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Finished preparation of forward solution.\n");
 
 
-    qInfo("MNEBeamformerWeights::make_beamformer_weights Prepare data covariance matrix...\n");
+    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Prepare data covariance matrix...\n");
 
     //estimate noise level in the covariance matrix by the smallest non-zero singular value, always needed for NAI weight normalization
     //TODO: maybe we can do this step below? e.g. below regularization does not work because else statement uses cov data which is modified during regularization
@@ -472,7 +472,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
         // but fieldtrip uses matlabs rank function which does not include this problem either (matlab svd returns singular values in descending order)
         if(MNEMath::rank(dataCov.data) > dataCov.data.size()){ //TODO:check whether this is implemented correct. c++ size() == python len()?, rank caluclated independently from channel types?
             //TODO:  add if no regularization for this warning
-            qWarning("MNEBeamformerWeights::make_beamformer_weights Warning: Cannot compute a noise subspace with a full-rank covariance matrix and no regularization.\n");
+            qWarning("[MNEBeamformerWeights::make_beamformer_weights] Cannot compute a noise subspace with a full-rank covariance matrix and no regularization.\n");
             //TODO:end if no regularization
             //TODO: else set noise level to regularization parameter
         }else{
@@ -490,6 +490,10 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     dataCov.pick_channels(lCommonChanNames);
 
     //TODO:whiten data cov mat (after picking because whitener is from picked forward solution) before regularization
+
+    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWhitener dim: " << matWhitener.rows() << " x " << matWhitener.cols();
+    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] dataCov.data dim: " << dataCov.data.rows() << " x " << dataCov.data.cols();
+
     dataCov.data = matWhitener * dataCov.data;
 
 
@@ -498,19 +502,20 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     //TODO: noise covariance is regularized during its computation in covariance plugin
     //for Noise Cov: computedCov = computedCov.regularize(m_fiffInfo, 0.05, 0.05, 0.1, doProj, exclude);
     //TODO: for data cov its problematic to regularize during computation because we need to whiten the data cov matrix before regularization (i guess, check this in fieldtrip and mne and westner 2022)
+    //TODO: data cov is also regularized the same way as the noise cov during creation
     dataCov.regularize(dataInfo);
 
     //invert data covariance matrix
     MatrixXd matDataCovInv = p_MNEBeamformerWeights.invert_data_cov_mat(dataCov);
     //check dimension of inverted data cov mat
     if(matDataCovInv.size() != dataCov.data.size()){
-        qWarning("MNEBeamformerWeights::make_beamformer_weights Warning: Size of inverted data covariance matrix does not match size of data covariance matrix.\n");
+        qWarning("[MNEBeamformerWeights::make_beamformer_weights] Size of inverted data covariance matrix does not match size of data covariance matrix.\n");
     }
 
     //compute square of inverse data covaricance matrix (needed for unitnoisegain and nai constraint
     MatrixXd matDataCovInvSquared = matDataCovInv * matDataCovInv;
 
-    qInfo("MNEBeamformerWeights::make_beamformer_weights Finished preparation of data covariance matrix.\n");
+    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Finished preparation of data covariance matrix.\n");
 
 
 
@@ -519,7 +524,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
 
     //start scanning the source grid (LCMV BF uses local leadfield for computation of filter weights)
-    qInfo("MNEBeamformerWeights::make_beamformer_weights Start scanning the grid of source positions and calculating virtual sensors for each position...\n");
+    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Start scanning the grid of source positions and calculating virtual sensors for each position...\n");
 
     //matrix where optimal orientations for fixed orientation beamformers can be stored
     //TODO make this a FiffNamedMatrix to preserve channel names (we need new list of column names then)
@@ -580,7 +585,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
             }//if weightnorm
 
-            qInfo("MNEBeamformerWeights::make_beamformer_weights Calculated optimal orientation.\n");
+            qInfo("[MNEBeamformerWeights::make_beamformer_weights] Calculated optimal orientation.\n");
 
         }//if p_bFixedOri
 
@@ -607,7 +612,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
                 matW.block(iPos*3,0,3,matLocVirtSens.cols()) = matLocVirtSens; //store local virtual sensor with dimension (3 x nchannels) in filter weights matrix matW
                 // iPos * 3 is row index where to write the virtual sensor (containing of 3 row vectors) for source position iPos into matW
             }else{
-                qWarning("MNEBeamformerWeights::make_beamformer_weights Vector version of NAI weight normalization is not implemented.\n");
+                qWarning("[MNEBeamformerWeights::make_beamformer_weights] Vector version of NAI weight normalization is not implemented.\n");
                 //TODO. maybe quit calculations here
             }
 
@@ -642,7 +647,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
         }
 
 
-        qInfo("MNEBeamformerWeights::make_beamformer_weights Constructed local virtual sensor.\n");
+        qInfo("[MNEBeamformerWeights::make_beamformer_weights] Constructed local virtual sensor.\n");
 
 
         //calculate source cov matrix (TODO: add why we need it)
@@ -675,7 +680,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
     }//for iPos (scanning the source grid)
 
-    qInfo("MNEBeamformerWeights::make_beamformer_weights Finished scanning the grid of source positions and calculating virtual sensors for each position.");
+    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Finished scanning the grid of source positions and calculating virtual sensors for each position.");
 
     //store filter weights and additional info
     //HINT: partly copied from make_inverse_operator
@@ -696,7 +701,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     p_MNEBeamformerWeights.nave = p_iNAverage;
 
 
-    qInfo("MNEBeamformerWeights::make_beamformer_weights Finished calculation of beamformer weights.");
+    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Finished calculation of beamformer weights.");
 
     return p_MNEBeamformerWeights;
 

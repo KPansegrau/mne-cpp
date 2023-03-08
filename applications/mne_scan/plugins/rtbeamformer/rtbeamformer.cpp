@@ -164,7 +164,7 @@ void RtBeamformer::init()
     //HINT: this differs from cov input for rtcmne plugin
     m_pRTCEInput = PluginInputData<RealTimeEvokedCov>::create(this,"RtBeamformer RTCE In", "RtBeamformer real-time covariance evoked input data");
     connect(m_pRTCEInput.data(), &PluginInputConnector::notify,
-            this, &RtBeamformer::updateRTCE, Qt::DirectConnection);
+            this, &RtBeamformer::updateRTC, Qt::DirectConnection);
     m_inputConnectors.append(m_pRTCEInput);
 
     //real-time forward solution input
@@ -416,6 +416,9 @@ void RtBeamformer::updateRTMSA(SCMEASLIB::Measurement::SPtr pMeasurement)
     qDebug() << "[RtBeamformer::updateRTMSA] Updating RTMSA...";
 
     if(m_pFwd) {
+
+        qDebug() << "[RtBeamformer::updateRTMSA] m_pFwd true";
+
         QSharedPointer<RealTimeMultiSampleArray> pRTMSA = pMeasurement.dynamicCast<RealTimeMultiSampleArray>();
 
         if(pRTMSA && this->isRunning()) {
@@ -470,6 +473,9 @@ void RtBeamformer::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
     qDebug() << "[RtBeamformer::updateRTE] Updating RTE....";
 
     if(m_pFwd) {
+
+        qDebug() << "[RtBeamformer::updateRTE] m_pFwd true";
+
         if(QSharedPointer<RealTimeEvokedSet> pRTES = pMeasurement.dynamicCast<RealTimeEvokedSet>()) {
             QStringList lResponsibleTriggerTypes = pRTES->getResponsibleTriggerTypes();
             emit responsibleTriggerTypesChanged(lResponsibleTriggerTypes);
@@ -530,18 +536,20 @@ void RtBeamformer::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
 
 //=============================================================================================================
 
-void RtBeamformer::updateRTCE(SCMEASLIB::Measurement::SPtr pMeasurement)
+void RtBeamformer::updateRTC(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
     //TODO
     //HINT: copied from rtcmne::updateRTC, changed realtimecov to realtimeevokedcov
-    qDebug() << "[RtBeamformer::updateRTCE] Updating RTCE....";
+    qDebug() << "[RtBeamformer::updateRTC] Updating RTC...";
 
     if(m_pFwd) {
-        QSharedPointer<RealTimeEvokedCov> pRTCE = pMeasurement.dynamicCast<RealTimeEvokedCov>();
 
-        if(pRTCE && this->isRunning()) {
+        qDebug() << "[RtBeamformer::updateRTC] m_pFwd true";
+
+        QSharedPointer<RealTimeEvokedCov> pRTC = pMeasurement.dynamicCast<RealTimeEvokedCov>();
+
+        if(pRTC && this->isRunning()) {
             // Init Real-Time inverse estimator
-            //TODO: class RtBFWeights need to be implemented in rtprocessing lib
             if(!m_pRtBfWeights && m_pFiffInfo && m_pFwd) {
                 m_pRtBfWeights = RtBfWeights::SPtr(new RtBfWeights(m_pFiffInfo, m_pFwd));
                 connect(m_pRtBfWeights.data(), &RtBfWeights::bfWeightsCalculated,
@@ -551,18 +559,23 @@ void RtBeamformer::updateRTCE(SCMEASLIB::Measurement::SPtr pMeasurement)
             //Fiff Information of the covariance
             //HINT: modified to RealTimeEvokedCov
             //TODO: access getValue()->first.names.size() might be wrong, check this
-            if(m_qListNoiseCovChNames.size() != pRTCE->getValue()->first.names.size()) {
-                m_qListNoiseCovChNames = pRTCE->getValue()->first.names;
+            if(m_qListNoiseCovChNames.size() != pRTC->getValue()->first.names.size()) {
+                m_qListNoiseCovChNames = pRTC->getValue()->first.names;
             }
-            if(m_qListDataCovChNames.size() != pRTCE->getValue()->second.names.size()) {
-                m_qListDataCovChNames = pRTCE->getValue()->second.names;
+            if(m_qListDataCovChNames.size() != pRTC->getValue()->second.names.size()) {
+                m_qListDataCovChNames = pRTC->getValue()->second.names;
             }
 
             //HINT: added setting of data cov here
             if(this->isRunning() && m_pRtBfWeights){
-                m_pNoiseCov = QSharedPointer<FiffCov>(new FiffCov(pRTCE->getValue()->first)); //we only want the first of the pair for the member
-                m_pDataCov = QSharedPointer<FiffCov>(new FiffCov(pRTCE->getValue()->second));
+                m_pNoiseCov = QSharedPointer<FiffCov>(new FiffCov(pRTC->getValue()->first)); //we only want the first of the pair for the member
+                m_pDataCov = QSharedPointer<FiffCov>(new FiffCov(pRTC->getValue()->second));
+
+                qDebug() << "[RtBeamformer::updateRTC] Noise cov dim: " << m_pNoiseCov->data.rows() << " x " << m_pNoiseCov->data.cols();
+                qDebug() << "[RtBeamformer::updateRTC] Data cov dim: " << m_pDataCov->data.rows() << " x " << m_pDataCov->data.cols();
+
                 m_pRtBfWeights->append(*m_pNoiseCov, *m_pDataCov);
+
             }
         }
     }

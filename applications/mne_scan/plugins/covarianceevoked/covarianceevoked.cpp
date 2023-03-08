@@ -241,7 +241,7 @@ QWidget* CovarianceEvoked::setupWidget()
 void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
     //HINT: copied from RtcMne::updateRTE, modifications: no setting of m_bEvokedInput, no channel picking, need to get the pre and post stimulative sample number
-    qDebug() << "[CovarianceEvoked::updateRTE] Updating RTE input...";
+    //qDebug() << "[CovarianceEvoked::updateRTE] Updating RTE input...";
 
 
     if(QSharedPointer<RealTimeEvokedSet> pRTES = pMeasurement.dynamicCast<RealTimeEvokedSet>()) {
@@ -308,7 +308,7 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
             }
         }
 
-    qDebug() << "[CovarianceEvoked::updateRTE] Finished updating RTE input.";
+    //qDebug() << "[CovarianceEvoked::updateRTE] Finished updating RTE input.";
 
 }
 
@@ -374,17 +374,17 @@ void CovarianceEvoked::run()
             iEstimationSamples = m_iEstimationSamples;
             m_qMutex.unlock();
 
-            qDebug() << "[CovarianceEvoked::run] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
+            //qDebug() << "[CovarianceEvoked::run] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
 
-            qDebug() << "[CovarianceEvoked::run] evokedData.data " << evokedData.data.rows() << " x " << evokedData.data.cols();
+            //qDebug() << "[CovarianceEvoked::run] evokedData.data " << evokedData.data.rows() << " x " << evokedData.data.cols();
 
             //split evoked data into pre and post stimulative part
             matPreStimData = evokedData.data.leftCols(m_iNumPreStimSamples);
             matPostStimData = evokedData.data.rightCols(evokedData.data.cols() - m_iNumPreStimSamples);
 
 
-            qDebug() << "[CovarianceEvoked::run] Pre stim matrix " << matPreStimData.rows() << " x " << matPreStimData.cols();
-            qDebug() << "[CovarianceEvoked::run] Post stim matrix " << matPostStimData.rows() << " x " << matPostStimData.cols();
+            //qDebug() << "[CovarianceEvoked::run] Pre stim matrix " << matPreStimData.rows() << " x " << matPreStimData.cols();
+            //qDebug() << "[CovarianceEvoked::run] Post stim matrix " << matPostStimData.rows() << " x " << matPostStimData.cols();
 
 
             //TODO: call estimateCovariance for parts of matData

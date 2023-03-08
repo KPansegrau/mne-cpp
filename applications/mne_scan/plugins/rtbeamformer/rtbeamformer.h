@@ -191,9 +191,9 @@ public:
 
     //=========================================================================================================
     /**
-     * Slot to update the fiff covariance
+     * Slot to update the fiff covariance (noise and data cov)
      */
-    void updateRTCE(SCMEASLIB::Measurement::SPtr pMeasurement);
+    void updateRTC (SCMEASLIB::Measurement::SPtr pMeasurement);
 
     //=========================================================================================================
 
