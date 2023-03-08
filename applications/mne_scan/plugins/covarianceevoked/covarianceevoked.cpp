@@ -84,8 +84,8 @@ using namespace Eigen;
 CovarianceEvoked::CovarianceEvoked()
     : m_pCircularEvokedBuffer(CircularBuffer<FIFFLIB::FiffEvoked>::SPtr::create(40))
     , m_iEstimationSamples(2000)
+    , m_sAvrType("3")
     , m_iNumPreStimSamples(-1)
-    , m_iNumPostStimSamples(-1)
 {
     //HINT: copied from Covariance::Covariance()
     // iEstimationSamples is used in Covariance::run() as minimum number of samples for new calculation of covariance (if the number of sample in the data is lower, empty covariance is returned)
@@ -119,6 +119,8 @@ void CovarianceEvoked::init()
     //Load Settings
     //HINT: copied form Covariance::init()
     QSettings settings("MNECPP");
+    //TODO: this 5000 is set for RTC-MNE (new cov every 5000 samples, check if this is okay here
+    //TODO: maybe two parameters one for naise and one for data cov update
     m_iEstimationSamples = settings.value(QString("MNESCAN/%1/estimationSamples").arg(this->getName()), 5000).toInt();
 
     //Input
@@ -255,6 +257,8 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
             return;
         }
 
+        //qDebug() << "TEST";
+
         FiffEvokedSet::SPtr pFiffEvokedSet = pRTES->getValue();
 
         //Fiff Information of the evoked
@@ -269,16 +273,14 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
             }
 
             //HINT: we do not need this since the covariance evoked plugin always gets evoked input
-           // m_bEvokedInput = true;
+            // m_bEvokedInput = true;
         }
 
-        //get number of pre and post stimulative samples
+        //get number of pre stimulative samples
         //HINT: this part is new, we need the number of pre and post stimulative samples for cutting the correct time window for computation of noise and data covariance matrix
         //TODO: check whether this part works
         m_iNumPreStimSamples = pRTES->getNumPreStimSamples();
-        m_iNumPostStimSamples = pFiffEvokedSet->evoked.size() - m_iNumPreStimSamples; //post stim sample number = all samples - pre stim samples
-        qDebug() << "[CovarianceEvoked::updateRTE] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
-        qDebug() << "[CovarianceEvoked::updateRTE] m_iNumPostStimSamples = " << m_iNumPostStimSamples;
+        //qDebug() << "[CovarianceEvoked::updateRTE] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
 
 
         if(this->isRunning()) {
@@ -318,6 +320,16 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
 void CovarianceEvoked::changeSamples(qint32 samples)
 {
     m_iEstimationSamples = samples;
+    qDebug() << "[CovarianceEvoked::changeSamples] changed samples to " << m_iEstimationSamples;
+}
+
+//=============================================================================================================
+
+void CovarianceEvoked::onTriggerTypeChanged(const QString& triggerType)
+{
+    m_sAvrType = triggerType;
+    qDebug() << "[CovarianceEvoked::onTriggerTypeChanged] changed trigger type to " << m_sAvrType;
+
 }
 
 //=============================================================================================================
@@ -350,40 +362,48 @@ void CovarianceEvoked::run()
     RTPROCESSINGLIB::RtCov rtNoiseCov(m_pFiffInfoInput);
     RTPROCESSINGLIB::RtCov rtDataCov(m_pFiffInfoInput);
 
-    qDebug() << "[CovarianceEvoked::run] Created local variables.";
 
     qDebug() << "[CovarianceEvoked::run] Start processing data.";
 
     //start processing data
     while(!isInterruptionRequested()) {
+
         // Get the current data
         if(m_pCircularEvokedBuffer->pop(evokedData)) {
             m_qMutex.lock();
             iEstimationSamples = m_iEstimationSamples;
             m_qMutex.unlock();
 
+            qDebug() << "[CovarianceEvoked::run] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
+
+            qDebug() << "[CovarianceEvoked::run] evokedData.data " << evokedData.data.rows() << " x " << evokedData.data.cols();
+
             //split evoked data into pre and post stimulative part
-            //TODO: maybe use evokedData.last for last entry in block for post stim part and delete variable poststimsamples
-            matPreStimData = evokedData.data.block(0,0,evokedData.data.rows(),m_iNumPreStimSamples);
-            matPostStimData = evokedData.data.block(0,m_iNumPreStimSamples,evokedData.data.rows(),m_iNumPostStimSamples);
+            matPreStimData = evokedData.data.leftCols(m_iNumPreStimSamples);
+            matPostStimData = evokedData.data.rightCols(evokedData.data.cols() - m_iNumPreStimSamples);
+
+
+            qDebug() << "[CovarianceEvoked::run] Pre stim matrix " << matPreStimData.rows() << " x " << matPreStimData.cols();
+            qDebug() << "[CovarianceEvoked::run] Post stim matrix " << matPostStimData.rows() << " x " << matPostStimData.cols();
+
 
             //TODO: call estimateCovariance for parts of matData
             //TODO: check whether part of evokedData causes issues with rtNoiseCov object because info is not manipulated
             fiffNoiseCov = rtNoiseCov.estimateCovariance(matPreStimData, iEstimationSamples);
             fiffDataCov = rtDataCov.estimateCovariance(matPostStimData, iEstimationSamples);
 
+            //set kind of data covariance manually (during estimateCovariance it is set to FIFFV_MNE_NOISE_COV)
+            fiffDataCov.kind = FIFFV_MNE_SIGNAL_COV;
+
             qDebug() << "[CovarianceEvoked::run] Estimated noise covariance matrix " << fiffNoiseCov.data.rows() << " x " << fiffNoiseCov.data.cols();
             qDebug() << "[CovarianceEvoked::run] Estimated data covariance matrix " << fiffDataCov.data.rows() << " x " << fiffDataCov.data.cols();
 
-
-            //TODO: do we need to set the h constant for covariance type somewhere? (is set in estimateCovariance so setting should be performed here)
-            if(!fiffNoiseCov.names.isEmpty() || !fiffDataCov.names.isEmpty()) {
+            if(!fiffNoiseCov.names.isEmpty() && !fiffDataCov.names.isEmpty()) {
                 m_pCovarianceEvokedOutput->measurementData()->setValue(fiffNoiseCov,fiffDataCov);
-                qDebug() << "[CovarianceEvoked::run] Finished m_pCovarianceEvokedOutput->measurementData()->setValue(fiffNoiseCov,fiffDataCov);.";
+                qDebug() << "[CovarianceEvoked::run] Wrote covariance matrices to plug-in output.";
             }
         }
     }
-    qDebug() << "[CovarianceEvoked::run] Finished processing data.";
 
     qDebug() << "[CovarianceEvoked::run] Finished running covariance evoked plugin.";
 }

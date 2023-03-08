@@ -158,7 +158,20 @@ public:
 
     void changeSamples(qint32 samples);
 
+
 protected:
+
+    //=========================================================================================================
+    /**
+     * Slot called when the trigger type changed.
+     *
+     * @param[in] triggerType        The new trigger type.
+     */
+    void onTriggerTypeChanged(const QString& triggerType);
+
+    //=========================================================================================================
+
+
     virtual void run();
 
 private:
@@ -174,12 +187,11 @@ private:
     QMutex                          m_qMutex;                   /**< The mutex ensuring thread safety. */
 
 
-    qint32      m_iEstimationSamples;
+    qint32      m_iEstimationSamples; //number of samples used for estimation of covariance matrices
 
     QString                         m_sAvrType;                 /**< The average type. */
 
     quint32 m_iNumPreStimSamples;   /**< The number of pre stimulative samples. */
-    quint32 m_iNumPostStimSamples;  /**< The number of post stimulative samples. */
 
 signals:
     void responsibleTriggerTypesChanged(const QStringList& lResponsibleTriggerTypes);
