@@ -263,7 +263,7 @@ public:
     QString weightNorm;                             /**< Type of applied weight normalization. */
     Eigen::MatrixXd whitener;                       /**< Whitens the data. */
     bool fixedOri;                                  /**< Whether the beamformer was computed for fixed source orientation */
-    Eigen::VectorXd optOri;                         /**< If fixedOri, this field contains the estimated optimal orientation the beamformer is computed for (dependent on weightNorm) */
+    Eigen::MatrixXd optOri;                         /**< If fixedOri, this field contains the estimated optimal orientation the beamformer is computed for (dependent on weightNorm) */
     FIFFLIB::fiff_int_t nsource;                    /**< Number of source points. */
     FIFFLIB::fiff_int_t nchan;                      /**< Number of channels. */
     Eigen::VectorXd sourcePowEst;                   /**< estimates of source power for each source location */

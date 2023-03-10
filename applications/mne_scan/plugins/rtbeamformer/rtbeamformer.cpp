@@ -732,7 +732,7 @@ void RtBeamformer::run()
             qDebug() << "[RtBeamformer::run] bUpdateBeamformer = true.";
             m_qMutex.lock();
             pBeamformer = Beamformer::SPtr(new Beamformer(m_bfWeights, regParam, m_sWeightnorm));
-            qDebug() << "[RtBeamformer::run] Created pBeamformer.";
+            qDebug() << "[RtBeamformer::run] Created new pBeamformer.";
             m_bUpdateBeamformer = false;
             m_qMutex.unlock();
 
@@ -744,55 +744,25 @@ void RtBeamformer::run()
         }
 
         //Process data from raw data input
-        //HINT: copied from rtcmne::run, changes: names
-        //TODO: check out what to do in case of raw data (cov estimation?), check whether we need to make if statements in cov estimation methods? estimate cov matrices from raw data input somehow?
+        //TODO
         if(bRawInput && pBeamformer) {
 
             //TODO: this warning is added and should stay here until Todo above is done
             qWarning() << "[RtBeamformer::run] The option for raw data input is not implemented yet. TODO";
             break;
 
-
-            if(((skip_count % iDownSample) == 0)) {
-                // Get the current raw data
-                if(m_pCircularMatrixBuffer->pop(matData)) {
-                    //Pick the same channels as in the inverse operator
-                    matDataResized.resize(iNumberChannels, matData.cols());
-
-                    for(j = 0; j < iNumberChannels; ++j) {
-                        matDataResized.row(j) = matData.row(lChNamesFiffInfo.indexOf(lChNamesBfWeights.at(j)));
-                    }
-
-                    //TODO: Add picking here. See evoked part as input.
-                    sourceEstimate = pBeamformer->calculateInverse(matDataResized,
-                                                                    0.0f,
-                                                                    tstep,
-                                                                    true);
-
-                    if(!sourceEstimate.isEmpty()) {
-                        if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {
-                            sourceEstimate = sourceEstimate.reduce(iTimePointSps,1);
-                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
-                        } else {
-                            m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
-                        }
-                    }
-                }
-            } else {
-                m_pCircularMatrixBuffer->pop(matData);
-            }
         }
 
 
         //Process data from averaging input
         //HINT: copied from rtcmne::run, changes: names
         if(bEvokedInput && pBeamformer) {
-            qDebug() << "[RtBeamformer::run] bEvokedInput = true. Process data from averaging input.";
+            qDebug() << "[RtBeamformer::run] Process data from averaging input.";
             if(m_pCircularEvokedBuffer->pop(evoked)) {
                 // Get the current evoked data
                 if(((skip_count % iDownSample) == 0)) {
                     sourceEstimate = pBeamformer->calculateInverse(evoked);
-                    qDebug() << "[RtBeamformer::run] Finished sourceEstimate = pBeamformer->calculateInverse(evoked).";
+                    qDebug() << "[RtBeamformer::run] Finished computation of source estimate.";
 
                     if(!sourceEstimate.isEmpty()) {
                         if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {

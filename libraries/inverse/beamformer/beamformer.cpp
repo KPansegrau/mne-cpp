@@ -106,7 +106,7 @@ MNESourceEstimate Beamformer::calculateInverse(const FiffEvoked &p_fiffEvoked, b
     //
     FiffEvoked t_fiffEvoked = p_fiffEvoked.pick_channels(m_beamformerWeightsSetup.noise_cov->names);
 
-    printf("Picked %d channels from the data\n",t_fiffEvoked.info.nchan);
+    printf("[Beamformer::calculateInverse] Picked %d channels from the data\n",t_fiffEvoked.info.nchan);
 
     //Results
     float tmin = p_fiffEvoked.times[0];
@@ -127,12 +127,12 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
     //HINT: these ifs are copied from minimumnorm method calculateInverse and slightly adapted
     if(!m_bBeamformerSetup)
     {
-        qWarning("Beamformer::calculateInverse - Beamformer not setup -> call doInverseSetup first! Return default MNESourceEstimate");
+        qWarning("[Beamformer::calculateInverse] Beamformer not setup -> call doInverseSetup first! Return default MNESourceEstimate");
         return MNESourceEstimate();
     }
 
     if(m_W_transposed.cols() != data.rows()) {
-        qWarning() << "Beamformer::calculateInverse - Dimension mismatch between m_W_transposed.cols() and data.rows() -" << m_W_transposed.cols() << "and" << data.rows() << ". Return default MNESourceEstimate.\n";
+        qWarning() << "[Beamformer::calculateInverse] Dimension mismatch between m_W_transposed.cols() and data.rows() -" << m_W_transposed.cols() << "and" << data.rows() << ". Return default MNESourceEstimate.\n";
         return MNESourceEstimate();
     }
 
@@ -144,9 +144,9 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
     //apply beamformer filter matrix to data to get filter output
     //output matrix has dimension (3*nsource x ntimes)
     MatrixXd sol = m_W_transposed * data; //filter output
-    std::cout << "Beamformer::calculateInverse: Filter output dimension: sol " << sol.rows() << " x " << sol.cols() << std::endl;
+    std::cout << "[Beamformer::calculateInverse] Filter output dim: sol " << sol.rows() << " x " << sol.cols() << std::endl;
 
-    printf("Beamformer::calculateInverse Source estimate (beamformer filter output) computed. \n");
+    printf("[Beamformer::calculateInverse] Source estimate (beamformer filter output) computed. \n");
 
     //Results
     //HINT: copied from calculateInverse of minimumnorm
@@ -154,7 +154,7 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
     p_vecVertices << m_beamformerWeightsSetup.src[0].vertno, m_beamformerWeightsSetup.src[1].vertno;
 
 
-    return MNESourceEstimate(sol, p_vecVertices, tmin, tstep);
+    return MNESourceEstimate(sol*1000, p_vecVertices, tmin, tstep);
 
 }
 
@@ -174,12 +174,11 @@ void Beamformer::doInverseSetup(qint32 nave, bool pick_normal) //parameters are 
     //   Set up the beamformer weights
     //
     m_beamformerWeightsSetup = m_beamformerWeights.prepare_beamformer_weights();
-    qInfo("Beamformer::doInverseSetup Prepared the beamformer weights.");
+    qInfo("[Beamformer::doInverseSetup] Prepared the beamformer weights.");
 
-    //TODO: do we need a method assemble beamformer weights here similar to assemble kernel? (this should handle pick normal?)
 
     m_W_transposed = m_beamformerWeightsSetup.weights;
-    std::cout << "Beamformer::doInverseSetup: W^T " << m_W_transposed.rows() << " x " << m_W_transposed.cols() << std::endl;
+    std::cout << "[Beamformer::doInverseSetup] W^T dim: " << m_W_transposed.rows() << " x " << m_W_transposed.cols() << std::endl;
 
     m_bBeamformerSetup = true;
 }
