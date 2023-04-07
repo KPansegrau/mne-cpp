@@ -92,6 +92,7 @@ public:
 
     /**
      * Constructs beamformer inverse algorithm
+     * TODO second constructor is used (first can be deleted I guess)
      *
      * @param[in] p_beamformerWeights   The beamformer weights.
      * @param[in] p_fLambda              The regularization factor.
@@ -101,6 +102,9 @@ public:
      */
 
     explicit Beamformer(const MNELIB::MNEBeamformerWeights &p_beamformerWeights, float p_fLambda, const QString p_sWeightnorm);
+
+    explicit Beamformer(const MNELIB::MNEBeamformerWeights &p_beamformerWeights, const FIFFLIB::FiffInfo &p_dataInfo, const MNELIB::MNEForwardSolution &p_forward, const FIFFLIB::FiffCov &p_dataCov, const FIFFLIB::FiffCov &p_noiseCov, float p_fLambda, const QString p_sWeightnorm);
+
 
     //=========================================================================================================
     /**
@@ -184,6 +188,14 @@ public:
 
     //=========================================================================================================
     /**
+     * Get the beamformer weight normalization method
+     *
+     * @return the weight normalization method.
+     */
+    const QString getWeightnorm();
+
+    //=========================================================================================================
+    /**
      * Set weight normalization method ("no" | "unitnoisegain" | "arraygain" | "nai")
      *
      * @param[in] weightnorm   Weight normalization method to use.
@@ -206,8 +218,12 @@ private:
     MNELIB::MNEBeamformerWeights m_beamformerWeights;   /**< The beamformer weights. */
     bool m_bBeamformerSetup;                              /**< Whether the beamformer weights are set up. */
     MNELIB::MNEBeamformerWeights m_beamformerWeightsSetup;                 /**< The setup beamformer weights. */
-    Eigen::MatrixXd m_W_transposed;           /**< The beamformer filter weight matrix W^T (the one that is applied to the data). */
+    Eigen::MatrixXd m_matWTransposed;           /**< The beamformer filter weight matrix W^T (the one that is applied to the data). */
 
+    FIFFLIB::FiffInfo m_dataInfo;
+    FIFFLIB::FiffCov m_noiseCov;
+    FIFFLIB::FiffCov m_dataCov;
+    MNELIB::MNEForwardSolution m_forward;
     QString m_sWeightnorm;                              /**< Selected weight normalization method. */
     float m_fLambda;                                /**< Regularization parameter. */
 
@@ -220,7 +236,7 @@ private:
 inline Eigen::MatrixXd& Beamformer::getBeamformerWeights()
 {
     //HINT: similar to getKernel of minimum norm
-    return  m_W_transposed;
+    return  m_matWTransposed;
 }
 
 //=============================================================================================================

@@ -81,6 +81,7 @@ struct RtBfWeightsInput {
     QSharedPointer<MNELIB::MNEForwardSolution>  pFwd;
     FIFFLIB::FiffCov                            noiseCov;
     FIFFLIB::FiffCov                            dataCov;
+    QString                                     sWeightnorm;
 };
 
 //=============================================================================================================
@@ -132,10 +133,12 @@ public:
      *
      * @param[in] p_pFiffInfo    Fiff measurement info.
      * @param[in] p_pFwd         Forward solution.
+     * @param[in] p_sWeightnorm  The weigth normalization method.
      * @param[in] parent         Parent QObject (optional).
      */
     explicit RtBfWeights(QSharedPointer<FIFFLIB::FiffInfo> &p_pFiffInfo,
                         QSharedPointer<MNELIB::MNEForwardSolution> &p_pFwd,
+                         QString &p_sWeightnorm,
                         QObject *parent = 0);
 
     //=========================================================================================================
@@ -163,6 +166,15 @@ public:
 
     //=========================================================================================================
     /**
+     * Slot to receive incoming weight normalization method.
+     *
+     * @param[in] weightnorm     The weightnorm method.
+     */
+    void setWeightnorm(QString weightnorm);
+
+
+    //=========================================================================================================
+    /**
      * Restarts the thread by interrupting its computation queue, quitting, waiting and then starting it again.
      */
     void restart();
@@ -182,6 +194,7 @@ protected:
 
     QSharedPointer<FIFFLIB::FiffInfo>           m_pFiffInfo;        /**< The fiff measurement information. */
     QSharedPointer<MNELIB::MNEForwardSolution>  m_pFwd;             /**< The forward solution. */
+    QString                                     m_sWeightnorm;      /**< The weight normalization method. */
 
     QThread                                     m_workerThread;     /**< The worker thread. */
 

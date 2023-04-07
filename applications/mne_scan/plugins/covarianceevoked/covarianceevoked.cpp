@@ -114,7 +114,7 @@ void CovarianceEvoked::init()
 {
 
     //TODO: add those info messages to all methods here for debugging purposes
-    qDebug() << "[CovarianceEvoked::init] Initializing CovarianceEvoked plugin...";
+    qInfo() << "[CovarianceEvoked::init] Initializing CovarianceEvoked plugin...";
 
     //Load Settings
     //HINT: copied form Covariance::init()
@@ -136,7 +136,7 @@ void CovarianceEvoked::init()
     m_pCovarianceEvokedOutput->measurementData()->setName(this->getName());//Provide name to auto store widget settings
     m_outputConnectors.append(m_pCovarianceEvokedOutput);
 
-    qDebug() << "[CovarianceEvoked::init] Finished initializing CovarianceEvoked plugin.";
+    //qDebug() << "[CovarianceEvoked::init] Finished initializing CovarianceEvoked plugin.";
 
 }
 
@@ -145,7 +145,7 @@ void CovarianceEvoked::init()
 void CovarianceEvoked::initPluginControlWidgets()
 {
 
-    qDebug() << "[CovarianceEvoked::initPluginControlWidgets] Initializing control widgets...";
+    qInfo() << "[CovarianceEvoked::initPluginControlWidgets] Initializing control widgets...";
 
     //HINT: copied from Covariance::initPluginControlWidgets(), added the class CovarianceEvokedSettingsView to libraries/disp/viewers
     if(m_pFiffInfoInput) {
@@ -166,7 +166,7 @@ void CovarianceEvoked::initPluginControlWidgets()
         m_bPluginControlWidgetsInit = true;
     }
 
-    qDebug() << "[CovarianceEvoked::initPluginControlWidgets] Finished initializing control widgets.";
+    //qDebug() << "[CovarianceEvoked::initPluginControlWidgets] Finished initializing control widgets.";
 
 }
 
@@ -320,7 +320,7 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
 void CovarianceEvoked::changeSamples(qint32 samples)
 {
     m_iEstimationSamples = samples;
-    qDebug() << "[CovarianceEvoked::changeSamples] changed samples to " << m_iEstimationSamples;
+    qDebug() << "[CovarianceEvoked::changeSamples] Changed samples to " << m_iEstimationSamples;
 }
 
 //=============================================================================================================
@@ -328,7 +328,7 @@ void CovarianceEvoked::changeSamples(qint32 samples)
 void CovarianceEvoked::onTriggerTypeChanged(const QString& triggerType)
 {
     m_sAvrType = triggerType;
-    qDebug() << "[CovarianceEvoked::onTriggerTypeChanged] changed trigger type to " << m_sAvrType;
+    qDebug() << "[CovarianceEvoked::onTriggerTypeChanged] Changed trigger type to " << m_sAvrType;
 
 }
 
@@ -337,7 +337,7 @@ void CovarianceEvoked::onTriggerTypeChanged(const QString& triggerType)
 void CovarianceEvoked::run()
 {
 
-    qDebug() << "[CovarianceEvoked::run] Running covariance evoked plugin...";
+    qInfo() << "[CovarianceEvoked::run] Running covariance evoked plugin...";
 
     // Wait for fiff info
     //HINT: this part is copied from Covariance::run()
@@ -363,7 +363,7 @@ void CovarianceEvoked::run()
     RTPROCESSINGLIB::RtCov rtDataCov(m_pFiffInfoInput);
 
 
-    qDebug() << "[CovarianceEvoked::run] Start processing data.";
+    qInfo() << "[CovarianceEvoked::run] Start processing data.";
 
     //start processing data
     while(!isInterruptionRequested()) {

@@ -193,6 +193,8 @@ MNESourceEstimate MinimumNorm::calculateInverse(const MatrixXd &data, float tmin
         return MNESourceEstimate();
     }
 
+
+
     MatrixXd sol = K * data; //apply imaging kernel
 
     if (inv.source_ori == FIFFV_MNE_FREE_ORI && pick_normal == false)
@@ -210,6 +212,11 @@ MNESourceEstimate MinimumNorm::calculateInverse(const MatrixXd &data, float tmin
         sol = sol1;
     }
 
+    //TODO: only for debugging, delete this later
+    qDebug() << "[MinimumNorm::calculateInverse] sol.maxCoeff() prior noise normalization = " << sol.maxCoeff();
+    qDebug() << "[MinimumNorm::calculateInverse] sol.minCoeff() prior noise normalization = " << sol.minCoeff();
+    qDebug() << "[MinimumNorm::calculateInverse] sol.mean() prior noise normalization = " << sol.mean();
+
     if (m_bdSPM)
     {
         printf("(dSPM)...");
@@ -221,6 +228,23 @@ MNESourceEstimate MinimumNorm::calculateInverse(const MatrixXd &data, float tmin
         sol = inv.noisenorm*sol;
     }
     printf("[done]\n");
+
+    //TODO just for debugging - delete this later
+    qDebug() << "[MinimumNorm::calculateInverse] Data dim: " << data.rows() << " x " << data.cols();
+    qDebug() << "[MinimumNorm::calculateInverse] K dim: " << K.rows() << " x " << K.cols();
+    qDebug() << "[MinimumNorm::calculateInverse] sol dim: " << sol.rows() << " x " << sol.cols();
+
+    qDebug() << "[MinimumNorm::calculateInverse] data.maxCoeff() = " << data.maxCoeff();
+    qDebug() << "[MinimumNorm::calculateInverse] data.minCoeff() = " << data.minCoeff();
+    qDebug() << "[MinimumNorm::calculateInverse] data.mean() = " << data.mean();
+
+    qDebug() << "[MinimumNorm::calculateInverse] K.maxCoeff() = " << K.maxCoeff();
+    qDebug() << "[MinimumNorm::calculateInverse] K.minCoeff() = " << K.minCoeff();
+    qDebug() << "[MinimumNorm::calculateInverse] K.mean() = " << K.mean();
+
+    qDebug() << "[MinimumNorm::calculateInverse] sol.maxCoeff() = " << sol.maxCoeff();
+    qDebug() << "[MinimumNorm::calculateInverse] sol.minCoeff() = " << sol.minCoeff();
+    qDebug() << "[MinimumNorm::calculateInverse] sol.mean() = " << sol.mean();
 
     //Results
     VectorXi p_vecVertices(inv.src[0].vertno.size() + inv.src[1].vertno.size());

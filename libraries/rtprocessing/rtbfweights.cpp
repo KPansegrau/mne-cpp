@@ -82,9 +82,14 @@ void RtBfWeightsWorker::doWork(const RtBfWeightsInput &inputData)
     MNEBeamformerWeights bfWeightsMeg(*inputData.pFiffInfo.data(),
                                         forwardMeg,
                                         inputData.dataCov,
-                                        inputData.noiseCov
-
+                                        inputData.noiseCov,
+                                        inputData.sWeightnorm
                                         );
+
+    //TODO: for debugging, delete later
+    qDebug() << "[RtBfWeightsWorker::doWork] bfWeightsMeg.weightnorm: " << bfWeightsMeg.weightNorm;
+    qDebug() << "[RtBfWeightsWorker::doWork] bfWeightsMeg dim: " << bfWeightsMeg.weights.rows() << " x " << bfWeightsMeg.weights.cols();
+    qDebug() << "[RtBfWeightsWorker::doWork] computed bfWeightsMeg.";
 
     emit resultReady(bfWeightsMeg);
 }
@@ -94,11 +99,13 @@ void RtBfWeightsWorker::doWork(const RtBfWeightsInput &inputData)
 //=============================================================================================================
 
 RtBfWeights::RtBfWeights(FiffInfo::SPtr &p_pFiffInfo,
-                 MNEForwardSolution::SPtr &p_pFwd,
-                 QObject *parent)
+                            MNEForwardSolution::SPtr &p_pFwd,
+                            QString &p_sWeightnorm,
+                            QObject *parent)
 : QObject(parent)
 , m_pFiffInfo(p_pFiffInfo)
 , m_pFwd(p_pFwd)
+, m_sWeightnorm(p_sWeightnorm)
 {
     RtBfWeightsWorker *worker = new RtBfWeightsWorker;
     worker->moveToThread(&m_workerThread);
@@ -133,6 +140,7 @@ void RtBfWeights::append(const FIFFLIB::FiffCov &noiseCov, const FIFFLIB::FiffCo
     inputData.dataCov = dataCov;
     inputData.pFiffInfo = m_pFiffInfo;
     inputData.pFwd = m_pFwd;
+    inputData.sWeightnorm = m_sWeightnorm;
 
     emit operate(inputData);
 }
@@ -142,6 +150,13 @@ void RtBfWeights::append(const FIFFLIB::FiffCov &noiseCov, const FIFFLIB::FiffCo
 void RtBfWeights::setFwdSolution(QSharedPointer<MNELIB::MNEForwardSolution> pFwd)
 {
     m_pFwd = pFwd;
+}
+
+//=============================================================================================================
+
+void RtBfWeights::setWeightnorm(QString weightnorm)
+{
+    m_sWeightnorm = weightnorm;
 }
 
 //=============================================================================================================

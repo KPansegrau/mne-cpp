@@ -116,11 +116,11 @@ public:
                             const MNEForwardSolution& p_forward,
                             const FIFFLIB::FiffCov& p_dataCov,
                             const FIFFLIB::FiffCov& p_noiseCov,
+                            QString p_sWeightnorm = "no",
                             QString p_sPowMethod = "trace",
                             bool p_bFixedOri = false,
                             bool p_bEstNoisePow = true,
                             bool p_bProjectMom = false,
-                            QString p_sWeightnorm = "no",
                             qint32 p_iRegParam = 0,
                             qint32 p_iNAverages = 1);
 
@@ -140,6 +140,8 @@ public:
      * Destroys the MNEBeamformerWeights.
      */
     ~MNEBeamformerWeights();
+
+
 
     //=========================================================================================================
     /**
@@ -250,6 +252,28 @@ public:
 
     //=========================================================================================================
 
+    /**
+     *
+     * Prepare computed beamformer weights for actually computing the inverse solution.
+     * TODO: edit docu here
+     *
+     * @param[in] nave      Number of averages (scales the noise covariance).
+     * @param[in] lambda2   The regularization factor.
+     * @param[in] dSPM      Compute the noise-normalization factors for dSPM?.
+     * @param[in] sLORETA   Compute the noise-normalization factors for sLORETA?.
+     *
+     * @return the prepared inverse operator.
+     */
+    MNEBeamformerWeights prepare_beamformer_weights(
+                                                    const FIFFLIB::FiffInfo &p_dataInfo,
+                                                    const MNEForwardSolution& p_forward,
+                                                    const FIFFLIB::FiffCov& p_dataCov,
+                                                    const FIFFLIB::FiffCov& p_noiseCov,
+                                                    QString p_sWeightnorm = "no"
+                                                    ) const;
+
+    //=========================================================================================================
+
 
 public:
 
@@ -281,6 +305,20 @@ public:
 protected:
 
 private:
+
+    //=========================================================================================================
+    /**
+     *
+     * Computes the Frobenius norm (square root of sum of squared absolute values of matrix elements) for each column of a given matrix.
+     *
+     * @param[in] matrix    Matrix form which the Frobenius norm is to be calculated columnwise.
+     *
+     * @return the vector of the Frobenius norms of the columns of matrix.
+     */
+
+    Eigen::RowVectorXd compute_frobenius_norm(const Eigen::MatrixXd matrix);
+
+
 
 };
 

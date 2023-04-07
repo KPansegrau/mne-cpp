@@ -59,6 +59,7 @@ using namespace INVERSELIB;
 using namespace FIFFLIB;
 using namespace MNELIB;
 using namespace Eigen;
+using namespace UTILSLIB;
 
 //=============================================================================================================
 // DEFINE GLOBAL METHODS
@@ -72,6 +73,32 @@ Beamformer::Beamformer(const MNEBeamformerWeights &p_beamformerWeights, float p_
     : m_beamformerWeights(p_beamformerWeights),
       m_bBeamformerSetup(false)
 {
+
+    qDebug() << "[Beamformer::Beamformer] Created Beamformer object.";
+
+
+    //HINT: this constructor is similar to the ones in MinimumNorm, but lambda is p_lambda here and method is used for weight normalization option
+    //TODO: check whether we really need the regularization parameter here
+    this->setRegularization(p_fLambda);
+    this->setWeightnorm(p_sWeightnorm);
+
+}
+
+//=============================================================================================================
+
+Beamformer::Beamformer(const MNEBeamformerWeights &p_beamformerWeights, const FiffInfo &p_dataInfo, const MNEForwardSolution &p_forward, const FiffCov &p_dataCov, const FiffCov &p_noiseCov, float p_fLambda, const QString p_sWeightnorm)
+    : m_beamformerWeights(p_beamformerWeights)
+    , m_bBeamformerSetup(false)
+    , m_dataInfo(p_dataInfo)
+    , m_noiseCov(p_noiseCov)
+    , m_dataCov(p_dataCov)
+    , m_forward(p_forward)
+
+{
+
+    qDebug() << "[Beamformer::Beamformer] Created Beamformer object. It is not set up yet.";
+
+
     //HINT: this constructor is similar to the ones in MinimumNorm, but lambda is p_lambda here and method is used for weight normalization option
     //TODO: check whether we really need the regularization parameter here
     this->setRegularization(p_fLambda);
@@ -99,14 +126,17 @@ MNESourceEstimate Beamformer::calculateInverse(const FiffEvoked &p_fiffEvoked, b
         return MNESourceEstimate();
     }
 */
+
     doInverseSetup(nave,pick_normal); //HINT: this parameters are not needed in doInverseSetup (but have to be function parameters since this is a virtual function)
+
+
 
     //
     //   Pick the correct channels from the data
     //
     FiffEvoked t_fiffEvoked = p_fiffEvoked.pick_channels(m_beamformerWeightsSetup.noise_cov->names);
 
-    printf("[Beamformer::calculateInverse] Picked %d channels from the data\n",t_fiffEvoked.info.nchan);
+    qInfo("[Beamformer::calculateInverse] Picked %d channels from the data\n",t_fiffEvoked.info.nchan);
 
     //Results
     float tmin = p_fiffEvoked.times[0];
@@ -131,30 +161,77 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
         return MNESourceEstimate();
     }
 
-    if(m_W_transposed.cols() != data.rows()) {
-        qWarning() << "[Beamformer::calculateInverse] Dimension mismatch between m_W_transposed.cols() and data.rows() -" << m_W_transposed.cols() << "and" << data.rows() << ". Return default MNESourceEstimate.\n";
+    if(m_matWTransposed.cols() != data.rows()) {
+        qWarning() << "[Beamformer::calculateInverse] Dimension mismatch between m_matWTransposed.cols() and data.rows() -" << m_matWTransposed.cols() << "and" << data.rows() << ". Return default MNESourceEstimate.\n";
         return MNESourceEstimate();
     }
 
     //TODO: add some other output options (source power as estimated source activity in vecSourcePow of MNEBeamformer vs beamformer filter output)
     //these options should be user user adjustable similar to sLoreta etc methods
-    //maybe in do Inverse setup and then if statement here (if filter output sol = Wt*data, if activity strengh sol = vecSourcePow etc)
+
+
 
 
     //apply beamformer filter matrix to data to get filter output
     //output matrix has dimension (3*nsource x ntimes)
-    MatrixXd sol = m_W_transposed * data; //filter output
+    MatrixXd sol = m_matWTransposed * data; //filter output
     std::cout << "[Beamformer::calculateInverse] Filter output dim: sol " << sol.rows() << " x " << sol.cols() << std::endl;
+
+
+    //copied from MinimumNorm::calculateInverse
+    if (!m_beamformerWeightsSetup.fixedOri && pick_normal == false)
+    {
+        printf("[Beamformer::calculateInverse] Combining the current components...\n");
+
+        MatrixXd sol1(sol.rows()/3,sol.cols());
+        for(qint32 i = 0; i < sol.cols(); ++i)
+        {
+            VectorXd* tmp = MNEMath::combine_xyz(sol.col(i));
+            sol1.block(0,i,sol.rows()/3,1) = tmp->cwiseSqrt();
+            delete tmp;
+        }
+        sol.resize(sol1.rows(),sol1.cols());
+        sol = sol1;
+    }
+
+
+    qDebug() << "[Beamformer::calculateInverse] Data dim: " << data.rows() << " x " << data.cols();
+    qDebug() << "[Beamformer::calculateInverse] m_matWTransposed dim: " << m_matWTransposed.rows() << " x " << m_matWTransposed.cols();
+    qDebug() << "[Beamformer::calculateInverse] sol dim: " << sol.rows() << " x " << sol.cols();
+
+    qDebug() << "[Beamformer::calculateInverse] data.maxCoeff() = " << data.maxCoeff();
+    qDebug() << "[Beamformer::calculateInverse] data.minCoeff() = " << data.minCoeff();
+    qDebug() << "[Beamformer::calculateInverse] data.mean() = " << data.mean();
+
+    qDebug() << "[Beamformer::calculateInverse] m_matWTransposed.maxCoeff() = " << m_matWTransposed.maxCoeff();
+    qDebug() << "[Beamformer::calculateInverse] m_matWTransposed.minCoeff() = " << m_matWTransposed.minCoeff();
+    qDebug() << "[Beamformer::calculateInverse] m_matWTransposed.mean() = " << m_matWTransposed.mean();
+
+    qDebug() << "[Beamformer::calculateInverse] sol.maxCoeff() = " << sol.maxCoeff();
+    qDebug() << "[Beamformer::calculateInverse] sol.minCoeff() = " << sol.minCoeff();
+    qDebug() << "[Beamformer::calculateInverse] sol.mean() = " << sol.mean();
 
     printf("[Beamformer::calculateInverse] Source estimate (beamformer filter output) computed. \n");
 
+/*    //TODO scaling of beamformer output to mean = 1 (for comparison to RTC-MNE solution and diplay the values in 3DView widget)
+    double dScaleFilterOut = 1 / sol.mean();
+
+    qDebug() << "[Beamformer::calculateInverse] dScaleFilterOut = " << dScaleFilterOut;
+    sol *= dScaleFilterOut;
+
+    qDebug() << "[Beamformer::calculateInverse] sol.maxCoeff() after scaling = " << sol.maxCoeff();
+    qDebug() << "[Beamformer::calculateInverse] sol.minCoeff() after scaling= " << sol.minCoeff();
+    qDebug() << "[Beamformer::calculateInverse] sol.mean() after scaling= " << sol.mean();
+*/
     //Results
     //HINT: copied from calculateInverse of minimumnorm
     VectorXi p_vecVertices(m_beamformerWeightsSetup.src[0].vertno.size() + m_beamformerWeightsSetup.src[1].vertno.size());
     p_vecVertices << m_beamformerWeightsSetup.src[0].vertno, m_beamformerWeightsSetup.src[1].vertno;
 
+    //for Debugging
+    //return MNESourceEstimate(sol*(1e18), p_vecVertices, tmin, tstep);
 
-    return MNESourceEstimate(sol*1000, p_vecVertices, tmin, tstep);
+    return MNESourceEstimate(sol, p_vecVertices, tmin, tstep);
 
 }
 
@@ -173,12 +250,14 @@ void Beamformer::doInverseSetup(qint32 nave, bool pick_normal) //parameters are 
     //
     //   Set up the beamformer weights
     //
-    m_beamformerWeightsSetup = m_beamformerWeights.prepare_beamformer_weights();
+    //m_beamformerWeightsSetup = m_beamformerWeights.prepare_beamformer_weights();
+    //TODOOO: start here next time?
+    m_beamformerWeightsSetup = m_beamformerWeights.prepare_beamformer_weights(m_dataInfo, m_forward, m_dataCov, m_noiseCov, m_sWeightnorm);
     qInfo("[Beamformer::doInverseSetup] Prepared the beamformer weights.");
 
-
-    m_W_transposed = m_beamformerWeightsSetup.weights;
-    std::cout << "[Beamformer::doInverseSetup] W^T dim: " << m_W_transposed.rows() << " x " << m_W_transposed.cols() << std::endl;
+    //TODO: this is only for debugging
+    m_matWTransposed = m_beamformerWeightsSetup.weights;
+    std::cout << "[Beamformer::doInverseSetup] W^T dim: " << m_matWTransposed.rows() << " x " << m_matWTransposed.cols() << std::endl;
 
     m_bBeamformerSetup = true;
 }
@@ -199,6 +278,13 @@ const MNESourceSpace& Beamformer::getSourceSpace() const
 
 //=============================================================================================================
 
+const QString Beamformer::getWeightnorm()
+{
+    return m_sWeightnorm;
+}
+
+//=============================================================================================================
+
 void Beamformer::setWeightnorm(QString weightnorm)
 {
     if(weightnorm.compare("no") == 0)
@@ -211,12 +297,12 @@ void Beamformer::setWeightnorm(QString weightnorm)
         m_sWeightnorm = QString("nai");
     else
     {
-        qWarning("Weight normalization method not recognized! Activating no weight normalization.");
+        qWarning("[Beamformer::setWeightnorm] Weight normalization method not recognized! Activating no weight normalization.");
         m_sWeightnorm = QString("no");
 
     }
 
-    printf("\tSet weight normalization method to %s.\n", m_sWeightnorm.toUtf8().constData());
+    printf("\t [Beamformer::setWeightnorm] Set weight normalization method to %s.\n", m_sWeightnorm.toUtf8().constData());
 }
 
 //=============================================================================================================
