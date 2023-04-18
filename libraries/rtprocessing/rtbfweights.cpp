@@ -75,23 +75,21 @@ void RtBfWeightsWorker::doWork(const RtBfWeightsInput &inputData)
         return;
     }
 
-    // Restrict forward solution as necessary for MEG
-    //TODO: do we need this restriction???, check!
-    MNEForwardSolution forwardMeg = inputData.pFwd->pick_types(true, false);
+    // Restrict forward solution as necessary for MEG and/or EEG
+    //TODO: do we need this restriction???, check! no, this restriction causes dimension error afterwards
+    //MNEForwardSolution forwardMeg = inputData.pFwd->pick_types(true, false);
 
-    MNEBeamformerWeights bfWeightsMeg(*inputData.pFiffInfo.data(),
-                                        forwardMeg,
+    MNEBeamformerWeights bfWeights(*inputData.pFiffInfo.data(),
+                                        *inputData.pFwd,
                                         inputData.dataCov,
                                         inputData.noiseCov,
                                         inputData.sWeightnorm
                                         );
 
     //TODO: for debugging, delete later
-    qDebug() << "[RtBfWeightsWorker::doWork] bfWeightsMeg.weightnorm: " << bfWeightsMeg.weightNorm;
-    qDebug() << "[RtBfWeightsWorker::doWork] bfWeightsMeg dim: " << bfWeightsMeg.weights.rows() << " x " << bfWeightsMeg.weights.cols();
-    qDebug() << "[RtBfWeightsWorker::doWork] computed bfWeightsMeg.";
+    qDebug() << "[RtBfWeightsWorker::doWork] computed bfWeights.";
 
-    emit resultReady(bfWeightsMeg);
+    emit resultReady(bfWeights);
 }
 
 //=============================================================================================================

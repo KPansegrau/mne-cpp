@@ -218,7 +218,7 @@ private:
     MNELIB::MNEBeamformerWeights m_beamformerWeights;   /**< The beamformer weights. */
     bool m_bBeamformerSetup;                              /**< Whether the beamformer weights are set up. */
     MNELIB::MNEBeamformerWeights m_beamformerWeightsSetup;                 /**< The setup beamformer weights. */
-    Eigen::MatrixXd m_matWTransposed;           /**< The beamformer filter weight matrix W^T (the one that is applied to the data). */
+    Eigen::MatrixXd m_matWTSetup;           /**< The setup beamformer filter weight matrix W^T (the one that is applied to the data). */
 
     FIFFLIB::FiffInfo m_dataInfo;
     FIFFLIB::FiffCov m_noiseCov;
@@ -236,7 +236,7 @@ private:
 inline Eigen::MatrixXd& Beamformer::getBeamformerWeights()
 {
     //HINT: similar to getKernel of minimum norm
-    return  m_matWTransposed;
+    return m_beamformerWeights.weights;
 }
 
 //=============================================================================================================

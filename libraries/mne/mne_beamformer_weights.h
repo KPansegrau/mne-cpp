@@ -141,7 +141,15 @@ public:
      */
     ~MNEBeamformerWeights();
 
+    //=========================================================================================================
+    /**
+     * TODO: edit docu, compute Moore Penrose pseudo inverse of matrix
+     *
+     *
+     */
 
+
+    bool check_ch_names(const FIFFLIB::FiffInfo &info) const;
 
     //=========================================================================================================
     /**

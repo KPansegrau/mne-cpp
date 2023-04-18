@@ -188,6 +188,7 @@ private:
 
 
     qint32      m_iEstimationSamples; //number of samples used for estimation of covariance matrices
+    qint32      m_iNumAverages; //number of averages
 
     QString                         m_sAvrType;                 /**< The average type. */
 

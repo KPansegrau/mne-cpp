@@ -113,23 +113,29 @@ MNESourceEstimate Beamformer::calculateInverse(const FiffEvoked &p_fiffEvoked, b
     Q_UNUSED(pick_normal);
 
     //HINT: copied from MinimumNorm::calculateInverse for evoked input
-    //HINT: modifications: names, no channel checking
+    //HINT: modifications: names
 
     //
     //   Set up the inverse according to the parameters
     //
     qint32 nave = p_fiffEvoked.nave;
+    qDebug() << "[Beamformer::calculateInverse] nave = " << nave;
+    qDebug() << "[Beamformer::calculateInverse] pick_normal = " << pick_normal;
 
-    //HINT: this part not necessary since channel checking was already performed during computation of beamformer weights
-/*    if(!m_beamformerWeights.check_ch_names(p_fiffEvoked.info)) {
-        qWarning("Channel name check failed.");
+    //check whether channels are compatible
+    if(!m_beamformerWeights.check_ch_names(p_fiffEvoked.info)) {
+        qWarning("[Beamformer::calculateInverse] Channel name check failed.");
         return MNESourceEstimate();
     }
-*/
 
-    doInverseSetup(nave,pick_normal); //HINT: this parameters are not needed in doInverseSetup (but have to be function parameters since this is a virtual function)
+    //TODO: this doInverseSetup method does nothing
+    //doInverseSetup(nave, pick_normal);
 
-
+    if(!m_bBeamformerSetup)
+    {
+        qWarning("[Beamformer::calculateInverse] Beamformer not setup -> call doInverseSetup first! Return default MNESourceEstimate");
+        return MNESourceEstimate();
+    }
 
     //
     //   Pick the correct channels from the data
@@ -161,8 +167,12 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
         return MNESourceEstimate();
     }
 
-    if(m_matWTransposed.cols() != data.rows()) {
-        qWarning() << "[Beamformer::calculateInverse] Dimension mismatch between m_matWTransposed.cols() and data.rows() -" << m_matWTransposed.cols() << "and" << data.rows() << ". Return default MNESourceEstimate.\n";
+    qDebug() << "[Beamformer::calculateInverse] dim m_matWTransposed: " << m_matWTSetup.rows() << " x " << m_matWTSetup.cols();
+    qDebug() << "[Beamformer::calculateInverse] dim data: " << data.rows() << " x " << data.cols();
+
+
+    if(m_matWTSetup.cols() != data.rows()) {
+        qWarning() << "[Beamformer::calculateInverse] Dimension mismatch between m_matWTransposed.cols() and data.rows() -" << m_matWTSetup.cols() << "and" << data.rows() << ". Return default MNESourceEstimate.\n";
         return MNESourceEstimate();
     }
 
@@ -174,7 +184,7 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
 
     //apply beamformer filter matrix to data to get filter output
     //output matrix has dimension (3*nsource x ntimes)
-    MatrixXd sol = m_matWTransposed * data; //filter output
+    MatrixXd sol = m_matWTSetup * data; //filter output
     std::cout << "[Beamformer::calculateInverse] Filter output dim: sol " << sol.rows() << " x " << sol.cols() << std::endl;
 
 
@@ -195,17 +205,19 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
     }
 
 
+
+
     qDebug() << "[Beamformer::calculateInverse] Data dim: " << data.rows() << " x " << data.cols();
-    qDebug() << "[Beamformer::calculateInverse] m_matWTransposed dim: " << m_matWTransposed.rows() << " x " << m_matWTransposed.cols();
+    qDebug() << "[Beamformer::calculateInverse] m_matWTSetup dim: " << m_matWTSetup.rows() << " x " << m_matWTSetup.cols();
     qDebug() << "[Beamformer::calculateInverse] sol dim: " << sol.rows() << " x " << sol.cols();
 
     qDebug() << "[Beamformer::calculateInverse] data.maxCoeff() = " << data.maxCoeff();
     qDebug() << "[Beamformer::calculateInverse] data.minCoeff() = " << data.minCoeff();
     qDebug() << "[Beamformer::calculateInverse] data.mean() = " << data.mean();
 
-    qDebug() << "[Beamformer::calculateInverse] m_matWTransposed.maxCoeff() = " << m_matWTransposed.maxCoeff();
-    qDebug() << "[Beamformer::calculateInverse] m_matWTransposed.minCoeff() = " << m_matWTransposed.minCoeff();
-    qDebug() << "[Beamformer::calculateInverse] m_matWTransposed.mean() = " << m_matWTransposed.mean();
+    qDebug() << "[Beamformer::calculateInverse] m_matWTSetup.maxCoeff() = " << m_matWTSetup.maxCoeff();
+    qDebug() << "[Beamformer::calculateInverse] m_matWTSetup.minCoeff() = " << m_matWTSetup.minCoeff();
+    qDebug() << "[Beamformer::calculateInverse] m_matWTSetup.mean() = " << m_matWTSetup.mean();
 
     qDebug() << "[Beamformer::calculateInverse] sol.maxCoeff() = " << sol.maxCoeff();
     qDebug() << "[Beamformer::calculateInverse] sol.minCoeff() = " << sol.minCoeff();
@@ -213,16 +225,30 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
 
     printf("[Beamformer::calculateInverse] Source estimate (beamformer filter output) computed. \n");
 
-/*    //TODO scaling of beamformer output to mean = 1 (for comparison to RTC-MNE solution and diplay the values in 3DView widget)
-    double dScaleFilterOut = 1 / sol.mean();
 
-    qDebug() << "[Beamformer::calculateInverse] dScaleFilterOut = " << dScaleFilterOut;
-    sol *= dScaleFilterOut;
+//    //Scale beamformer output so that values are displayed in the source estimation widget
+//    //scaling values were determined empirically
+//    double dScale = 1;
+//    if(m_sWeightnorm == "no"){
+//        //TODO fix this value
+//        dScale = 50000;
 
-    qDebug() << "[Beamformer::calculateInverse] sol.maxCoeff() after scaling = " << sol.maxCoeff();
-    qDebug() << "[Beamformer::calculateInverse] sol.minCoeff() after scaling= " << sol.minCoeff();
-    qDebug() << "[Beamformer::calculateInverse] sol.mean() after scaling= " << sol.mean();
-*/
+//    }else if(m_sWeightnorm == "arraygain"){
+//        //TODO: this value has to be set
+//        dScale = 1e6;
+//    }else{
+//        qWarning() << "[Beamformer::calculateInverse] Unknown weight normalization method or method not debugged. No scaling of inverse solution. ";
+//    }
+
+//    sol *= dScale;
+//    qDebug() << "[Beamformer::calculateInverse] Scaled inverse solution with " << dScale;
+
+
+
+//    qDebug() << "[Beamformer::calculateInverse] sol.maxCoeff() after scaling = " << sol.maxCoeff();
+//    qDebug() << "[Beamformer::calculateInverse] sol.minCoeff() after scaling= " << sol.minCoeff();
+//    qDebug() << "[Beamformer::calculateInverse] sol.mean() after scaling= " << sol.mean();
+
     //Results
     //HINT: copied from calculateInverse of minimumnorm
     VectorXi p_vecVertices(m_beamformerWeightsSetup.src[0].vertno.size() + m_beamformerWeightsSetup.src[1].vertno.size());
@@ -252,14 +278,27 @@ void Beamformer::doInverseSetup(qint32 nave, bool pick_normal) //parameters are 
     //
     //m_beamformerWeightsSetup = m_beamformerWeights.prepare_beamformer_weights();
     //TODOOO: start here next time?
-    m_beamformerWeightsSetup = m_beamformerWeights.prepare_beamformer_weights(m_dataInfo, m_forward, m_dataCov, m_noiseCov, m_sWeightnorm);
+/*    m_beamformerWeightsSetup = m_beamformerWeights.prepare_beamformer_weights(m_dataInfo, m_forward, m_dataCov, m_noiseCov, m_sWeightnorm);
     qInfo("[Beamformer::doInverseSetup] Prepared the beamformer weights.");
 
     //TODO: this is only for debugging
     m_matWTransposed = m_beamformerWeightsSetup.weights;
     std::cout << "[Beamformer::doInverseSetup] W^T dim: " << m_matWTransposed.rows() << " x " << m_matWTransposed.cols() << std::endl;
+*/
 
+    //prepare the beamformer filter matrix W^T for use by multiplying it by the whitener matrix
+    //this preparation step is performed in order to apply the whitener to the input data too without having to access the whitener matrix from within the calculateInverse method called in the run method of the beamformer plug-in
+    m_beamformerWeightsSetup = m_beamformerWeights;
+    m_beamformerWeightsSetup.weights *= m_beamformerWeights.whitener;
     m_bBeamformerSetup = true;
+    qDebug() << "[Beamformer::doInverseSetup] set m_bBeamformerSetup = true.";
+
+    m_matWTSetup = m_beamformerWeightsSetup.weights;
+
+    qDebug() << "[Beamformer::doInverseSetup] Set m_matWTSetup with dim: " << m_matWTSetup.rows() << " x " << m_matWTSetup.cols();
+
+
+
 }
 
 //=============================================================================================================

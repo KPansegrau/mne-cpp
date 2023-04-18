@@ -158,6 +158,91 @@ MNEBeamformerWeights::~MNEBeamformerWeights()
 {
 }
 
+//=============================================================================================================
+
+bool MNEBeamformerWeights::check_ch_names(const FiffInfo &info) const
+{
+    //HINT: copied from MNEInverseOperator::check_ch_names and modified for beamformer purposes
+
+//    qDebug() << "[MNEBeamformerWeights::check_ch_names] Start checking names...";
+
+    QStringList bf_ch_names = this->info.ch_names;
+
+//    qDebug() << "[MNEBeamformerWeights::check_ch_names] bf_ch_names size: " << this->info.ch_names.size();
+//    qDebug() << "[MNEBeamformerWeights::check_ch_names] noise cov names size: " << this->noise_cov->names.size();
+//    qDebug() << "[MNEBeamformerWeights::check_ch_names] data cov names size: " << this->data_cov->names.size();
+
+    bool t_bContainsNoiseCov = true;
+    if(this->info.ch_names.size() != this->noise_cov->names.size())
+        t_bContainsNoiseCov = false;
+    else
+    {
+        for(qint32 i = 0; i < this->noise_cov->names.size(); ++i)
+        {
+            if(bf_ch_names[i] != this->noise_cov->names[i])
+            {
+                t_bContainsNoiseCov = false;
+                break;
+            }
+        }
+    }
+
+    if(!t_bContainsNoiseCov)
+    {
+        qCritical("[MNEBeamformerWeights::check_ch_names] Channels beamformer do not match noise covariance channels.");
+        return false;
+    }
+
+
+    bool t_bContainsDataCov = true;
+    if(this->info.ch_names.size() != this->data_cov->names.size())
+        t_bContainsDataCov = false;
+    else
+    {
+        for(qint32 i = 0; i < this->data_cov->names.size(); ++i)
+        {
+            if(bf_ch_names[i] != this->data_cov->names[i])
+            {
+                t_bContainsDataCov = false;
+                break;
+            }
+        }
+    }
+
+    if(!t_bContainsDataCov)
+    {
+        qCritical("[MNEBeamformerWeights::check_ch_names] Channels beamformer do not match data covariance channels.");
+        return false;
+    }
+
+
+
+
+    QStringList data_ch_names = info.ch_names;
+
+    //TODO: for debugging delete later
+ //   qDebug() << "[MNEBeamformerWeights::check_ch_names] data ch names size: " << data_ch_names.size();
+
+
+    QStringList missing_ch_names;
+    for(qint32 i = 0; i < bf_ch_names.size(); ++i)
+        if(!data_ch_names.contains(bf_ch_names[i]))
+            missing_ch_names.append(bf_ch_names[i]);
+
+    qint32 n_missing = missing_ch_names.size();
+
+    if(n_missing > 0)
+    {
+        qCritical() << "[MNEBeamformerWeights::check_ch_names] " << n_missing << "channels in beamformer are not present in the data (" << missing_ch_names << ")";
+        return false;
+    }
+
+ //   qDebug() << " [MNEBeamformerWeights::check_ch_names] Finished checking names.";
+
+    return true;
+}
+
+
 
 //=============================================================================================================
 
@@ -187,34 +272,80 @@ MatrixXd MNEBeamformerWeights::compute_pseudo_inverse(const MatrixXd &p_matrix, 
 {
     //TODO maybe move this to mne math in the end
     //HINT: similar to function pinv in ft_inverse_lcmv (same as Matlab but default tolerance is twice as high, but without handling of tolerance value as input
-    //HINT: used this version for calculation with Eigen from GitHub https://gist.github.com/pshriwise/67c2ae78e5db3831da38390a8b2a209f, adapted it a bit
 
-    qDebug() << "[MNEBeamformerWeights::compute_pseudo_inverse] Start computing pseudo inverse...";
+
+//    qDebug() << "[MNEBeamformerWeights::compute_pseudo_inverse] Start computing pseudo inverse...";
 
     //dimensions of input matrix
     qint32 nrows = p_matrix.rows();
     qint32 ncols = p_matrix.cols();
 
-    //qDebug() << "[MNEBeamformerWeights::compute_pseudo_inverse] nrows = " << nrows;
-    //ug() << "[MNEBeamformerWeights::compute_pseudo_inverse] ncols = " << ncols;
+    qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] p_matrix min: " << p_matrix.minCoeff();
+    qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] p_matrix max: " << p_matrix.maxCoeff();
+    qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] p_matrix mean: " << p_matrix.mean();
+
 
     if(nrows != ncols){
-        qWarning() << "[MNEBeamformerWeights::compute_pseudo_inverse] Pseudo inverse can only be computed for squared matrices. TODO.";
+        qWarning() << "[MNEBeamformerWeights::compute_pseudo_inverse] Pseudo inverse can only be computed for squared matrices. Return default Matrix.";
+        return defaultMatrixXd;
     }
 
-    JacobiSVD<MatrixXd> svd(p_matrix ,ComputeFullU | ComputeFullV);
+
+    JacobiSVD<MatrixXd> svd(p_matrix, ComputeFullU | ComputeFullV);
+    VectorXd vecSing = svd.singularValues(); //sorted in decreasing order
+    MatrixXd matU = svd.matrixU();
+    MatrixXd matV = svd.matrixV();
+    double tol = 10 * nrows * vecSing(0) * p_dEpsilon;
+    double sumSing = 0;
+    for(int i = 0; i < vecSing.size(); i++){
+        if(vecSing(i) > tol){
+            sumSing += vecSing(i);
+        }
+    }
 
 
-    //calculate tolerance
-    double tolerance = 10 * std::max(ncols, nrows) * svd.singularValues().array().abs()(0) * p_dEpsilon;
+    std::cout.precision(17);
 
-    // return inverse (U is real in case p_matrix is real -> adjoint of U = U^T; changed this here)
-    //MatrixXd matInv = svd.matrixV() *  (svd.singularValues().array().abs() > tolerance).select(svd.singularValues().array().inverse(), 0).matrix().asDiagonal() * svd.matrixU().adjoint();
-    MatrixXd matInv = svd.matrixV() *  (svd.singularValues().array().abs() > tolerance).select(svd.singularValues().array().inverse(), 0).matrix().asDiagonal() * svd.matrixU().transpose();
+    qDebug() << "[MNEBeamformerWeights::compute_pseudo_inverse] sumSing = " << sumSing;
+
+    VectorXd vecInvSing = VectorXd::Zero(vecSing.size());
+    if(sumSing > 0){
+        for(int i = 0; (i < vecSing.size()) && (i < sumSing); i++){
+            vecInvSing[i] = 1 / vecSing[i];
+        }
+    }else{
+        qWarning() << "[MNEBeamformerWeights::compute_pseudo_inverse] Sum of singular values equals zero. Return default matrix.";
+        return defaultMatrixXd;
+    }
+
+    //compute the pseudo inverse by recompose svd results
+    MatrixXd matInv = matV * vecInvSing.asDiagonal() *  matU.transpose();
+
+//    JacobiSVD<MatrixXd> svd(p_matrix ,ComputeFullU | ComputeFullV);
 
 
-    qDebug() << "[MNEBeamformerWeights::compute_pseudo_inverse] matInv dim: " << matInv.rows() << " x " << matInv.cols();
-    qDebug() << "[MNEBeamformerWeights::compute_pseudo_inverse] Finished computation of pseudo inverse.";
+//    //calculate tolerance
+//    double tolerance = 10 * nrows * p_dEpsilon;
+//    //double tolerance = 10 * std::max(ncols, nrows) * svd.singularValues().array().abs()(0) * p_dEpsilon;
+
+//    // return inverse (U is real in case p_matrix is real -> adjoint of U = U^T; changed this here)
+//    //MatrixXd matInv = svd.matrixV() *  (svd.singularValues().array().abs() > tolerance).select(svd.singularValues().array().inverse(), 0).matrix().asDiagonal() * svd.matrixU().adjoint();
+//    MatrixXd matInv = svd.matrixV() *  (svd.singularValues().array().abs() > tolerance).select(svd.singularValues().array().inverse(), 0).matrix().asDiagonal() * svd.matrixU().adjoint();
+
+
+    //TODO: for debugging only
+    std::cout.precision(17);
+    MatrixXd testMatProd = (p_matrix * matInv * p_matrix);
+    MatrixXd testPinvCond = testMatProd - p_matrix;
+ //   std::cout << "[MNEBeamformerWeights::compute_pseudo_inverse] Test inv constraint (A A+ A) -A  = 0: " << testPinvCond << "\n";
+    std::cout << "[MNEBeamformerWeights::compute_pseudo_inverse] Test inv diff min: " << testPinvCond.minCoeff() << "\n";
+    std::cout << "[MNEBeamformerWeights::compute_pseudo_inverse] Test inv diff max: " << testPinvCond.maxCoeff() << "\n";
+
+
+//    qDebug() << "[MNEBeamformerWeights::compute_pseudo_inverse] matInv dim: " << matInv.rows() << " x " << matInv.cols();
+//    qDebug() << "[MNEBeamformerWeights::compute_pseudo_inverse] Finished computation of pseudo inverse.";
+
+
 
     return matInv;
 
@@ -262,12 +393,12 @@ MatrixXd MNEBeamformerWeights::invert_data_cov_mat(const FiffCov &p_dataCov)
     estimated.
     */
 
-    //TODO?: ensure that cov mat is square?, all cov mat are square
-    //TODO?: ensure that input matrix is Hermitian (symmetric), all covariance matrices of real valued random variables are hermitian
-    //maybe dont check these things because they are true by definition
 
-//    qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] p_dataCov.data dim: " << p_dataCov.data.rows() << " x " << p_dataCov.data.cols();
+    qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] p_dataCov.data dim: " << p_dataCov.data.rows() << " x " << p_dataCov.data.cols();
 
+    qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] data cov min: " << p_dataCov.data.minCoeff();
+    qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] data cov max: " << p_dataCov.data.maxCoeff();
+    qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] data cov mean: " << p_dataCov.data.mean();
 
     //decompose matrix with svd
     JacobiSVD<MatrixXd> svd(p_dataCov.data, ComputeFullU | ComputeFullV); //TODO: check whether we need full U and V here (full/thin defines dimension of U and V)
@@ -280,19 +411,77 @@ MatrixXd MNEBeamformerWeights::invert_data_cov_mat(const FiffCov &p_dataCov)
     qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] matV dim: " << matV.rows() << " x " << matV.cols();
 */
 
-    //invert only non-zero singular values (invert only singular values with index
-    qint32 rank = MNEMath::rank(p_dataCov.data); //dont know whether this rank calculation is too easy here (no differentiation between channel types)
+    //invert only non-zero singular values from index 0 to rank-1
+    qint32 rank = MNEMath::rank(p_dataCov.data);
     qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] rank p_dataCov.data = " << rank;
     VectorXd vecSingInv = VectorXd::Zero(vecSing.size());
-    for(int i = 0; i < (p_dataCov.dim - rank); i++){
-        vecSingInv[i] = 1 / vecSing[i];
+    for(int i = 0; i < (rank); i++){
+        if(vecSing[i] > 0){
+            vecSingInv[i] = 1 / vecSing[i];
+        }else{
+            vecSingInv[i] = 0;
+        }
     }
-
-    //qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] vecSingInv size: " << vecSingInv.size();
 
 
     //compute the pseudo inverse by recompose svd results
     MatrixXd matCovInv = matV * vecSingInv.asDiagonal() *  matU;
+
+
+
+
+
+
+
+//    //similar to ft_inv but without regularization
+//    double epsilon = std::numeric_limits<double>::epsilon();
+//    double tolerance = 10 * p_dataCov.dim * epsilon;
+//    double kappa = 0;
+//    for(int i = 0; i < vecSing.size(); i++){
+//        if((vecSing(i)/vecSing(0)) > tolerance){
+//            kappa += vecSing(i);
+//        }
+//    }
+
+
+//    std::cout.precision(17);
+
+//    qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] kappa = " << kappa;
+
+//    VectorXd vecInvSing = VectorXd::Zero(vecSing.size());
+//    if(kappa > 0){
+//        for(int i = 0; (i < vecSing.size()) && (i < kappa); i++){
+//            vecInvSing[i] = 1 / vecSing[i];
+//        }
+//    }else{
+//        qWarning() << "[MNEBeamformerWeights::invert_data_cov_mat] Sum of singular values equals zero. Return default matrix.";
+//        return defaultMatrixXd;
+//    }
+
+//    //compute the pseudo inverse by recompose svd results
+//    MatrixXd matCovInv = matV * vecInvSing.asDiagonal() *  matU.transpose();
+
+
+
+
+
+    //TODO: for Debugging only
+//        for(int i = 0; i < (p_dataCov.dim); i++){
+//            vecSingInv[i] = 1 / vecSing[i];
+//        }
+
+    //qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] vecSingInv size: " << vecSingInv.size();
+
+
+
+    //TODO: for debugging only
+    std::cout.precision(17);
+    MatrixXd testPinvCond = (p_dataCov.data * matCovInv * p_dataCov.data) - p_dataCov.data;
+    //std::cout << "[MNEBeamformerWeights::invert_data_cov_mat] Test inv constraint (A A+ A) -A  = 0: " << testPinvCond << "\n";
+    std::cout << "[MNEBeamformerWeights::invert_data_cov_mat] Test inv diff min: " << testPinvCond.minCoeff() << "\n";
+    std::cout << "[MNEBeamformerWeights::invert_data_cov_mat] Test inv diff max: " << testPinvCond.maxCoeff() << "\n";
+
+
 
     qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] Finished inversion of data covariance matrix.";
 
@@ -413,10 +602,6 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     //decided on FieldTrip implementation because it is easier to understand (maybe less overload code)
     // TODO: add to outlook: for better symmetry to exsisting code in mnecpp, restructure code according to mnepy implementation
 
-    //TODO?:split this method into prepare_beamformer_input and make beamformer weights
-
-    //TODO: check whether mnepy includes some useful steps we need here
-
     //TODO: option for rank reduction (s. Westner 2022) since for MEG it is recommende to reduce the rank of the forward field
 
     //TODO: check all equations from Sekihara Nagarajan 2008 (maybe in Westner 2022 and Knösche 2022 so no need of book)
@@ -475,39 +660,24 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
     //TODO: do we need to ensure that there is only one channel type? check whether fieldtrip code is only for eeg or meg but not mixed channels
 
-    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Prepare measurement info...\n");
+//    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Prepare measurement info...\n");
 
-    // ensure that measurement data channels match forward model, noise covariance matrix and data covariance matrix channels (from mnepy make inverse operator, first step there)
-    //TODO: channel selection stuff is performerd in miminumnorms calculate Inverse, move it?
-    //TODO: calcFiffInfo should ensure that we have the same channels in all four instances, maybe leave this as double check or delete it and trust the calcFiff Implementation? (double check would be better I guess but it means a bit code overload)
-    // return the channels that are common to all four objects
-    //from mnepy
-    QStringList lCommonChanNames = p_MNEBeamformerWeights.check_info_bf(dataInfo, forward, dataCov, noiseCov);
-    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] Number of common channels = " << lCommonChanNames.size();
+//    // ensure that measurement data channels match forward model, noise covariance matrix and data covariance matrix channels (from mnepy make inverse operator, first step there)
+//    //TODO: channel selection stuff is performerd in miminumnorms calculate Inverse, move it?
+//    //TODO: calcFiffInfo should ensure that we have the same channels in all four instances, maybe leave this as double check or delete it and trust the calcFiff Implementation? (double check would be better I guess but it means a bit code overload)
+//    // return the channels that are common to all four objects
+//    //from mnepy
+//    QStringList lCommonChanNames = p_MNEBeamformerWeights.check_info_bf(dataInfo, forward, dataCov, noiseCov);
+//    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] Number of common channels = " << lCommonChanNames.size();
 
-    //restrict data info to common channels
-    RowVectorXi picksCommonChan; //indices of channels that are common to data, forward, and both covariance matrices
-    picksCommonChan = FiffInfoBase::pick_channels(lCommonChanNames);
-    dataInfo.pick_info(picksCommonChan);
+//    //restrict data info to common channels
+//    RowVectorXi picksCommonChan; //indices of channels that are common to data, forward, and both covariance matrices
+//    picksCommonChan = FiffInfoBase::pick_channels(lCommonChanNames);
+//    dataInfo.pick_info(picksCommonChan);
 
-    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Finished preparation of measurement info.\n");
+//    qInfo("[MNEBeamformerWeights::make_beamformer_weights] Finished preparation of measurement info.\n");
 
-    //scaling with number of averages (necessary if W should be applied to averaged data later on, covariance matrices need to be scaled here because they are fundamental for W computation (e.g. whitener depends on it))
-    //HINT: copied from prepare_inverse_operator and adapted for the purposes here
-    //TODO: check whether we need this scaling her
-    if(p_iNAverage != 1){
 
-        qInfo("[MNEBeamformerWeights::make_beamformer_weights] Scale data and noise covariance matrix...\n");
-
-        float fScale     = 1/((float)p_iNAverage); //scaling factor
-        noiseCov.data  *= fScale; //scaling data and eigenvalues of noise covariance matrix
-        noiseCov.eig   *= fScale;
-        dataCov.data *= fScale; //scaling data and eigenvalues of data covariance matrix
-        dataCov.eig *= fScale; //TODO: check whether we need to scale the eigenvalues of data covariance matrix (are they used somewhere else? do we need them scaled for consistency)
-
-        qInfo("[MNEBeamformerWeights::make_beamformer_weights] Scaled noise and data covariance with scaling factor = %f (number of averages = %d)\n",fScale,p_iNAverage);
-
-    }
 
     qInfo("[MNEBeamformerWeights::make_beamformer_weights] Prepare forward solution...\n");
 
@@ -521,14 +691,28 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     qint32 n_nzero; //total rank of ??? noise covariance matrix? leadfield? whitener? all of them? (used in make_inverse_operator to scale the source covariance matrix) maybe we dont need that value here
     forward.prepare_forward(dataInfo, noiseCov, false, leadfieldInfo, matLeadfield, outNoiseCov, matWhitener, n_nzero);
 
-    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matLeadfield dim: " << matLeadfield.rows() << " x " << matLeadfield.cols();
-    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] outNoiseCov dim: " <<  outNoiseCov.data.rows() << " x " << outNoiseCov.data.cols();
-    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWhitener dim: " << matWhitener.rows() << " x " << matWhitener.cols();
+    //HINT: the computed whitener seems to be the PCA whitener although pca is set to false! TODO: Check this.
+
+    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] Rank n_nzero = " << n_nzero;
+
+//    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matLeadfield dim: " << matLeadfield.rows() << " x " << matLeadfield.cols();
+//    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] outNoiseCov dim: " <<  outNoiseCov.data.rows() << " x " << outNoiseCov.data.cols();
+//    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWhitener dim: " << matWhitener.rows() << " x " << matWhitener.cols();
 
     //Whiten the forward solution with whitener
     matLeadfield = matWhitener * matLeadfield;
 
     qInfo("[MNEBeamformerWeights::make_beamformer_weights] Finished preparation of forward solution.\n");
+
+
+   // ensure that measurement data channels match forward model, noise covariance matrix and data covariance matrix channels (from mnepy make inverse operator, first step there)
+    //TODO: channel selection stuff is performerd in miminumnorms calculate Inverse, move it?
+    //TODO: calcFiffInfo should ensure that we have the same channels in all four instances, maybe leave this as double check or delete it and trust the calcFiff Implementation? (double check would be better I guess but it means a bit code overload)
+    // return the channels that are common to all four objects
+    //from mnepy
+    QStringList lCommonChanNames = p_MNEBeamformerWeights.check_info_bf(dataInfo, forward, dataCov, noiseCov);
+//    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] Number of common channels = " << lCommonChanNames.size();
+
 
 
     qInfo("[MNEBeamformerWeights::make_beamformer_weights] Prepare data covariance matrix...\n");
@@ -558,10 +742,13 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     //TODO: forward solution (+whitener and noise cov matrix)is restricted to sensor channels only (MEG -1 = 305, MEG+EE or only EEG) during prepare_forward
     //so we need to reduce the dataCov to the same channels
     //old: dataCov.pick_channels(lCommonChanNames);
-    FiffCov dataCovPicked =  dataCov.pick_channels(outNoiseCov.names);
+//    FiffCov dataCovPicked =  dataCov.pick_channels(outNoiseCov.names);
 
 
-    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] dataCovPicked.data dim: " << dataCovPicked.data.rows() << " x " << dataCovPicked.data.cols();
+    FiffCov dataCovPicked =  dataCov.pick_channels(lCommonChanNames);
+
+
+//    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] dataCovPicked.data dim: " << dataCovPicked.data.rows() << " x " << dataCovPicked.data.cols();
 
     //whiten data cov mat (after picking because whitener is from picked forward solution) before regularization
     dataCovPicked.data = matWhitener * dataCovPicked.data;
@@ -570,6 +757,9 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     //HINT: fieldTrip does regularization of data cov here
     //not necessary, because regularization is performerd during creation of data covariance matrix
 
+
+    //This inversion method leads to completely wrong results in total!
+//  MatrixXd matDataCovInv = compute_pseudo_inverse(dataCovPicked.data);
 
     //invert data covariance matrix
     MatrixXd matDataCovInv = p_MNEBeamformerWeights.invert_data_cov_mat(dataCovPicked);
@@ -596,12 +786,12 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     //TODO make this a FiffNamedMatrix to preserve channel names (we need new list of column names then)
     MatrixXd matOptimalOri = MatrixXd::Zero(dataInfo.nchan, matLeadfield.cols()/3);
     MatrixXd matWT = MatrixXd::Zero(matLeadfield.cols(),matLeadfield.rows()); //matrix of virtual sensors (nsources*3 x nchannels)
-    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWT definition dim: " << matWT.rows() << " x " << matWT.cols();
+//    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWT definition dim: " << matWT.rows() << " x " << matWT.cols();
 
     VectorXd vecSourcePow = VectorXd::Zero(matLeadfield.cols()/3,1); //TODO check whether dimension is correct here; vector of activity strength (power) for each source position
     VectorXd vecNoisePow = VectorXd::Zero(matLeadfield.cols()/3,1); //vector of estimated noise power that is projected through the filter for each source position
 
-    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] vecSourcePow size: " << vecSourcePow.size();
+    //qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] vecSourcePow size: " << vecSourcePow.size();
 
     for(int iPos = 0; iPos < forward.nsource; iPos++){ //iterate through all source positions in source grid
 
@@ -617,13 +807,13 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
         //TODO: check if number 3 should be a variable (does it depend on fixed, free orientation?)
         MatrixXd matLocLeadfield = matLeadfield.block(0,iPos,matLeadfield.rows(),3); //extract a block including all rows and only the dipole at iPos (3 columns from idx iPos on)
 
-        qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matLocLeadfield dim: " << matLocLeadfield.rows() << " x " << matLocLeadfield.cols();
+        //qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matLocLeadfield dim: " << matLocLeadfield.rows() << " x " << matLocLeadfield.cols();
 
         //if fixed orientation: calculate optimal orientation for beamformer with respect to weight normalization type
         //HINT: copied from fieldtrip ft_inverse_lcmv
         //TODO: check all these equations form the book
 
-        qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] p_bFixedOri = " << p_bFixedOri;
+        //qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] p_bFixedOri = " << p_bFixedOri;
 
         if(p_bFixedOri){
 
@@ -634,7 +824,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
                 //based on equation 4.47 from Sekihara and Nagarajan 2008
                 //the following is a reformulation of the generalized eigenproblem
 
-                qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] bNormUnitNoise || bNormNai true";
+                //qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] bNormUnitNoise || bNormNai true";
 
                 MatrixXd matTmp = compute_pseudo_inverse((matLocLeadfield.transpose() * matDataCovInvSquared * matLocLeadfield)) * matLocLeadfield.transpose() * matDataCovInv * matLocLeadfield;
                 JacobiSVD<MatrixXd> svd(matTmp); //, ComputeThinU ); //TODO:check whether thin is correct here (full in case of square matrix for inversion) thin full defines the dimension of V and U, Check it in whole code
@@ -647,7 +837,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
             }else if(bNormArray){
 
-                qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] bNormArray true";
+                //qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] bNormArray true";
 
 
                 //based on equation 4.44 from Sekihara and Nagarajan 2008
@@ -662,7 +852,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
             }else{
 
-                qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] no weight normalization";
+                //qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] no weight normalization";
 
 
                 //compute leadfield for optimal dipole orientation that maximizes beamformer output
@@ -691,7 +881,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
         if(bNormNai){
 
-            qDebug() << "[MNEBeamformerweights::make_beamformer_weights] bNormNai = true";
+            //qDebug() << "[MNEBeamformerweights::make_beamformer_weights] bNormNai = true";
 
             // Van Veen's Neural Activity Index
             //HINT: different calculation in Fieldtrip but this is easier to understand; different calculation in Knösche 2022 (check original paper van veen)
@@ -733,32 +923,40 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
         }else if(bNormArray){
 
-            qDebug() << "[MNEBeamformerweights::make_beamformer_weights] bNormArray = true";
+            //qDebug() << "[MNEBeamformerweights::make_beamformer_weights] bNormArray = true";
 
-            // filt*lf = ||lf||, applies to scalar leadfield, and to one of the possibilities of the vector version, eqn. 4.75
-            //TODO: Frobenius norm is better s. Wester 2022 so norm() is used which returns Frobenius norm of matrix
-            //normalize local leadfield to Frobenius Norm (s. Westner 2022, why Frobenius is better than L2 as used in Fieldtrip)
-            MatrixXd matLocLeadfieldNorm = MatrixXd::Zero(matLocLeadfield.rows(),matLocLeadfield.cols());
-            RowVectorXd vecFrobNorm = compute_frobenius_norm(matLocLeadfield);
 
-            for(int i = 0; i < vecFrobNorm.size(); i++){
-                matLocLeadfieldNorm.col(i) = matLocLeadfield.col(i) / vecFrobNorm(i);
+            if(p_bFixedOri){
+                qWarning("[MNEBeamformerWeights::make_beamformer_weights] Scalar version of array gain beamformer is not implemented TODO");
+
+
+            }else{
+
+                // filt*lf = ||lf||, applies to scalar leadfield, and to one of the possibilities of the vector version, eqn. 4.75
+                //TODO: Frobenius norm is better s. Wester 2022 so norm() is used which returns Frobenius norm of matrix
+                //normalize local leadfield to Frobenius Norm (s. Westner 2022, why Frobenius is better than L2 as used in Fieldtrip)
+                MatrixXd matLocLeadfieldNorm = MatrixXd::Zero(matLocLeadfield.rows(),matLocLeadfield.cols());
+                RowVectorXd vecFrobNorm = compute_frobenius_norm(matLocLeadfield);
+
+                for(int i = 0; i < vecFrobNorm.size(); i++){
+                    matLocLeadfieldNorm.col(i) = matLocLeadfield.col(i) / vecFrobNorm(i);
+                }
+
+                std::cout.precision(18);
+                std::cout << "[MNEBeamformerWeights::compute_forbenius_norm] vecFrobNorm = " << vecFrobNorm << '\n';
+
+                //L2 norm for normalization (rotation variant, so Frobenius norm is prefered)
+                //MatrixXd matLocLeadfieldNorm = matLocLeadfield / matLocLeadfield.norm();
+                //MatrixXd matLocLeadfieldNorm = matLocLeadfield / fFrobNorm;
+
+                matLocVirtSens = compute_pseudo_inverse(matLocLeadfieldNorm.transpose() * matDataCovInv * matLocLeadfieldNorm) * matLocLeadfieldNorm.transpose() * matDataCovInv; // S&N eqn. 4.09 (scalar version), and eqn. 4.75 (vector version)
+                matWT.block(iPos*3,0,3,matLocVirtSens.cols()) = matLocVirtSens; //store local virtual sensor with dimension (3 x nchannels) in filter weights matrix matWT
+
+                //test array gain beamformer condition
+                MatrixXd matTestBFCond = matLocVirtSens * matLocLeadfieldNorm;
+                std::cout.precision(18);
+                std::cout << "[MNEBeamformerWeights::make_beamformer_weights] matTestBFCond arraygain should be identity matrix: " << matTestBFCond << '\n';
             }
-
-            std::cout.precision(18);
-            std::cout << "[MNEBeamformerWeights::compute_forbenius_norm] vecFrobNorm = " << vecFrobNorm << '\n';
-
-            //L2 norm for normalization (rotation variant, so Frobenius norm is prefered)
-            //MatrixXd matLocLeadfieldNorm = matLocLeadfield / matLocLeadfield.norm();
-            //MatrixXd matLocLeadfieldNorm = matLocLeadfield / fFrobNorm;
-
-            matLocVirtSens = compute_pseudo_inverse(matLocLeadfieldNorm.transpose() * matDataCovInv * matLocLeadfieldNorm) * matLocLeadfieldNorm.transpose() * matDataCovInv; // S&N eqn. 4.09 (scalar version), and eqn. 4.75 (vector version)
-            matWT.block(iPos*3,0,3,matLocVirtSens.cols()) = matLocVirtSens; //store local virtual sensor with dimension (3 x nchannels) in filter weights matrix matWT
-
-            //test array gain beamformer condition
-            MatrixXd matTestBFCond = matLocVirtSens * matLocLeadfieldNorm;
-            std::cout.precision(18);
-            std::cout << "[MNEBeamformerWeights::make_beamformer_weights] matTestBFCond arraygain: " << matTestBFCond << '\n';
 
         }else{ //unitgain BF without weight normalization
 
@@ -771,18 +969,18 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
             MatrixXd matTestBFCond = matLocVirtSens * matLocLeadfield;
             std::cout.precision(18);
-            std::cout << "[MNEBeamformerWeights::make_beamformer_weights] matTestBFCond no weight normalization: " << matTestBFCond << '\n';
+            std::cout << "[MNEBeamformerWeights::make_beamformer_weights] matTestBFCond should be identity matrix: " << matTestBFCond << '\n';
 
         }
 
 
-        qInfo("[MNEBeamformerWeights::make_beamformer_weights] Constructed local virtual sensor.\n");
+        //qInfo("[MNEBeamformerWeights::make_beamformer_weights] Constructed local virtual sensor.\n");
 
 
-        qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matLocVirtSens dim: " << matLocVirtSens.rows() << " x " << matLocVirtSens.cols();
-        qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] dataCovPicked.data dim: " << dataCovPicked.data.rows() << " x " << dataCovPicked.data.cols();
-        qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matLocVirtSens.transpose() dim: " << matLocVirtSens.transpose().rows() << " x " << matLocVirtSens.transpose().cols();
-        qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWT dim: " << matWT.rows() << " x " << matWT.cols();
+//        qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matLocVirtSens dim: " << matLocVirtSens.rows() << " x " << matLocVirtSens.cols();
+//        qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] dataCovPicked.data dim: " << dataCovPicked.data.rows() << " x " << dataCovPicked.data.cols();
+//        qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matLocVirtSens.transpose() dim: " << matLocVirtSens.transpose().rows() << " x " << matLocVirtSens.transpose().cols();
+//        qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWT dim: " << matWT.rows() << " x " << matWT.cols();
 
 
         //calculate source cov matrix (necessary for projecting the dipole moment timecourse on the direction of maximal power)
@@ -814,15 +1012,17 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     qInfo("[MNEBeamformerWeights::make_beamformer_weights] Finished scanning the grid of source positions and calculating virtual sensors for each position.");
 
     //std::cout << "[MNEBeamformerWeights::make_beamformer_weights] matWT: " << matWT;
-    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWT max: " << matWT.maxCoeff();
-    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWT min: " << matWT.minCoeff();
+//    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWT max: " << matWT.maxCoeff();
+//    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWT min: " << matWT.minCoeff();
+//    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWT dim: " << matWT.rows() << " x " << matWT.cols();
+
 
 
     //store filter weights and additional info
     //HINT: partly copied from make_inverse_operator
-    p_MNEBeamformerWeights.info = dataInfo; //TODO: this info is wrong here since prepare forward solution modifies number of used channels -> reduce this info to this channels too?
+    p_MNEBeamformerWeights.info = leadfieldInfo;
     p_MNEBeamformerWeights.weights = matWT;
-    p_MNEBeamformerWeights.data_cov = FiffCov::SDPtr(new FiffCov(dataCovPicked)); //TODO check whether this creation of FiffCov matrix works correct here
+    p_MNEBeamformerWeights.data_cov = FiffCov::SDPtr(new FiffCov(dataCovPicked));
     p_MNEBeamformerWeights.noise_cov = FiffCov::SDPtr(new FiffCov(outNoiseCov));
     p_MNEBeamformerWeights.weightNorm = p_sWeightnorm;
     p_MNEBeamformerWeights.whitener = matWhitener;
@@ -835,6 +1035,9 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     p_MNEBeamformerWeights.projs = dataInfo.projs;
     p_MNEBeamformerWeights.src = forward.src;
     p_MNEBeamformerWeights.nave = p_iNAverage;
+
+ //   std::cout << "[NMEBeamformerWeights::make_beamformer_weights] info.ch_names size: " << p_MNEBeamformerWeights.info.ch_names.size();
+
 
 
     qInfo("[MNEBeamformerWeights::make_beamformer_weights] Finished calculation of beamformer weights.");

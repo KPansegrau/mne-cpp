@@ -86,6 +86,7 @@ CovarianceEvoked::CovarianceEvoked()
     , m_iEstimationSamples(2000)
     , m_sAvrType("3")
     , m_iNumPreStimSamples(-1)
+    , m_iNumAverages(-1)
 {
     //HINT: copied from Covariance::Covariance()
     // iEstimationSamples is used in Covariance::run() as minimum number of samples for new calculation of covariance (if the number of sample in the data is lower, empty covariance is returned)
@@ -276,11 +277,18 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
             // m_bEvokedInput = true;
         }
 
+        if(!m_bPluginControlWidgetsInit) {
+            initPluginControlWidgets();
+        }
+
         //get number of pre stimulative samples
         //HINT: this part is new, we need the number of pre and post stimulative samples for cutting the correct time window for computation of noise and data covariance matrix
         //TODO: check whether this part works
         m_iNumPreStimSamples = pRTES->getNumPreStimSamples();
-        //qDebug() << "[CovarianceEvoked::updateRTE] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
+        qDebug() << "[CovarianceEvoked::updateRTE] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
+
+        //TODOOOOO: get number of epochs that were averaged somehow so we can scale the covariance matrices
+ //       m_iNumAverages = pRTES->getNumAverages(); //
 
 
         if(this->isRunning()) {
@@ -289,7 +297,7 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
                     // Store current evoked as member so we can dispatch it if the time pick by the user changed
 
                     //HINT: no channel picking in this plugin but in beamformer plugin (s. comment below)
-                    //m_currentEvoked = pFiffEvokedSet->evoked.at(i).pick_channels(m_qListPickChannels);
+                    //_currentEvoked = pFiffEvokedSet->evoked.at(i).pick_channels(m_qListPickChannels);
 
                     // Please note that we do not need a copy here since this function will block until
                     // the buffer accepts new data again. Hence, the data is not deleted in the actual
@@ -397,6 +405,26 @@ void CovarianceEvoked::run()
 
             qDebug() << "[CovarianceEvoked::run] Estimated noise covariance matrix " << fiffNoiseCov.data.rows() << " x " << fiffNoiseCov.data.cols();
             qDebug() << "[CovarianceEvoked::run] Estimated data covariance matrix " << fiffDataCov.data.rows() << " x " << fiffDataCov.data.cols();
+
+
+            //TODOOOOO decide whether we need this scaling here!
+/*            if(m_iNumAverages <= 0)
+            {
+                qWarning("[CovarianceEvoked::run] The number of averages should be positive. No scaling is performed\n");
+            }else{
+                qDebug() << "[CovarianceEvoked::run] Scale data and noise covariance matrix...\n";
+
+                //copied from rtcmne (MNEInverseOperator::prepare_inverse_operator) and modified for noise and data cov scaling
+                float fScale     = 1/((float)m_iNumAverages); //scaling factor
+                noiseCov.data  *= fScale; //scaling data and eigenvalues of noise covariance matrix
+                noiseCov.eig   *= fScale;
+                dataCov.data *= fScale; //scaling data and eigenvalues of data covariance matrix
+                dataCov.eig *= fScale; //TODO: check whether we need to scale the eigenvalues of data covariance matrix (are they used somewhere else? do we need them scaled for consistency)
+
+                qInfo("[MNEBeamformerWeights::make_beamformer_weights] Scaled noise and data covariance with scaling factor = %f (number of averages = %d)\n",fScale,m_iNumAverages);
+
+            }
+*/
 
             if(!fiffNoiseCov.names.isEmpty() && !fiffDataCov.names.isEmpty()) {
                 m_pCovarianceEvokedOutput->measurementData()->setValue(fiffNoiseCov,fiffDataCov);

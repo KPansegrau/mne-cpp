@@ -629,6 +629,9 @@ void RtBeamformer::updateBFWeights(const MNEBeamformerWeights& bfWeights)
     m_bfWeights = bfWeights;
 
     m_bUpdateBeamformer = true;
+
+    qDebug() << "[RtBeamformer::updateBFWeights] updated m_bfWeights.";
+
 }
 
 //=============================================================================================================
@@ -642,7 +645,37 @@ void RtBeamformer::onWeightnormChanged(const QString& weightnorm)
 
     m_sWeightnorm = weightnorm;
 
-    m_bUpdateBeamformer = true;
+    //TODO: add call of beamformer weights constructor similar to update method procedure here
+
+    if(this->isRunning()) {
+
+        if(!m_pFiffInfo || !m_pFwd || !m_pNoiseCov || !m_pDataCov){
+                qWarning() << "[RtBeamformer::onWeightnormChanged] Missing FiffInfo and/or foward solution and/or covariance matrices, no computation of beamformer weights possible.";
+                return;
+
+        }else if(!m_pRtBfWeights && m_pFiffInfo && m_pFwd && m_pNoiseCov && m_pDataCov) {
+            //create m_pRtBfWeights
+            m_pRtBfWeights = RtBfWeights::SPtr(new RtBfWeights(m_pFiffInfo, m_pFwd, m_sWeightnorm));
+            connect(m_pRtBfWeights.data(), &RtBfWeights::bfWeightsCalculated,
+                this, &RtBeamformer::updateBFWeights);
+
+            qDebug() << "[RtBeamformer::onWeightnormChanged] Created new m_pRtBfWeights.";
+        }
+
+
+        if(m_pRtBfWeights && m_pFiffInfo && m_pFwd && m_pNoiseCov && m_pDataCov){
+            //update beamformer weights
+            m_pRtBfWeights->setFwdSolution(m_pFwd);
+            m_pRtBfWeights->setWeightnorm(m_sWeightnorm);
+            m_pRtBfWeights->append(*m_pNoiseCov, *m_pDataCov);
+
+            qDebug() << "[RtBeamformer::onWeightnormChanged] Updated m_pRtBfWeights.";
+
+
+            return;
+        }
+    }
+
 }
 
 //=============================================================================================================
@@ -692,12 +725,10 @@ void RtBeamformer::run()
     //HINT: copied from rtcmne, modifications: names
     qint32 skip_count = 0;
     FiffEvoked evoked;
-    MatrixXd matData;
-    MatrixXd matDataResized;
     int iTimePointSps = 0;
-    int iNumberChannels = 0;
+    //int iNumberChannels = 0;
     int iDownSample = 1;
-    float tstep;
+    //float tstep;
     //HINT: in rtcmne this parameter is called lambda2
     float regParam = 1.0f / pow(1.0f, 2); //ToDo estimate lambda using covariance.
     MNESourceEstimate sourceEstimate;
@@ -705,8 +736,8 @@ void RtBeamformer::run()
     bool bRawInput = false;
     bool bUpdateBeamformer = false; //HINT: changed it from bUpdateMinimumNorm
     QSharedPointer<INVERSELIB::Beamformer> pBeamformer; //HINT: changed MinimumNorm to Beamformer here
-    QStringList lChNamesFiffInfo;
-    QStringList lChNamesBfWeights; //HINT: changed name form lChNamesInvOp
+    //QStringList lChNamesFiffInfo;
+    //QStringList lChNamesBfWeights; //HINT: changed name form lChNamesInvOp
 
 
     qInfo() << "[RtBeamformer::run] Start processing data....";
@@ -721,10 +752,10 @@ void RtBeamformer::run()
         bEvokedInput = m_bEvokedInput;
         bRawInput = m_bRawInput;
         iDownSample = m_iDownSample;
-        iNumberChannels = m_bfWeights.noise_cov->names.size();
-        tstep = 1.0f / m_pFiffInfoInput->sfreq;
-        lChNamesFiffInfo = m_pFiffInfoInput->ch_names;
-        lChNamesBfWeights = m_bfWeights.noise_cov->names;
+        //iNumberChannels = m_bfWeights.noise_cov->names.size();
+        //tstep = 1.0f / m_pFiffInfoInput->sfreq;
+        //lChNamesFiffInfo = m_pFiffInfoInput->ch_names;
+        //lChNamesBfWeights = m_bfWeights.noise_cov->names;
         bUpdateBeamformer = m_bUpdateBeamformer;
         m_qMutex.unlock();
 
@@ -733,10 +764,10 @@ void RtBeamformer::run()
         if(bUpdateBeamformer) {
             qDebug() << "[RtBeamformer::run] bUpdateBeamformer = true.";
             m_qMutex.lock();
-            //pBeamformer = Beamformer::SPtr(new Beamformer(m_bfWeights, regParam, m_sWeightnorm)); //TODO: this is the way of rtcmne, but the problem is that this constructor does not create a new bf which is necessary in case of the BF source loc (make method is dependent on weight normalization method)
+            pBeamformer = Beamformer::SPtr(new Beamformer(m_bfWeights, regParam, m_sWeightnorm));
 
-
-            pBeamformer = Beamformer::SPtr(new Beamformer(m_bfWeights, *m_pFiffInfo, *m_pFwd, *m_pDataCov, *m_pNoiseCov, regParam, m_sWeightnorm));
+            //TODO: This constructor combines different cov and bf weights, delete it
+            //pBeamformer = Beamformer::SPtr(new Beamformer(m_bfWeights, *m_pFiffInfo, *m_pFwd, *m_pDataCov, *m_pNoiseCov, regParam, m_sWeightnorm));
             qInfo() << "[RtBeamformer::run] Created new pBeamformer with weightnorm method: " << pBeamformer->getWeightnorm();
             m_bUpdateBeamformer = false;
             m_qMutex.unlock();
@@ -770,38 +801,31 @@ void RtBeamformer::run()
                 //std::cout << "[RtBeamformer::run] evoked: " << evoked.data;
 
                 if(((skip_count % iDownSample) == 0)) {
+
+
                     sourceEstimate = pBeamformer->calculateInverse(evoked);
-                    qDebug() << "[RtBeamformer::run] sourceEstimate.data dim: " << sourceEstimate.data.rows() << " x " << sourceEstimate.data.cols();
-                    qDebug() << "[RtBeamformer::run] sourceEstimate.vertices dim: " << sourceEstimate.vertices.rows() << " x " << sourceEstimate.vertices.cols();
-                    qDebug() << "[RtBeamformer::run] sourceEstimate.times dim: " << sourceEstimate.times.rows() << " x " << sourceEstimate.times.cols();
-                    qDebug() << "[RtBeamformer::run] sourceEstimate.tmin : " << sourceEstimate.tmin;
-                    qDebug() << "[RtBeamformer::run] sourceEstimate.tstep : " << sourceEstimate.tstep;
-
-
                     qDebug() << "[RtBeamformer::run] Finished computation of source estimate.";
-
-                    //std::cout << "[RtBeamformer::run] sourceEstimate.data values: \n" << sourceEstimate.data;
 
                     if(!sourceEstimate.isEmpty()) {
                         //qDebug() << "RtBeamformer::run] !sourceEstimate.isEmpty()";
                         if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {
                             sourceEstimate = sourceEstimate.reduce(iTimePointSps,1);
                             qDebug() << "[RtBeamformer::run] Finished sourceEstimate.reduce(iTimePointSps,1).";
+
+
+                            //normalize beamformer source estimate by dividing by the spacial maximum
+                            //this step ensures that values are displayed in widget
+                            sourceEstimate.data /= sourceEstimate.data.maxCoeff();
+
+
                             m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
-
-                            //qDebug() << "RtBeamformer::run] reduced m_pRTSEOutput->measurementData()->getSourceEstimateSize(): " << m_pRTSEOutput->measurementData()->getSourceEstimateSize();
-                            //qDebug() << "RtBeamformer::run] reduced m_pRTSEOutput->measurementData()->getValue(): " << m_pRTSEOutput->measurementData()->getValue();
-
 
 
                         } else {
                             m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
 
-                            //qDebug() << "RtBeamformer::run] m_pRTSEOutput->measurementData()->getSourceEstimateSize(): " << m_pRTSEOutput->measurementData()->getSourceEstimateSize();
-                            //qDebug() << "RtBeamformer::run] m_pRTSEOutput->measurementData()->getValue(): " << m_pRTSEOutput->measurementData()->getValue();
 
                         }
-                        //qDebug() << "[RtBeamformer::run] Finished m_pRTSEOutput->measurementData()->setValue(sourceEstimate).";
                     }
                 } else {
                     m_pCircularEvokedBuffer->pop(evoked);
