@@ -72,6 +72,9 @@
 #include <QDebug>
 #include <QtWidgets> //TODO check why we need this include here but not in rtcmne
 
+#include <QElapsedTimer>
+
+
 //=============================================================================================================
 // USED NAMESPACES
 //=============================================================================================================
@@ -569,6 +572,11 @@ void RtBeamformer::updateRTC(SCMEASLIB::Measurement::SPtr pMeasurement)
 
             //HINT: added setting of data cov here
             if(this->isRunning() && m_pRtBfWeights){
+
+                uint64_t ms_start_bf_upd_cov = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                std::cout.precision(64);
+                std::cout << "[RtBeamformer::updateRTC] sytem_clock start after new cov: " << ms_start_bf_upd_cov << " milliseconds since the Epoch\n";
+
                 m_pNoiseCov = QSharedPointer<FiffCov>(new FiffCov(pRTC->getValue()->first)); //we only want the first of the pair for the member
                 m_pDataCov = QSharedPointer<FiffCov>(new FiffCov(pRTC->getValue()->second));
 
@@ -604,6 +612,11 @@ void RtBeamformer::updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement)
 
             // update beamformer weights
             if(this->isRunning() && m_pRtBfWeights) {
+
+                uint64_t ms_start_bf_upd_fwd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                std::cout.precision(64);
+                std::cout << "[RtBeamformer::updateRTFS] sytem_clock start after new fwd solution: " << ms_start_bf_upd_fwd << " milliseconds since the Epoch\n";
+
                 m_pRtBfWeights->setFwdSolution(m_pFwd);
                 m_pRtBfWeights->setWeightnorm(m_sWeightnorm);
                 m_pRtBfWeights->append(*m_pNoiseCov, *m_pDataCov);
@@ -631,6 +644,10 @@ void RtBeamformer::updateBFWeights(const MNEBeamformerWeights& bfWeights)
     m_bUpdateBeamformer = true;
 
     qDebug() << "[RtBeamformer::updateBFWeights] updated m_bfWeights.";
+
+    uint64_t ms_stop_bf_upd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    std::cout.precision(64);
+    std::cout << "[RtBeamformer::updateBFWeights] sytem_clock stop updateBFWeights: " << ms_stop_bf_upd << " ms since the Epoch\n";
 
 }
 
@@ -664,6 +681,12 @@ void RtBeamformer::onWeightnormChanged(const QString& weightnorm)
 
 
         if(m_pRtBfWeights && m_pFiffInfo && m_pFwd && m_pNoiseCov && m_pDataCov){
+
+
+            uint64_t ms_start_bf_upd_weightnorm = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            std::cout.precision(64);
+            std::cout << "[RtBeamformer::onWeightnormChanged] sytem_clock start after weightnorm changed: " << ms_start_bf_upd_weightnorm << " milliseconds since the Epoch\n";
+
             //update beamformer weights
             m_pRtBfWeights->setFwdSolution(m_pFwd);
             m_pRtBfWeights->setWeightnorm(m_sWeightnorm);
@@ -740,7 +763,10 @@ void RtBeamformer::run()
     //QStringList lChNamesBfWeights; //HINT: changed name form lChNamesInvOp
 
 
+
+
     qInfo() << "[RtBeamformer::run] Start processing data....";
+
 
     //Start processing data
     //HINT: copied from rtcmne in parts
@@ -757,12 +783,21 @@ void RtBeamformer::run()
         //lChNamesFiffInfo = m_pFiffInfoInput->ch_names;
         //lChNamesBfWeights = m_bfWeights.noise_cov->names;
         bUpdateBeamformer = m_bUpdateBeamformer;
+
+
+
         m_qMutex.unlock();
 
 
         //HINT: this part is copied from rtcmne, changes: names
         if(bUpdateBeamformer) {
+
             qDebug() << "[RtBeamformer::run] bUpdateBeamformer = true.";
+
+            uint64_t ms_start_bf_prep = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            std::cout.precision(64);
+            std::cout << "[RtBeamformer::run] sytem_clock start after if(bUpdateBeamformer): " << ms_start_bf_prep << " milliseconds since the Epoch\n";
+
             m_qMutex.lock();
             pBeamformer = Beamformer::SPtr(new Beamformer(m_bfWeights, regParam, m_sWeightnorm));
 
@@ -777,6 +812,10 @@ void RtBeamformer::run()
             pBeamformer->doInverseSetup(1,true); //HINT: this parameters are not used in doInverseSetup
             //qDebug() << "[RtBeamformer::run] Weightnorm after pBeamformer->doInverseSetup(): " << pBeamformer->getWeightnorm();
             //qDebug() << "[RtBeamformer::run] Finished pBeamformer->doInverseSetup().";
+
+            uint64_t ms_stop_bf_prep = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            std::cout.precision(64);
+            std::cout << "[RtBeamformer::run] sytem_clock stop after ->doInverseSetup(1,true): " << ms_stop_bf_prep << " ms since the Epoch\n";
 
         }
 
@@ -798,7 +837,12 @@ void RtBeamformer::run()
             if(m_pCircularEvokedBuffer->pop(evoked)) {
                 // Get the current evoked data
 
-                //std::cout << "[RtBeamformer::run] evoked: " << evoked.data;
+                uint64_t ms_start_bf_appl = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                std::cout.precision(64);
+                std::cout << "[RtBeamformer::run] sytem_clock start after ->pop(evoked): " << ms_start_bf_appl << " milliseconds since the Epoch\n";
+
+                qDebug() << "[RtBeamformer::run] sfreq = " << evoked.info.sfreq;
+
 
                 if(((skip_count % iDownSample) == 0)) {
 
@@ -810,7 +854,6 @@ void RtBeamformer::run()
                         //qDebug() << "RtBeamformer::run] !sourceEstimate.isEmpty()";
                         if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {
                             sourceEstimate = sourceEstimate.reduce(iTimePointSps,1);
-                            qDebug() << "[RtBeamformer::run] Finished sourceEstimate.reduce(iTimePointSps,1).";
 
 
                             //normalize beamformer source estimate by dividing by the spacial maximum
@@ -819,6 +862,10 @@ void RtBeamformer::run()
 
 
                             m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
+
+                            uint64_t ms_stop_bf_appl = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                            std::cout.precision(64);
+                            std::cout << "[RtBeamformer::run] sytem_clock stop after ->setValue(sourceEstimate): " << ms_stop_bf_appl << " ms since the Epoch\n";
 
 
                         } else {

@@ -63,6 +63,8 @@
 #include <QDebug>
 #include <QtWidgets>
 
+#include <iostream>
+
 
 //=============================================================================================================
 // USED NAMESPACES
@@ -83,7 +85,7 @@ using namespace Eigen;
 
 CovarianceEvoked::CovarianceEvoked()
     : m_pCircularEvokedBuffer(CircularBuffer<FIFFLIB::FiffEvoked>::SPtr::create(40))
-    , m_iEstimationSamples(2000)
+    , m_iEstimationSamples(2400)
     , m_sAvrType("3")
     , m_iNumPreStimSamples(-1)
     , m_iNumAverages(-1)
@@ -245,6 +247,8 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
     //qDebug() << "[CovarianceEvoked::updateRTE] Updating RTE input...";
 
 
+
+
     if(QSharedPointer<RealTimeEvokedSet> pRTES = pMeasurement.dynamicCast<RealTimeEvokedSet>()) {
 
         QStringList lResponsibleTriggerTypes = pRTES->getResponsibleTriggerTypes();
@@ -258,7 +262,6 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
             return;
         }
 
-        //qDebug() << "TEST";
 
         FiffEvokedSet::SPtr pFiffEvokedSet = pRTES->getValue();
 
@@ -285,10 +288,7 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
         //HINT: this part is new, we need the number of pre and post stimulative samples for cutting the correct time window for computation of noise and data covariance matrix
         //TODO: check whether this part works
         m_iNumPreStimSamples = pRTES->getNumPreStimSamples();
-        qDebug() << "[CovarianceEvoked::updateRTE] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
-
-        //TODOOOOO: get number of epochs that were averaged somehow so we can scale the covariance matrices
- //       m_iNumAverages = pRTES->getNumAverages(); //
+//        qDebug() << "[CovarianceEvoked::updateRTE] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
 
 
         if(this->isRunning()) {
@@ -373,18 +373,33 @@ void CovarianceEvoked::run()
 
     qInfo() << "[CovarianceEvoked::run] Start processing data.";
 
+
+//    auto t_start = std::chrono::high_resolution_clock::now();
+
+//    uint64_t ms_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+//    std::cout.precision(64);
+//    std::cout << "[CovarianceEvoked::run] sytem_clock start: " << ms_start << " milliseconds since the Epoch\n";
+
+
     //start processing data
     while(!isInterruptionRequested()) {
 
         // Get the current data
         if(m_pCircularEvokedBuffer->pop(evokedData)) {
+
+            auto t_start = std::chrono::high_resolution_clock::now();
+
+            uint64_t ms_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            std::cout.precision(64);
+            std::cout << "[CovarianceEvoked::run] sytem_clock start after ->pop(evokedData): " << ms_start << " milliseconds since the Epoch\n";
+
             m_qMutex.lock();
             iEstimationSamples = m_iEstimationSamples;
             m_qMutex.unlock();
 
             //qDebug() << "[CovarianceEvoked::run] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
 
-            //qDebug() << "[CovarianceEvoked::run] evokedData.data " << evokedData.data.rows() << " x " << evokedData.data.cols();
+            qDebug() << "[CovarianceEvoked::run] evokedData.data " << evokedData.data.rows() << " x " << evokedData.data.cols();
 
             //split evoked data into pre and post stimulative part
             matPreStimData = evokedData.data.leftCols(m_iNumPreStimSamples);
@@ -394,42 +409,34 @@ void CovarianceEvoked::run()
             //qDebug() << "[CovarianceEvoked::run] Pre stim matrix " << matPreStimData.rows() << " x " << matPreStimData.cols();
             //qDebug() << "[CovarianceEvoked::run] Post stim matrix " << matPostStimData.rows() << " x " << matPostStimData.cols();
 
-
-            //TODO: call estimateCovariance for parts of matData
-            //TODO: check whether part of evokedData causes issues with rtNoiseCov object because info is not manipulated
+            //estimate covariance matrices
             fiffNoiseCov = rtNoiseCov.estimateCovariance(matPreStimData, iEstimationSamples);
             fiffDataCov = rtDataCov.estimateCovariance(matPostStimData, iEstimationSamples);
 
             //set kind of data covariance manually (during estimateCovariance it is set to FIFFV_MNE_NOISE_COV)
             fiffDataCov.kind = FIFFV_MNE_SIGNAL_COV;
 
-            qDebug() << "[CovarianceEvoked::run] Estimated noise covariance matrix " << fiffNoiseCov.data.rows() << " x " << fiffNoiseCov.data.cols();
-            qDebug() << "[CovarianceEvoked::run] Estimated data covariance matrix " << fiffDataCov.data.rows() << " x " << fiffDataCov.data.cols();
+//            qDebug() << "[CovarianceEvoked::run] Estimated noise covariance matrix " << fiffNoiseCov.data.rows() << " x " << fiffNoiseCov.data.cols();
+//            qDebug() << "[CovarianceEvoked::run] Estimated data covariance matrix " << fiffDataCov.data.rows() << " x " << fiffDataCov.data.cols();
 
 
-            //TODOOOOO decide whether we need this scaling here!
-/*            if(m_iNumAverages <= 0)
-            {
-                qWarning("[CovarianceEvoked::run] The number of averages should be positive. No scaling is performed\n");
-            }else{
-                qDebug() << "[CovarianceEvoked::run] Scale data and noise covariance matrix...\n";
-
-                //copied from rtcmne (MNEInverseOperator::prepare_inverse_operator) and modified for noise and data cov scaling
-                float fScale     = 1/((float)m_iNumAverages); //scaling factor
-                noiseCov.data  *= fScale; //scaling data and eigenvalues of noise covariance matrix
-                noiseCov.eig   *= fScale;
-                dataCov.data *= fScale; //scaling data and eigenvalues of data covariance matrix
-                dataCov.eig *= fScale; //TODO: check whether we need to scale the eigenvalues of data covariance matrix (are they used somewhere else? do we need them scaled for consistency)
-
-                qInfo("[MNEBeamformerWeights::make_beamformer_weights] Scaled noise and data covariance with scaling factor = %f (number of averages = %d)\n",fScale,m_iNumAverages);
-
-            }
-*/
 
             if(!fiffNoiseCov.names.isEmpty() && !fiffDataCov.names.isEmpty()) {
                 m_pCovarianceEvokedOutput->measurementData()->setValue(fiffNoiseCov,fiffDataCov);
-                qDebug() << "[CovarianceEvoked::run] Wrote covariance matrices to plug-in output.";
+                qDebug() << "[CovarianceEvoked::run] Wrote new covariance matrices to plug-in output.";
+
+
+                auto t_stop = std::chrono::high_resolution_clock::now();
+                std::cout.precision(17);
+                std::cout << "[CovarianceEvoked::run] Wall clock duration: " << std::chrono::duration<double,std::milli>(t_stop-t_start).count() << "\n";
+
+                uint64_t ms_stop = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                std::cout.precision(64);
+                std::cout << "[CovarianceEvoked::run] sytem_clock stop after ->setValue(fiffNoiseCov,fiffDataCov): " << ms_stop << " ms since the Epoch\n";
+
             }
+
+
         }
     }
 

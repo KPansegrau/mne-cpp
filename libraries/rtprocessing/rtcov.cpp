@@ -83,6 +83,11 @@ FiffCov RtCov::estimateCovariance(const Eigen::MatrixXd& matData,
         return FiffCov();
     }
 
+    //TODO: only for performance evaluation, delete later
+    QElapsedTimer timer;
+    qint64 iTime = 0;
+    timer.start();
+
     QFuture<RtCovComputeResult> result = QtConcurrent::mappedReduced(m_lData,
                                                                      compute,
                                                                      reduce);
@@ -90,6 +95,11 @@ FiffCov RtCov::estimateCovariance(const Eigen::MatrixXd& matData,
     result.waitForFinished();
 
     RtCovComputeResult finalResult = result.result();
+
+//    //TODO: only for performance evaluation, delete later
+//    iTime = timer.elapsed();
+//    qDebug() << "[RtCov::estimateCovariance] wall clock time after mappedReduced " << iTime << " ms";
+
 
     //Final computation
     FiffCov computedCov;
@@ -135,6 +145,11 @@ FiffCov RtCov::estimateCovariance(const Eigen::MatrixXd& matData,
 
         m_lData.clear();
         m_iSamples = 0;
+
+        //TODO: only for performance evaluation, delete later
+        iTime = timer.elapsed();
+        qDebug() << "[RtCov::estimateCovariance] wall clock time before return computed Cov " << iTime << " ms";
+
 
         return computedCov;
     } else {

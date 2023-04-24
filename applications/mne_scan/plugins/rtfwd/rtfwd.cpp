@@ -513,7 +513,7 @@ void RtFwd::run()
 
         if(bDoClustering && bFwdReady) {
             emit statusInformationChanged(3);               // clustering
-            pClusteredFwd = MNEForwardSolution::SPtr(new MNEForwardSolution(pFwdSolution->cluster_forward_solution(*m_pAnnotationSet.data(), 200)));
+            pClusteredFwd = MNEForwardSolution::SPtr(new MNEForwardSolution(pFwdSolution->cluster_forward_solution(*m_pAnnotationSet.data(), 20))); //TODO: here was 200 before, changed this for beamformer evaluation purposes
             emit clusteringAvailable(pClusteredFwd->nsource);
 
             m_pRTFSOutput->measurementData()->setValue(pClusteredFwd);

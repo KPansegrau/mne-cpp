@@ -62,6 +62,9 @@
 #include <QDebug>
 #include <QtWidgets>
 
+//TODO: delete this later: only for debugging
+#include <iostream>
+
 //=============================================================================================================
 // USED NAMESPACES
 //=============================================================================================================
@@ -260,10 +263,31 @@ void Covariance::run()
     m_mutex.unlock();
     RTPROCESSINGLIB::RtCov rtCov(m_pFiffInfo);
 
+
+//    QElapsedTimer timer;
+//    qint64 iTime = 0;
+//    qint64 iTimeStop = 0;
+//    timer.start();
+
     // Start processing data
     while(!isInterruptionRequested()) {
         // Get the current data
         if(m_pCircularBuffer->pop(matData)) {
+
+//            //TODO: delete this later, only for debugging
+//            auto t_start = std::chrono::high_resolution_clock::now();
+
+//            uint64_t ms_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+//            std::cout.precision(64);
+//            std::cout << "[Covariance::run] sytem_clock start after ->pop(matData): " << ms_start << " milliseconds since the Epoch\n";
+
+//            iTime = timer.elapsed();
+//            qDebug() << "[Covariance::run] time after ->pop(matData) " << iTime;
+//            timer.restart();
+
+//            std::clock_t c_start = std::clock();
+
+
             m_mutex.lock();
             iEstimationSamples = m_iEstimationSamples;
             m_mutex.unlock();
@@ -271,6 +295,25 @@ void Covariance::run()
             fiffCov = rtCov.estimateCovariance(matData, iEstimationSamples);
             if(!fiffCov.names.isEmpty()) {
                 m_pCovarianceOutput->measurementData()->setValue(fiffCov);
+
+//                //TODO: delet this later, only for debugging
+//                auto t_stop = std::chrono::high_resolution_clock::now();
+//                std::cout.precision(17);
+//                std::cout << "[Covariance::run] Wall clock duration: " << std::chrono::duration<double,std::milli>(t_stop-t_start).count() << "\n";
+
+//                uint64_t ms_stop = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+//                std::cout.precision(64);
+//                std::cout << "[Covariance::run] sytem_clock stop after ->setValue(fiffCov): " << ms_stop << " ms since the Epoch\n";
+
+
+//                iTimeStop = timer.elapsed();
+//                qDebug() << "[Covariance::run] time after ->setValue(fiffCov) " << iTimeStop;
+//                timer.restart();
+
+
+//                std::clock_t c_end = std::clock();
+//                long double time_elapsed_ms = 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC;
+//                std::cout << "CPU time used: " << time_elapsed_ms << " ms\n";
             }
         }
     }
