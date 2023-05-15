@@ -3,7 +3,7 @@
  * @file     covarianceevoked.cpp
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>;
  *
- * @since    0.1.0
+ * @since    0.1.9
  * @date     February, 2023
  *
  * @section  LICENSE
@@ -64,6 +64,7 @@
 #include <QtWidgets>
 
 #include <iostream>
+#include <fstream>
 
 
 //=============================================================================================================
@@ -86,19 +87,17 @@ using namespace Eigen;
 CovarianceEvoked::CovarianceEvoked()
     : m_pCircularEvokedBuffer(CircularBuffer<FIFFLIB::FiffEvoked>::SPtr::create(40))
     , m_iEstimationSamples(2400)
-    , m_sAvrType("3")
+    , m_sAvrType("1")
     , m_iNumPreStimSamples(-1)
-    , m_iNumAverages(-1)
 {
-    //HINT: copied from Covariance::Covariance()
-    // iEstimationSamples is used in Covariance::run() as minimum number of samples for new calculation of covariance (if the number of sample in the data is lower, empty covariance is returned)
+
 }
 
 //=============================================================================================================
 
 CovarianceEvoked::~CovarianceEvoked()
 {
-        //HINT: copied from Covariance::Covariance()
+    //HINT: copied from Covariance::Covariance()
     if(this->isRunning())
         stop();
 }
@@ -116,14 +115,11 @@ QSharedPointer<AbstractPlugin> CovarianceEvoked::clone() const
 void CovarianceEvoked::init()
 {
 
-    //TODO: add those info messages to all methods here for debugging purposes
     qInfo() << "[CovarianceEvoked::init] Initializing CovarianceEvoked plugin...";
 
     //Load Settings
     //HINT: copied form Covariance::init()
     QSettings settings("MNECPP");
-    //TODO: this 5000 is set for RTC-MNE (new cov every 5000 samples, check if this is okay here
-    //TODO: maybe two parameters one for naise and one for data cov update
     m_iEstimationSamples = settings.value(QString("MNESCAN/%1/estimationSamples").arg(this->getName()), 5000).toInt();
 
     //Input
@@ -139,8 +135,6 @@ void CovarianceEvoked::init()
     m_pCovarianceEvokedOutput->measurementData()->setName(this->getName());//Provide name to auto store widget settings
     m_outputConnectors.append(m_pCovarianceEvokedOutput);
 
-    //qDebug() << "[CovarianceEvoked::init] Finished initializing CovarianceEvoked plugin.";
-
 }
 
 //=============================================================================================================
@@ -150,8 +144,12 @@ void CovarianceEvoked::initPluginControlWidgets()
 
     qInfo() << "[CovarianceEvoked::initPluginControlWidgets] Initializing control widgets...";
 
-    //HINT: copied from Covariance::initPluginControlWidgets(), added the class CovarianceEvokedSettingsView to libraries/disp/viewers
+    //HINT: copied from Covariance::initPluginControlWidgets()
     if(m_pFiffInfoInput) {
+
+        //TODO: delete later
+        qDebug() << "[CovarianceEvoked::initPluginControlWidgets] if(m_pFiffInfoInput) true.";
+
         QList<QWidget*> plControlWidgets;
 
         CovarianceEvokedSettingsView* pCovarianceEvokedWidget = new CovarianceEvokedSettingsView(QString("MNESCAN/%1").arg(this->getName()));
@@ -169,15 +167,13 @@ void CovarianceEvoked::initPluginControlWidgets()
         m_bPluginControlWidgetsInit = true;
     }
 
-    //qDebug() << "[CovarianceEvoked::initPluginControlWidgets] Finished initializing control widgets.";
-
 }
 
 //=============================================================================================================
 
 void CovarianceEvoked::unload()
 {
-        //HINT: copied from Covariance::Covariance()
+    //HINT: copied from Covariance::Covariance()
     // Save Settings
     QSettings settings("MNECPP");
     settings.setValue(QString("MNESCAN/%1/estimationSamples").arg(this->getName()), m_iEstimationSamples);
@@ -188,7 +184,7 @@ void CovarianceEvoked::unload()
 
 bool CovarianceEvoked::start()
 {
-        //HINT: copied from Covariance::Covariance()
+    //HINT: copied from Covariance::start()
     // Start thread
     QThread::start();
 
@@ -199,7 +195,7 @@ bool CovarianceEvoked::start()
 
 bool CovarianceEvoked::stop()
 {
-        //HINT: copied from Covariance::Covariance()
+    //HINT: copied from Covariance::stop()
     requestInterruption();
     wait(500);
 
@@ -212,7 +208,7 @@ bool CovarianceEvoked::stop()
 
 AbstractPlugin::PluginType CovarianceEvoked::getType() const
 {
-        //HINT: copied from Covariance::Covariance()
+    //HINT: copied from Covariance::getType()
     return _IAlgorithm;
 }
 
@@ -243,12 +239,7 @@ QWidget* CovarianceEvoked::setupWidget()
 
 void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
 {
-    //HINT: copied from RtcMne::updateRTE, modifications: no setting of m_bEvokedInput, no channel picking, need to get the pre and post stimulative sample number
-    //qDebug() << "[CovarianceEvoked::updateRTE] Updating RTE input...";
-
-
-
-
+    //HINT: copied from RtcMne::updateRTE with some changes
     if(QSharedPointer<RealTimeEvokedSet> pRTES = pMeasurement.dynamicCast<RealTimeEvokedSet>()) {
 
         QStringList lResponsibleTriggerTypes = pRTES->getResponsibleTriggerTypes();
@@ -261,7 +252,6 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
         if(!this->isRunning() || !lResponsibleTriggerTypes.contains(m_sAvrType)) {
             return;
         }
-
 
         FiffEvokedSet::SPtr pFiffEvokedSet = pRTES->getValue();
 
@@ -284,12 +274,10 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
             initPluginControlWidgets();
         }
 
-        //get number of pre stimulative samples
+        //get number of pre stimulative samples (should equal number of poststimulative samples)
         //HINT: this part is new, we need the number of pre and post stimulative samples for cutting the correct time window for computation of noise and data covariance matrix
-        //TODO: check whether this part works
         m_iNumPreStimSamples = pRTES->getNumPreStimSamples();
 //        qDebug() << "[CovarianceEvoked::updateRTE] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
-
 
         if(this->isRunning()) {
             for(int i = 0; i < pFiffEvokedSet->evoked.size(); ++i) {
@@ -316,14 +304,11 @@ void CovarianceEvoked::updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement)
             }
         }
 
-    //qDebug() << "[CovarianceEvoked::updateRTE] Finished updating RTE input.";
-
 }
 
 
 
 //=============================================================================================================
-
 
 void CovarianceEvoked::changeSamples(qint32 samples)
 {
@@ -336,7 +321,7 @@ void CovarianceEvoked::changeSamples(qint32 samples)
 void CovarianceEvoked::onTriggerTypeChanged(const QString& triggerType)
 {
     m_sAvrType = triggerType;
-    qDebug() << "[CovarianceEvoked::onTriggerTypeChanged] Changed trigger type to " << m_sAvrType;
+//    qDebug() << "[CovarianceEvoked::onTriggerTypeChanged] Changed trigger type to " << m_sAvrType;
 
 }
 
@@ -366,20 +351,13 @@ void CovarianceEvoked::run()
     FiffCov fiffNoiseCov;
     FiffCov fiffDataCov;
     int iEstimationSamples;
-    //TODO: check if its correct to use the same fiff info in both cases
     RTPROCESSINGLIB::RtCov rtNoiseCov(m_pFiffInfoInput);
     RTPROCESSINGLIB::RtCov rtDataCov(m_pFiffInfoInput);
 
-
     qInfo() << "[CovarianceEvoked::run] Start processing data.";
 
-
-//    auto t_start = std::chrono::high_resolution_clock::now();
-
-//    uint64_t ms_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-//    std::cout.precision(64);
-//    std::cout << "[CovarianceEvoked::run] sytem_clock start: " << ms_start << " milliseconds since the Epoch\n";
-
+    std::ofstream timeFileStart;
+    std::ofstream timeFileStop;
 
     //start processing data
     while(!isInterruptionRequested()) {
@@ -387,31 +365,25 @@ void CovarianceEvoked::run()
         // Get the current data
         if(m_pCircularEvokedBuffer->pop(evokedData)) {
 
-            auto t_start = std::chrono::high_resolution_clock::now();
-
-            uint64_t ms_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-            std::cout.precision(64);
-            std::cout << "[CovarianceEvoked::run] sytem_clock start after ->pop(evokedData): " << ms_start << " milliseconds since the Epoch\n";
+            //for performance evaluation only
+            timeFileStart.open("testTimingCovarianceEvokedStart.txt", std::ios::app);
+            uint64_t time_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            timeFileStart <<  time_start << '\n';
+            timeFileStart.close();
 
             m_qMutex.lock();
             iEstimationSamples = m_iEstimationSamples;
             m_qMutex.unlock();
 
-            //qDebug() << "[CovarianceEvoked::run] m_iNumPreStimSamples = " << m_iNumPreStimSamples;
-
-            qDebug() << "[CovarianceEvoked::run] evokedData.data " << evokedData.data.rows() << " x " << evokedData.data.cols();
+//            qDebug() << "[CovarianceEvoked::run] evokedData.data " << evokedData.data.rows() << " x " << evokedData.data.cols();
 
             //split evoked data into pre and post stimulative part
             matPreStimData = evokedData.data.leftCols(m_iNumPreStimSamples);
             matPostStimData = evokedData.data.rightCols(evokedData.data.cols() - m_iNumPreStimSamples);
 
-
-            //qDebug() << "[CovarianceEvoked::run] Pre stim matrix " << matPreStimData.rows() << " x " << matPreStimData.cols();
-            //qDebug() << "[CovarianceEvoked::run] Post stim matrix " << matPostStimData.rows() << " x " << matPostStimData.cols();
-
             //estimate covariance matrices
             fiffNoiseCov = rtNoiseCov.estimateCovariance(matPreStimData, iEstimationSamples);
-            fiffDataCov = rtDataCov.estimateCovariance(matPostStimData, iEstimationSamples);
+            fiffDataCov = rtDataCov.estimateCovariance(matPostStimData, iEstimationSamples);           
 
             //set kind of data covariance manually (during estimateCovariance it is set to FIFFV_MNE_NOISE_COV)
             fiffDataCov.kind = FIFFV_MNE_SIGNAL_COV;
@@ -420,34 +392,48 @@ void CovarianceEvoked::run()
 //            qDebug() << "[CovarianceEvoked::run] Estimated data covariance matrix " << fiffDataCov.data.rows() << " x " << fiffDataCov.data.cols();
 
 
-
             if(!fiffNoiseCov.names.isEmpty() && !fiffDataCov.names.isEmpty()) {
+
+
+//                //TODO: for debugging only, delete later
+//                qDebug() << "[CovarianceEvoked::run] fiffDataCov.max = " << fiffDataCov.data.maxCoeff();
+//                qDebug() << "[CovarianceEvoked::run] fiffDataCov.mean = " << fiffDataCov.data.mean();
+//                qDebug() << "[CovarianceEvoked::run] fiffDataCov.min = " << fiffDataCov.data.minCoeff();
+////                [DEBUG] [CovarianceEvoked::run] fiffDataCov.max =  0.00415508
+////                [DEBUG] [CovarianceEvoked::run] fiffDataCov.mean =  2.93903e-08
+////                [DEBUG] [CovarianceEvoked::run] fiffDataCov.min =  -2.88163e-09
+//                FiffCov fiffDataCovConst = fiffDataCov;
+//                fiffDataCovConst.data = MatrixXd::Ones(fiffDataCov.data.rows(),fiffDataCov.data.cols()) * 2.93903e-08;
+
+
                 m_pCovarianceEvokedOutput->measurementData()->setValue(fiffNoiseCov,fiffDataCov);
+
+                // for performance evaluation only
+                uint64_t time_stop = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                timeFileStop.open("testTimingCovarianceEvokedStop.txt", std::ios::app);
+                timeFileStop << time_stop << '\n';
+                timeFileStop.close();
+
                 qDebug() << "[CovarianceEvoked::run] Wrote new covariance matrices to plug-in output.";
 
+            }else{
 
-                auto t_stop = std::chrono::high_resolution_clock::now();
-                std::cout.precision(17);
-                std::cout << "[CovarianceEvoked::run] Wall clock duration: " << std::chrono::duration<double,std::milli>(t_stop-t_start).count() << "\n";
-
-                uint64_t ms_stop = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-                std::cout.precision(64);
-                std::cout << "[CovarianceEvoked::run] sytem_clock stop after ->setValue(fiffNoiseCov,fiffDataCov): " << ms_stop << " ms since the Epoch\n";
-
+                //for performance evaluation only
+                timeFileStop.open("testTimingCovarianceEvokedStop.txt", std::ios::app);
+                timeFileStop << 0 << '\n';
+                timeFileStop.close();
             }
-
 
         }
     }
 
-    qDebug() << "[CovarianceEvoked::run] Finished running covariance evoked plugin.";
 }
 
 //=============================================================================================================
 
 QString CovarianceEvoked::getBuildInfo()
 {
-        //HINT: copied from Covariance::Covariance()
+    //HINT: copied from Covariance::Covariance()
     return QString(COVARIANCEEVOKEDPLUGIN::buildDateTime()) + QString(" - ")  + QString(COVARIANCEEVOKEDPLUGIN::buildHash());
 }
 

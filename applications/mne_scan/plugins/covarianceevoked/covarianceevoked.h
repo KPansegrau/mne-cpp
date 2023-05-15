@@ -3,7 +3,7 @@
  * @file     covarianceevoked.h
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de;
  *
- * @since    0.1.0
+ * @since    0.1.9
  * @date     February, 2023
  *
  * @section  LICENSE
@@ -107,13 +107,13 @@ class COVARIANCEEVOKEDSHARED_EXPORT CovarianceEvoked : public SCSHAREDLIB::Abstr
 public:
     //=========================================================================================================
     /**
-     * Constructs a CovarianceEvoked.
+     * Constructs a CovarianceEvoked object.
      */
     CovarianceEvoked();
 
     //=========================================================================================================
     /**
-     * Destroys the Covariance.
+     * Destroys the CovarianceEvoked.
      */
     ~CovarianceEvoked();
 
@@ -153,7 +153,6 @@ public:
 
     void updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement);
 
-    //TODO: maybe we can delete this method since it is not used (check and delete)
     void showCovarianceEvokedWidget();
 
     void changeSamples(qint32 samples);
@@ -175,24 +174,21 @@ protected:
     virtual void run();
 
 private:
-    //HINT: this variables are copied from rtcmne.h
-    //TODO: check whether we need all
-    QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedSet> >             m_pCovarianceEvokedInput;               /**< The CovarianceEvoked input.*/
-    QSharedPointer<SCSHAREDLIB::PluginOutputData<SCMEASLIB::RealTimeEvokedCov> >            m_pCovarianceEvokedOutput;     /**< The CovarianceEvoked output.*/
 
-    QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfoInput;           /**< Fiff information of the evoked. */
+    QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedSet> >             m_pCovarianceEvokedInput;       /**< The CovarianceEvoked input.*/
+    QSharedPointer<SCSHAREDLIB::PluginOutputData<SCMEASLIB::RealTimeEvokedCov> >            m_pCovarianceEvokedOutput;      /**< The CovarianceEvoked output.*/
 
-    QSharedPointer<UTILSLIB::CircularBuffer<FIFFLIB::FiffEvoked> > m_pCircularEvokedBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
+    QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfoInput;               /**< Fiff information of the evoked input. */
 
-    QMutex                          m_qMutex;                   /**< The mutex ensuring thread safety. */
+    QSharedPointer<UTILSLIB::CircularBuffer<FIFFLIB::FiffEvoked> >                          m_pCircularEvokedBuffer;        /**< Holds incoming RealTimeEvoked data.*/
 
+    QMutex      m_qMutex;                   /**< The mutex ensuring thread safety. */
 
-    qint32      m_iEstimationSamples; //number of samples used for estimation of covariance matrices
-    qint32      m_iNumAverages; //number of averages
+    qint32      m_iEstimationSamples;       /**< The number of samples used for estimation of covariance matrices (covariance update interval) */
 
-    QString                         m_sAvrType;                 /**< The average type. */
+    QString     m_sAvrType;                 /**< The average type. */
 
-    quint32 m_iNumPreStimSamples;   /**< The number of pre stimulative samples. */
+    quint32     m_iNumPreStimSamples;       /**< The number of pre stimulative samples. */
 
 signals:
     void responsibleTriggerTypesChanged(const QStringList& lResponsibleTriggerTypes);

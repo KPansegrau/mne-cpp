@@ -3,7 +3,7 @@
  * @file     realtimeevokedcov.cpp
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>;
  *
- * @since    0.1.0
+ * @since    0.1.9
  * @date     February, 2023
  *
  * @section  LICENSE
@@ -98,7 +98,6 @@ void RealTimeEvokedCov::setValue(const FiffCov& noiseCov, const FiffCov& dataCov
 {
     m_qMutex.lock();
     //Store
-    //TODO: this access might be wrong, it was luck that it works with this ->first
      m_pFiffCovPair->first = noiseCov;
      m_pFiffCovPair->second = dataCov;
     m_bInitialized = true;

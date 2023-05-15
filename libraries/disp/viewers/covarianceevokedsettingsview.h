@@ -2,7 +2,7 @@
 /**
  * @file     covarianceevokedsettingsview.h
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>
- * @since    0.1.0
+ * @since    0.1.9
  * @date     February, 2023
  *
  * @section  LICENSE
@@ -104,7 +104,7 @@ public:
     /**
      * Set current samples to gather until a new covariance is calculated.
      *
-     * @param[in] iSamples     new number samples.
+     * @param[in] iSamples     New number of samples.
      */
     void setCurrentSamples(int iSamples);
 
@@ -112,7 +112,7 @@ public:
     /**
      * Set minimum number of samples to gather until a new covariance is calculated.
      *
-     * @param[in] iSamples     new minimum number of samples.
+     * @param[in] iSamples     New minimum number of samples.
      */
     void setMinSamples(int iSamples);
 

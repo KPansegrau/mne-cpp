@@ -605,6 +605,7 @@ RtAveraging::~RtAveraging()
 
 void RtAveraging::append(const MatrixXd &data)
 {
+
     emit operate(data);
 }
 

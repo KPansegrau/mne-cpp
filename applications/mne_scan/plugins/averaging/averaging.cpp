@@ -48,6 +48,9 @@
 
 #include <rtprocessing/rtaveraging.h>
 
+#include <iostream>
+#include <fstream>
+
 //=============================================================================================================
 // QT INCLUDES
 //=============================================================================================================
@@ -439,8 +442,18 @@ void Averaging::run()
     FIFFLIB::FiffEvokedSet evokedSet;
     QStringList lResponsibleTriggerTypes;
 
+    std::ofstream timeFileStart;
+    std::ofstream timeFileStop;
+
     while(!isInterruptionRequested()){
         if(m_pCircularBuffer->pop(evokedSet)) {
+
+            //for performance evaluation
+            timeFileStart.open("testTimingAveragingStart.txt", std::ios::app);
+            uint64_t time_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            timeFileStart <<  time_start << '\n';
+            timeFileStart.close();
+
             m_qMutex.lock();
             lResponsibleTriggerTypes = m_lResponsibleTriggerTypes;
             m_qMutex.unlock();
@@ -448,6 +461,13 @@ void Averaging::run()
             m_pAveragingOutput->measurementData()->setValue(evokedSet,
                                                  m_pFiffInfo,
                                                  lResponsibleTriggerTypes);
+
+            //for performance evaluation only
+            uint64_t time_stop = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            timeFileStop.open("testTimingAveragingStop.txt", std::ios::app);
+            timeFileStop << time_stop << '\n';
+            timeFileStop.close();
+
         }
     }
 }

@@ -84,17 +84,12 @@ QList<MNESourceEstimate::SPtr>& RealTimeSourceEstimate::getValue()
 void RealTimeSourceEstimate::setValue(MNESourceEstimate& v)
 {
 
-    qDebug() << "[RealtimeSourceEstimate::setValue] v.data dim: " << v.data.rows() << " x " << v.data.cols();
-
     m_qMutex.lock();
 
     //Store
     MNESourceEstimate::SPtr pMNESourceEstimate = MNESourceEstimate::SPtr::create(v);
 
-    qDebug() << "[RealtimeSourceEstimate::setValue] pMNESourceEstimate->data dim: " << pMNESourceEstimate->data.rows() << " x " << pMNESourceEstimate->data.cols();
     m_pMNEStc.append(pMNESourceEstimate);
-
-
 
     m_bInitialized = true;
 

@@ -214,12 +214,36 @@ void FiffSimulator::run()
 {
     MatrixXf matValue;
 
+    std::ofstream timeFileStart;
+    std::ofstream timeFileStop;
+
     while(!isInterruptionRequested()) {
         //pop matrix
         if(m_pCircularBuffer->pop(matValue)) {
+
+
+            //for performance evaluation
+            timeFileStart.open("testTimingFiffSimulatorStart.txt", std::ios::app);
+            uint64_t time_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            timeFileStart << time_start << '\n';
+            timeFileStart.close();
+
+
             //emit values
             if(!isInterruptionRequested()) {
                 m_pRTMSA_FiffSimulator->measurementData()->setValue(matValue.cast<double>());
+
+                uint64_t time_stop = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                timeFileStop.open("testTimingFiffSimulatorStop.txt", std::ios::app);
+                timeFileStop << time_stop << '\n';
+                timeFileStop.close();
+
+            }else{
+
+                timeFileStop.open("testTimingFiffSimulatorStop.txt", std::ios::app);
+                timeFileStop << 0 << '\n';
+                timeFileStop.close();
+
             }
         }
     }

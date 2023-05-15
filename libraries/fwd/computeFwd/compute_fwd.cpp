@@ -2089,11 +2089,14 @@ void ComputeFwd::initFwd()
             return;
         }
 
+
         // Compensation data
 
         if ((m_compData = MneCTFCompDataSet::mne_read_ctf_comp_data(m_pSettings->measname)) == Q_NULLPTR) {
+
             return;
         }
+
         // Compensation channel information may be needed
         if (m_compData->ncomp > 0) {
             printf("%d compensation data sets in %s\n",m_compData->ncomp,m_pSettings->measname.toUtf8().constData());
@@ -2143,6 +2146,7 @@ void ComputeFwd::initFwd()
             return;
         }
 
+
         if (iNComp > 0) {
             if ((m_compcoils = m_templates->create_meg_coils(m_listCompChs,
                                                              iNComp,
@@ -2150,12 +2154,16 @@ void ComputeFwd::initFwd()
                 return;
             }
         }
+
+
         if ((m_eegels = FwdCoilSet::create_eeg_els(m_listEegChs,
                                                    iNEeg,
                                                    Q_NULLPTR)) == Q_NULLPTR) {
             return;
         }
         printf("Head coordinate coil definitions created.\n");
+
+
     }
 
     // Transform the source spaces into the appropriate coordinates
@@ -2164,6 +2172,7 @@ void ComputeFwd::initFwd()
         return;
     }
     printf("Source spaces are now in %s coordinates.\n",FiffCoordTransOld::mne_coord_frame_name(m_pSettings->coord_frame));
+
 
     // Prepare the BEM model if necessary
 

@@ -64,6 +64,7 @@
 
 //TODO: delete this later: only for debugging
 #include <iostream>
+#include <fstream>
 
 //=============================================================================================================
 // USED NAMESPACES
@@ -263,11 +264,16 @@ void Covariance::run()
     m_mutex.unlock();
     RTPROCESSINGLIB::RtCov rtCov(m_pFiffInfo);
 
-
+//    //TODO only for performance evaluation, delete later
 //    QElapsedTimer timer;
-//    qint64 iTime = 0;
 //    qint64 iTimeStop = 0;
 //    timer.start();
+
+    std::ofstream timeFileStart;
+    std::ofstream timeFileStop;
+
+
+
 
     // Start processing data
     while(!isInterruptionRequested()) {
@@ -275,17 +281,14 @@ void Covariance::run()
         if(m_pCircularBuffer->pop(matData)) {
 
 //            //TODO: delete this later, only for debugging
-//            auto t_start = std::chrono::high_resolution_clock::now();
+            timeFileStart.open("testTimingCovarianceStart.txt", std::ios::app);
+            uint64_t time_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            timeFileStart <<  time_start << '\n';
+            timeFileStart.close();
 
-//            uint64_t ms_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-//            std::cout.precision(64);
-//            std::cout << "[Covariance::run] sytem_clock start after ->pop(matData): " << ms_start << " milliseconds since the Epoch\n";
-
-//            iTime = timer.elapsed();
-//            qDebug() << "[Covariance::run] time after ->pop(matData) " << iTime;
 //            timer.restart();
 
-//            std::clock_t c_start = std::clock();
+
 
 
             m_mutex.lock();
@@ -301,22 +304,26 @@ void Covariance::run()
 //                std::cout.precision(17);
 //                std::cout << "[Covariance::run] Wall clock duration: " << std::chrono::duration<double,std::milli>(t_stop-t_start).count() << "\n";
 
-//                uint64_t ms_stop = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-//                std::cout.precision(64);
+                uint64_t time_stop = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                timeFileStop.open("testTimingCovarianceStop.txt", std::ios::app);
+                timeFileStop << time_stop << '\t' << iEstimationSamples <<'\n';
+                timeFileStop.close();
 //                std::cout << "[Covariance::run] sytem_clock stop after ->setValue(fiffCov): " << ms_stop << " ms since the Epoch\n";
 
 
 //                iTimeStop = timer.elapsed();
-//                qDebug() << "[Covariance::run] time after ->setValue(fiffCov) " << iTimeStop;
+//                testfile.open("testTimingCovariance.txt", std::ios::app);
+//                testfile << "[Covariance::run] time after ->setValue(fiffCov) " << iTimeStop << '\n';
+//                testfile.close();
 //                timer.restart();
 
 
-//                std::clock_t c_end = std::clock();
-//                long double time_elapsed_ms = 1000.0 * (c_end-c_start) / CLOCKS_PER_SEC;
-//                std::cout << "CPU time used: " << time_elapsed_ms << " ms\n";
+
             }
         }
     }
+
+
 }
 
 //=============================================================================================================

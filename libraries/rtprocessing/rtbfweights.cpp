@@ -3,7 +3,7 @@
  * @file     rtbfweights.cpp
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>;
  *
- * @since    0.1.0
+ * @since    0.1.9
  * @date     February, 2023
  *
  * @section  LICENSE
@@ -44,6 +44,9 @@
 #include <mne/mne_forwardsolution.h>
 #include <mne/mne_beamformer_weights.h>
 
+#include <iostream>
+#include <fstream>
+
 //=============================================================================================================
 // QT INCLUDES
 //=============================================================================================================
@@ -75,9 +78,10 @@ void RtBfWeightsWorker::doWork(const RtBfWeightsInput &inputData)
         return;
     }
 
-    // Restrict forward solution as necessary for MEG and/or EEG
-    //TODO: do we need this restriction???, check! no, this restriction causes dimension error afterwards
-    //MNEForwardSolution forwardMeg = inputData.pFwd->pick_types(true, false);
+
+    // Restrict forward solution as necessary for MEG, EEG
+    MNEForwardSolution forwardMeg = inputData.pFwd->pick_types(true, true);
+
 
     MNEBeamformerWeights bfWeights(*inputData.pFiffInfo.data(),
                                         *inputData.pFwd,
@@ -86,8 +90,6 @@ void RtBfWeightsWorker::doWork(const RtBfWeightsInput &inputData)
                                         inputData.sWeightnorm
                                         );
 
-    //TODO: for debugging, delete later
-    qDebug() << "[RtBfWeightsWorker::doWork] computed bfWeights.";
 
     emit resultReady(bfWeights);
 }
@@ -105,6 +107,8 @@ RtBfWeights::RtBfWeights(FiffInfo::SPtr &p_pFiffInfo,
 , m_pFwd(p_pFwd)
 , m_sWeightnorm(p_sWeightnorm)
 {
+
+
     RtBfWeightsWorker *worker = new RtBfWeightsWorker;
     worker->moveToThread(&m_workerThread);
 
@@ -114,8 +118,10 @@ RtBfWeights::RtBfWeights(FiffInfo::SPtr &p_pFiffInfo,
     connect(this, &RtBfWeights::operate,
             worker, &RtBfWeightsWorker::doWork);
 
-    connect(worker, &RtBfWeightsWorker::resultReady,
+    bool bResultReadyConnection = connect(worker, &RtBfWeightsWorker::resultReady,
             this, &RtBfWeights::handleResults);
+
+    qDebug() << "[RtBfWeights::RtBfWeights] bResultReadyConnection: " << bResultReadyConnection;
 
     m_workerThread.start();
 
@@ -133,6 +139,16 @@ RtBfWeights::~RtBfWeights()
 
 void RtBfWeights::append(const FIFFLIB::FiffCov &noiseCov, const FIFFLIB::FiffCov &dataCov)
 {
+
+
+    //for performance evaluation
+    std::ofstream timeFileStartWeightUpdate;
+    timeFileStartWeightUpdate.open("testTimingBFWeightUpdateStart.txt", std::ios::app);
+    uint64_t time_start_update = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    timeFileStartWeightUpdate <<  time_start_update << '\n';
+    timeFileStartWeightUpdate.close();
+
+
     RtBfWeightsInput inputData;
     inputData.noiseCov = noiseCov;
     inputData.dataCov = dataCov;
@@ -161,6 +177,7 @@ void RtBfWeights::setWeightnorm(QString weightnorm)
 
 void RtBfWeights::handleResults(const MNELIB::MNEBeamformerWeights& bfWeights)
 {
+
     emit bfWeightsCalculated(bfWeights);
 }
 
@@ -168,6 +185,7 @@ void RtBfWeights::handleResults(const MNELIB::MNEBeamformerWeights& bfWeights)
 
 void RtBfWeights::restart()
 {
+
     stop();
 
     RtBfWeightsWorker *worker = new RtBfWeightsWorker;

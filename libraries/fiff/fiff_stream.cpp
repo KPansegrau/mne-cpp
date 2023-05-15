@@ -1663,11 +1663,16 @@ bool FiffStream::read_rt_tag(FiffTag::SPtr &p_pTag)
 bool FiffStream::read_tag(FiffTag::SPtr &p_pTag,
                           fiff_long_t pos)
 {
+
+
+
     if (pos >= 0) {
         this->device()->seek(pos);
     }
 
+
     p_pTag = FiffTag::SPtr(new FiffTag());
+
 
     //
     // Read fiff tag header from stream
@@ -1684,6 +1689,9 @@ bool FiffStream::read_tag(FiffTag::SPtr &p_pTag,
     //
     // Read data when available
     //
+
+
+
     int endian;
     if (this->byteOrder() == QDataStream::LittleEndian){
         endian = FIFFV_LITTLE_ENDIAN;
@@ -1693,6 +1701,7 @@ bool FiffStream::read_tag(FiffTag::SPtr &p_pTag,
         //printf("Endian: Big\n");
     }
 
+
     if (p_pTag->size() > 0)
     {
         this->readRawData(p_pTag->data(), p_pTag->size());
@@ -1700,8 +1709,10 @@ bool FiffStream::read_tag(FiffTag::SPtr &p_pTag,
         FiffTag::convert_tag_data(p_pTag,endian,FIFFV_NATIVE_ENDIAN);
     }
 
+
     if (p_pTag->next != FIFFV_NEXT_SEQ)
         this->device()->seek(p_pTag->next);//fseek(fid,tag.next,'bof');
+
 
     return true;
 }

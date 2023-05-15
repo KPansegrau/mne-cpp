@@ -2,8 +2,7 @@
 /**
  * @file     rtbeamformersetupwidget.cpp
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>;
- *
- * @since    0.1.0
+ * @since    0.1.9
  * @date     February, 2023
  *
  * @section  LICENSE

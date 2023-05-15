@@ -2,7 +2,7 @@
 /**
  * @file     beamformersettingsview.h
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>
- * @since    0.1.0
+ * @since    0.1.9
  * @date     February, 2023
  *
  * @section  LICENSE
@@ -146,7 +146,7 @@ protected:
     /**
      * Slot called when the weight normalization method changed.
      *
-     * @param[in] method        The new weight normalization method.
+     * @param[in] weightnorm        The new weight normalization method.
      */
     void onWeightnormChanged(const QString& weightnorm);
 

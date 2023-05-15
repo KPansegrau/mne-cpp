@@ -53,6 +53,8 @@
 #include <scMeas/realtimefwdsolution.h>
 #include <scMeas/realtimemultisamplearray.h>
 
+#include <fstream>
+
 //=============================================================================================================
 // QT INCLUDES
 //=============================================================================================================
@@ -132,6 +134,8 @@ QSharedPointer<AbstractPlugin> RtFwd::clone() const
 
 void RtFwd::init()
 {
+
+
     // Inits
     m_pAnnotationSet = AnnotationSet::SPtr(new AnnotationSet(m_sAtlasDir+"/lh.aparc.a2009s.annot", m_sAtlasDir+"/rh.aparc.a2009s.annot"));
 
@@ -150,6 +154,7 @@ void RtFwd::init()
     m_pRTFSOutput = PluginOutputData<RealTimeFwdSolution>::create(this, "rtFwdOut", "rtFwd real-time forward solution output data");
     m_pRTFSOutput->measurementData()->setName(this->getName());//Provide name to auto store widget settings
     m_outputConnectors.append(m_pRTFSOutput);
+
 }
 
 //=============================================================================================================
@@ -163,6 +168,7 @@ void RtFwd::unload()
 
 bool RtFwd::start()
 {
+
     // Maybe we can move all of this to the run() method?
     // Read BEM
     QFile t_fBem(m_pFwdSettings->bemname);
@@ -298,6 +304,7 @@ void RtFwd::update(SCMEASLIB::Measurement::SPtr pMeasurement)
 
 void RtFwd::initPluginControlWidgets()
 {
+
     bool bFiffInfo = false;
     m_mutex.lock();
     if(m_pFiffInfo) {
@@ -337,6 +344,7 @@ void RtFwd::initPluginControlWidgets()
 
         m_bPluginControlWidgetsInit = true;
     }
+
 }
 
 //=============================================================================================================
@@ -522,6 +530,8 @@ void RtFwd::run()
 
             emit statusInformationChanged(5);               //finished
         }
+
+
     }
 }
 

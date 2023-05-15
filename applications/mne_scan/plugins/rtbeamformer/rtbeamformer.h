@@ -2,7 +2,7 @@
 /**
  * @file     rtbeamformer.h
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>
- * @since    0.1.0
+ * @since    0.1.9
  * @date     January, 2023
  *
  * @section  LICENSE
@@ -157,7 +157,9 @@ public:
      */
     void initPluginControlWidgets();
 
-
+    /**
+     * AbstractAlgorithm functions
+     */
     virtual void unload();
     virtual bool start();
     virtual bool stop();
@@ -175,17 +177,11 @@ public:
     bool calcFiffInfo();
 
     //=========================================================================================================
-    /**
-     * Slot to update the real time multi sample array data
-     */
- //   void updateRTMSA(SCMEASLIB::Measurement::SPtr pMeasurement);
-
-    //=========================================================================================================
 
     /**
-     * Slot to update the fiff evoked
+     * Slot to update the input fiff evoked
      *
-     * @param[in] pMeasurement   The evoked to be appended.
+     * @param[in] pMeasurement   The evoked input data to be appended.
      */
     void updateRTE(SCMEASLIB::Measurement::SPtr pMeasurement);
 
@@ -206,7 +202,7 @@ public:
     /**
      * Slot to update the beamformer weights
      *
-     * @param[in] invOp    The beamformer weights to update.
+     * @param[in] bfWeights    The new beamformer weights.
      */
     void updateBFWeights(const MNELIB::MNEBeamformerWeights& bfWeights);
 
@@ -218,7 +214,7 @@ protected:
     /**
      * Slot called when the weight normalization method changed.
      *
-     * @param[in] method        The new weight normalization.
+     * @param[in] weightnorm        The new weight normalization method.
      */
     void onWeightnormChanged(const QString &weightnorm);
 
@@ -232,7 +228,7 @@ protected:
 
     //=========================================================================================================
     /**
-     * Slot called when the time point changes.
+     * Slot called when the time point (in the epoch for which the source reconstruction is to be performed) changes.
      *
      * @param[in] iTimePointMs        The new time point in ms.
      */
@@ -247,46 +243,41 @@ protected:
 
     //=========================================================================================================
 
-//    QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeMultiSampleArray> >      m_pRTMSAInput;              /**< The RealTimeMultiSampleArray input.*/
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedSet> >             m_pRTESInput;               /**< The RealTimeEvoked input.*/
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeEvokedCov> >             m_pRTCEInput;                /**< The RealTimeEvokedCov input.*/
     QSharedPointer<SCSHAREDLIB::PluginInputData<SCMEASLIB::RealTimeFwdSolution> >           m_pRTFSInput;               /**< The RealTimeFwdSolution input.*/
     QSharedPointer<SCSHAREDLIB::PluginOutputData<SCMEASLIB::RealTimeSourceEstimate> >       m_pRTSEOutput;              /**< The RealTimeSourceEstimate output.*/
 
 
-    QSharedPointer<UTILSLIB::CircularBuffer_Matrix_double >                                 m_pCircularMatrixBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
-    QSharedPointer<UTILSLIB::CircularBuffer<FIFFLIB::FiffEvoked> >                          m_pCircularEvokedBuffer;    /**< Holds incoming RealTimeMultiSampleArray data.*/
+    QSharedPointer<UTILSLIB::CircularBuffer<FIFFLIB::FiffEvoked> >                          m_pCircularEvokedBuffer;    /**< Holds incoming RealTimeEvoked data.*/
 
-    QSharedPointer<RTPROCESSINGLIB::RtBfWeights>                                            m_pRtBfWeights;                 /**< Real-time beamformer weights. */
-
+    QSharedPointer<RTPROCESSINGLIB::RtBfWeights>                                            m_pRtBfWeights;             /**< Real-time beamformer weights. */
 
 
     QSharedPointer<MNELIB::MNEForwardSolution>                                              m_pFwd;                     /**< Forward solution. */
-    QSharedPointer<FIFFLIB::FiffCov>                                                        m_pNoiseCov;                     /**< Noise Covariance Matrix. */
-    QSharedPointer<FIFFLIB::FiffCov>                                                        m_pDataCov;                     /**< Data Covariance Matrix. */
-
+    QSharedPointer<FIFFLIB::FiffCov>                                                        m_pNoiseCov;                /**< Noise Covariance Matrix. */
+    QSharedPointer<FIFFLIB::FiffCov>                                                        m_pDataCov;                 /**< Data Covariance Matrix. */
 
 
     QSharedPointer<FIFFLIB::FiffInfoBase>                                                   m_pFiffInfoForward;         /**< Fiff information of the forward solution. */
-    QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfo;                /**< Fiff information. */
+    QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfo;                /**< Fiff information of the final source estimate. */
     QSharedPointer<FIFFLIB::FiffInfo>                                                       m_pFiffInfoInput;           /**< Fiff information of the evoked. */
 
     QSharedPointer<FSLIB::AnnotationSet>                                                    m_pAnnotationSet;           /**< Annotation set. */
     QSharedPointer<FSLIB::SurfaceSet>                                                       m_pSurfaceSet;              /**< Surface set. */
 
 
-    bool                            m_bRawInput;                /**< Flag whether a raw data input was received. */
-    bool                            m_bEvokedInput;             /**< Flag whether an evoked input was received. */
-    bool                            m_bUpdateBeamformer;       /**< Flag whether to update the beamformer object. */
-
+    bool                            m_bRawInput;                /**< Flag whether raw data input was received. TODO: this option is not provided yet. */
+    bool                            m_bEvokedInput;             /**< Flag whether evoked input was received. */
+    bool                            m_bUpdateBeamformer;        /**< Flag whether to update the beamformer object. */
 
     QMutex                          m_qMutex;                   /**< The mutex ensuring thread safety. */
     QFuture<void>                   m_future;                   /**< The future monitoring the clustering. */
 
-    FIFFLIB::FiffEvoked             m_currentEvoked;
-    FIFFLIB::FiffCoordTrans         m_mriHeadTrans;             /**< the Mri Head transformation. */
+    FIFFLIB::FiffEvoked             m_currentEvoked;            /**< The current evoked input. */
+    FIFFLIB::FiffCoordTrans         m_mriHeadTrans;             /**< The Mri Head transformation. */
 
-    qint32                          m_iNumAverages;             /**< The number of trials/averages to store. */
+    qint32                          m_iNumAverages;             /**< The number of averages to store. */
     qint32                          m_iTimePointSps;            /**< The time point to pick from the data in samples. */
     qint32                          m_iDownSample;              /**< Down sample factor. */
 
@@ -299,11 +290,11 @@ protected:
     QFile                           m_fMriHeadTrans;            /**< The Head - Mri transformation. */
 
 
-    QStringList                     m_qListNoiseCovChNames;          /**< Noise Covariance channel names. */
-    QStringList                     m_qListDataCovChNames;         /**< Data Covariance channel names. */  //HINT: new field here
+    QStringList                     m_qListNoiseCovChNames;     /**< Noise Covariance channel names. */
+    QStringList                     m_qListDataCovChNames;      /**< Data Covariance channel names. */
     QStringList                     m_qListPickChannels;        /**< Channels to pick. */
 
-    MNELIB::MNEBeamformerWeights      m_bfWeights;                    /**< The beamformer weights. */
+    MNELIB::MNEBeamformerWeights      m_bfWeights;              /**< The beamformer weights. */
 
 
 signals:

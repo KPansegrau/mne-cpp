@@ -3,7 +3,7 @@
  * @file     realtimeevokedcov.h
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>;
  *
- * @since    0.1.0
+ * @since    0.1.9
  * @date     February, 2023
  *
  * @section  LICENSE
@@ -67,7 +67,7 @@ namespace SCMEASLIB
 /**
  * DECLARE CLASS RealTimeEvokedCov
  *
- * @brief The RealTimeEvokedCov class provides a container for real-time covariance estimations.
+ * @brief The RealTimeEvokedCov class provides a container for real-time covariance estimations from evoked input data.
  */
 class SCMEASSHARED_EXPORT RealTimeEvokedCov : public Measurement
 {
@@ -109,16 +109,17 @@ public:
     /**
      * New pair of covariances to distribute
      *
-     * @param[in] v     the covariance which should be distributed.
+     * @param[in] noiseCov     the noise covariance which should be distributed.
+     * @param[in] dataCov      the data covariance which should be distributed.
      */
     virtual void setValue(const FIFFLIB::FiffCov& noiseCov, const FIFFLIB::FiffCov& dataCov);
 
     //=========================================================================================================
     /**
-     * Returns the current pair of covariance values.
+     * Returns the current pair of covariance matrices.
      * This method is inherited by Measurement.
      *
-     * @return the last attached value.
+     * @return the last attached pair of covariance matrices.
      */
     virtual QSharedPointer<QPair<FIFFLIB::FiffCov,FIFFLIB::FiffCov> >& getValue();
 
@@ -131,13 +132,14 @@ public:
     inline bool isInitialized() const;
 
 private:
-    mutable QMutex          m_qMutex;       /**< Mutex to ensure thread safety. */
 
-    QSharedPointer<QPair<FIFFLIB::FiffCov,FIFFLIB::FiffCov> > m_pFiffCovPair;     /**< Pair of Noise Covariance and Data Covariance data set. */
+    mutable QMutex                                              m_qMutex;           /**< Mutex to ensure thread safety. */
 
-    FIFFLIB::FiffInfo::SPtr m_pFiffInfo;    /**< The Fiff Info. */
+    QSharedPointer<QPair<FIFFLIB::FiffCov,FIFFLIB::FiffCov> >   m_pFiffCovPair;     /**< Pair of Noise Covariance and Data Covariance data set. */
 
-    bool                    m_bInitialized; /**< If values are stored.*/
+    FIFFLIB::FiffInfo::SPtr                                     m_pFiffInfo;        /**< The Fiff Info. */
+
+    bool                                                        m_bInitialized;     /**< If values are stored.*/
 };
 
 //=============================================================================================================

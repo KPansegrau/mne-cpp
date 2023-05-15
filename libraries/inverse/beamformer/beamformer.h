@@ -2,7 +2,7 @@
 /**
  * @file     beamformer.h
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>
- * @since    0.1.0
+ * @since    0.1.9
  * @date     January, 2023
  *
  * @section  LICENSE
@@ -71,8 +71,6 @@ namespace INVERSELIB
 
 //=============================================================================================================
 /**
- * TODO: edit docu
- *
  * Beamformer source estimation algorithm ToDo: Paper references.
  *
  * @brief Beamformer source estimation.
@@ -94,21 +92,17 @@ public:
      * Constructs beamformer inverse algorithm
      * TODO second constructor is used (first can be deleted I guess)
      *
-     * @param[in] p_beamformerWeights   The beamformer weights.
+     * @param[in] p_beamformerWeights    The beamformer weights.
      * @param[in] p_fLambda              The regularization factor.
-     * @param[in] P_sWeightnorm          Used weight normalization. ("no" | "unitnoisegain" | "arraygain" | "nai").
+     * @param[in] P_sWeightnorm          Used weight normalization. ("no" | "unitnoisegain" | "arraygain" | "nai")  arraygain and no are the only debugged options.
      *
      * @return the prepared beamformer.
      */
 
     explicit Beamformer(const MNELIB::MNEBeamformerWeights &p_beamformerWeights, float p_fLambda, const QString p_sWeightnorm);
 
-    explicit Beamformer(const MNELIB::MNEBeamformerWeights &p_beamformerWeights, const FIFFLIB::FiffInfo &p_dataInfo, const MNELIB::MNEForwardSolution &p_forward, const FIFFLIB::FiffCov &p_dataCov, const FIFFLIB::FiffCov &p_noiseCov, float p_fLambda, const QString p_sWeightnorm);
-
-
     //=========================================================================================================
     /**
-     *
      *
      * Destructor for beamformer algorithm
      *
@@ -118,23 +112,35 @@ public:
 
     //=========================================================================================================
     /**
-     * TODO: edit docu
+     * Calculates source estimate
      *
      * @param[in] p_fiffEvoked   Evoked data.
      * @param[in] pick_normal    If True, rather than pooling the orientations by taking the norm, only the.
      *                           radial component is kept. This is only applied when working with loose orientations.
+     *                           This parameter is unused.
      *
      * @return the calculated source estimation.
      */
     virtual MNELIB::MNESourceEstimate calculateInverse(const FIFFLIB::FiffEvoked &p_fiffEvoked, bool pick_normal = false);
 
+    //=========================================================================================================
+    /**
+     * Calculates source estimate.
+     *
+     * @param[in] data   Evoked input data.
+     * @param[in] tmin          first point in time (from evoked input data)
+     * @param[in] tstep         time step between two samples (from sampling frequency)
+     * @param[in] pick_normal   If True, rather than pooling the orientations by taking the norm, only the.
+     *                           radial component is kept. This is only applied when working with loose orientations.
+     *                           This parameter is unused.
+     *
+     * @return the calculated source estimation.
+     */
 
     virtual MNELIB::MNESourceEstimate calculateInverse(const Eigen::MatrixXd &data, float tmin, float tstep, bool pick_normal = false) const;
 
     //=========================================================================================================
     /**
-     * TODO: edit docu
-     *
      * Get the name of the inverse beamformer algorithm.
      *
      * @return the name of the inverse beamformer algorithm.
@@ -143,8 +149,6 @@ public:
 
     //=========================================================================================================
     /**
-     * TODO: edit docu
-     *
      * Get the source space corresponding to this beamformer.
      *
      * @return the source space corresponding to this beamformer.
@@ -154,9 +158,10 @@ public:
     //=========================================================================================================
 
     /**
-     * TODO: edit docu, parameters are obligatory because of abstract class but are not used in this class
+     * TODO: edit docu,
      *
-     * Perform the inverse setup: Prepares this inverse operator and assembles the kernel.
+     * Perform the inverse setup: Prepares this beamformer filter weight matrix for use.
+     * Parameters are obligatory because of corresponding abstract class but are not used in this virtual method
      *
      * @param[in] nave           Number of averages to use.
      * @param[in] pick_normal    If True, rather than pooling the orientations by taking the norm, only the.
@@ -166,9 +171,6 @@ public:
 
     //=========================================================================================================
     // further member methods
-    //=========================================================================================================
-
-
     //=========================================================================================================
 
     /**
@@ -196,7 +198,7 @@ public:
 
     //=========================================================================================================
     /**
-     * Set weight normalization method ("no" | "unitnoisegain" | "arraygain" | "nai")
+     * Set weight normalization method.
      *
      * @param[in] weightnorm   Weight normalization method to use.
      */
@@ -210,22 +212,19 @@ public:
      */
     void setRegularization(float lambda);
 
-
-protected:
-
 private:
-    //TODO edit docu here
-    MNELIB::MNEBeamformerWeights m_beamformerWeights;   /**< The beamformer weights. */
-    bool m_bBeamformerSetup;                              /**< Whether the beamformer weights are set up. */
-    MNELIB::MNEBeamformerWeights m_beamformerWeightsSetup;                 /**< The setup beamformer weights. */
-    Eigen::MatrixXd m_matWTSetup;           /**< The setup beamformer filter weight matrix W^T (the one that is applied to the data). */
 
-    FIFFLIB::FiffInfo m_dataInfo;
-    FIFFLIB::FiffCov m_noiseCov;
-    FIFFLIB::FiffCov m_dataCov;
-    MNELIB::MNEForwardSolution m_forward;
-    QString m_sWeightnorm;                              /**< Selected weight normalization method. */
-    float m_fLambda;                                /**< Regularization parameter. */
+    MNELIB::MNEBeamformerWeights    m_beamformerWeights;        /**< The beamformer weights. */
+    bool                            m_bBeamformerSetup;         /**< Whether the beamformer weights are set up. */
+    MNELIB::MNEBeamformerWeights    m_beamformerWeightsSetup;   /**< The setup beamformer weights. */
+    Eigen::MatrixXd                 m_matWTSetup;               /**< The setup beamformer filter weight matrix W^T (the one that is applied to the data). */
+
+    FIFFLIB::FiffInfo               m_dataInfo;                 /**< FiffInfo of the measurement data. */
+    FIFFLIB::FiffCov                m_noiseCov;                 /**< The noise covariance matrix. */
+    FIFFLIB::FiffCov                m_dataCov;                  /**< The data covariance matrix. */
+    MNELIB::MNEForwardSolution      m_forward;                  /**< The forward solution. */
+    QString                         m_sWeightnorm;              /**< Selected weight normalization method. */
+    float                           m_fLambda;                  /**< Regularization parameter. */
 
 };
 

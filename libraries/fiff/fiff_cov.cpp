@@ -373,8 +373,11 @@ FiffCov FiffCov::regularize(const FiffInfo& p_info, double p_fRegMag, double p_f
 
     MatrixXd C(cov_good.data);
 
+
+
     //Subtract number of found stim channels because they are still in C but not the idx_eeg, idx_mag or idx_grad
     if((unsigned) C.rows() - iNoStimCh != idx_eeg.size() + idx_mag.size() + idx_grad.size()) {
+
         printf("Error in FiffCov::regularize: Channel dimensions do not fit.\n");//ToDo Throw
     }
 

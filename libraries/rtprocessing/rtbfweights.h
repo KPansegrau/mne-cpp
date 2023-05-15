@@ -3,7 +3,7 @@
  * @file     rtbfweights.h
  * @author   Kerstin Pansegrau <kerstin.pansegrau@tu-ilmenau.de>;
  *
- * @since    0.1.0
+ * @since    0.1.9
  * @date     February, 2023
  *
  * @section  LICENSE
@@ -108,16 +108,16 @@ signals:
     /**
      * Emit this signal whenver new beamformer weights were estimated.
      *
-     * @param[in] invOp  The final beamformer weights estimation.
+     * @param[in] bfWeights  The final beamformer weights estimation.
      */
     void resultReady(const MNELIB::MNEBeamformerWeights& bfWeights);
 };
 
 //=============================================================================================================
 /**
- * Real-time inverse dSPM, sLoreta inverse operator estimation
+ * Real-time beamformer weight computation
  *
- * @brief Real-time inverse operator estimation
+ * @brief Real-time beamformer weight computation
  */
 class RTPROCESINGSHARED_EXPORT RtBfWeights : public QObject
 {
@@ -143,7 +143,7 @@ public:
 
     //=========================================================================================================
     /**
-     * Destroys the inverse operator estimation object.
+     * Destroys the real-time beamformer weights object.
      */
     ~RtBfWeights();
 
@@ -201,15 +201,15 @@ protected:
 signals:
     //=========================================================================================================
     /**
-     * Signal which is emitted when the beamformer weights were calculated.
+     * Signal which is emitted when the beamformer weights are calculated.
      *
-     * @param[out] invOp  The inverse operator.
+     * @param[out] bfWeights  The beamformer weights.
      */
     void bfWeightsCalculated(const MNELIB::MNEBeamformerWeights& bfWeights);
 
     //=========================================================================================================
     /**
-     * Emit this signal whenver the worker should create new beamformer weights estimation.
+     * Emit this signal whenver the worker should create new beamformer weights.
      *
      * @param[in] inputData  The input data.
      */

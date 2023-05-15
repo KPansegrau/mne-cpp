@@ -48,6 +48,8 @@
 #include <QDebug>
 #include <QtConcurrent>
 
+#include <fstream>
+
 //=============================================================================================================
 // USED NAMESPACES
 //=============================================================================================================
@@ -83,10 +85,11 @@ FiffCov RtCov::estimateCovariance(const Eigen::MatrixXd& matData,
         return FiffCov();
     }
 
-    //TODO: only for performance evaluation, delete later
-    QElapsedTimer timer;
-    qint64 iTime = 0;
-    timer.start();
+//    //TODO: only for performance evaluation, delete later
+//    QElapsedTimer timer;
+//    qint64 iTimeStop = 0;
+//    timer.start();
+//    std::ofstream testfile;
 
     QFuture<RtCovComputeResult> result = QtConcurrent::mappedReduced(m_lData,
                                                                      compute,
@@ -147,8 +150,13 @@ FiffCov RtCov::estimateCovariance(const Eigen::MatrixXd& matData,
         m_iSamples = 0;
 
         //TODO: only for performance evaluation, delete later
-        iTime = timer.elapsed();
-        qDebug() << "[RtCov::estimateCovariance] wall clock time before return computed Cov " << iTime << " ms";
+
+//        iTimeStop = timer.elapsed();
+////                qDebug() << "[Covariance::run] time after ->setValue(fiffCov) " << iTimeStop;
+//        testfile.open("testTimingCovariance.txt", std::ios::app);
+//        testfile << "[RtCov::estimateCovariance] wall clock time before return computed Cov " << iTimeStop << '\n';
+//        testfile.close();
+//        timer.restart();
 
 
         return computedCov;

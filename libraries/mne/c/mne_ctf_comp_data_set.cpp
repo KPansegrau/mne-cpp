@@ -145,6 +145,7 @@ int mne_read_meg_comp_eeg_ch_info_32(const QString& name,
       * one for MEG, one for MEG compensation channels, and one for EEG
       */
 {
+
     QFile file(name);
     FiffStream::SPtr stream(new FiffStream(&file));
 
@@ -165,10 +166,13 @@ int mne_read_meg_comp_eeg_ch_info_32(const QString& name,
     fiff_int_t kind, pos;
     int j,k,to_find;
 
+
     if(!stream->open())
         goto bad;
 
+
     nodes = stream->dirtree()->dir_tree_find(FIFFB_MNE_PARENT_MEAS_FILE);
+
 
     if (nodes.size() == 0) {
         nodes = stream->dirtree()->dir_tree_find(FIFFB_MEAS_INFO);
@@ -177,59 +181,92 @@ int mne_read_meg_comp_eeg_ch_info_32(const QString& name,
             goto bad;
         }
     }
+
     info = nodes[0];
     to_find = 0;
     for (k = 0; k < info->nent(); k++) {
         kind = info->dir[k]->kind;
         pos  = info->dir[k]->pos;
         switch (kind) {
+
         case FIFF_NCHAN :
+
             if (!stream->read_tag(t_pTag,pos))
                 goto bad;
             nchan = *t_pTag->toInt();
+
 
             for (j = 0; j < nchan; j++) {
                 chs.append(FiffChInfo());
                 chs[j].scanNo = -1;
             }
             to_find = nchan;
+
+
             break;
 
         case FIFF_PARENT_BLOCK_ID :
-            if(!stream->read_tag(t_pTag, pos))
-                goto bad;
+
+
+            if(!stream->read_tag(t_pTag, pos)){
+
+
+                goto bad;}
+
+
 //            id = t_pTag->toFiffID();
             *id = *(fiffId)t_pTag->data();
+
+
             break;
 
         case FIFF_COORD_TRANS :
+
+
             if(!stream->read_tag(t_pTag, pos))
+
+
                 goto bad;
 //            t = t_pTag->toCoordTrans();
+
             t = FiffCoordTransOld::read_helper( t_pTag );
             if (t->from != FIFFV_COORD_DEVICE || t->to   != FIFFV_COORD_HEAD)
                 t = NULL;
+
+
             break;
 
         case FIFF_CH_INFO : /* Information about one channel */
+
+
             if(!stream->read_tag(t_pTag, pos))
+
+
                 goto bad;
 
             this_ch = t_pTag->toChInfo();
+
             if (this_ch.scanNo <= 0 || this_ch.scanNo > nchan) {
                 printf ("FIFF_CH_INFO : scan # out of range %d (%d)!",this_ch.scanNo,nchan);
+
                 goto bad;
             }
             else
+
                 chs[this_ch.scanNo-1] = this_ch;
             to_find--;
             break;
         }
+
+
     }
+
+
     if (to_find != 0) {
         qCritical("Some of the channel information was missing.");
         goto bad;
     }
+
     if (t == NULL && meg_head_t != NULL) {
         /*
      * Try again in a more general fashion
@@ -239,6 +276,7 @@ int mne_read_meg_comp_eeg_ch_info_32(const QString& name,
             goto bad;
         }
     }
+
     /*
    * Sort out the channels
    */
@@ -254,6 +292,7 @@ int mne_read_meg_comp_eeg_ch_info_32(const QString& name,
             neeg++;
         }
     }
+
 //    fiff_close(in);
     stream->close();
 
@@ -623,9 +662,13 @@ MneCTFCompDataSet *MneCTFCompDataSet::mne_read_ctf_comp_data(const QString &name
     /*
         * Read the channel information
         */
+
+
+
     {
         QList<FiffChInfo> comp_chs, temp;
         int ncompch = 0;
+
 
         if (mne_read_meg_comp_eeg_ch_info_32(name,
                                              chs,
@@ -636,7 +679,10 @@ MneCTFCompDataSet *MneCTFCompDataSet::mne_read_ctf_comp_data(const QString &name
                                              NULL,
                                              NULL,
                                              NULL) == FAIL)
+
             goto bad;
+
+
         if (ncompch > 0) {
             for (k = 0; k < ncompch; k++)
                 chs.append(comp_chs[k]);
@@ -652,6 +698,8 @@ MneCTFCompDataSet *MneCTFCompDataSet::mne_read_ctf_comp_data(const QString &name
     /*
         * Locate the compensation data sets
         */
+
+
     nodes = stream->dirtree()->dir_tree_find(FIFFB_MNE_CTF_COMP);
     if (nodes.size() == 0)
         goto good;      /* Nothing more to do */
@@ -667,6 +715,8 @@ MneCTFCompDataSet *MneCTFCompDataSet::mne_read_ctf_comp_data(const QString &name
     /*
         * Read each data set
         */
+
+
     for (k = 0; k < ncomp; k++) {
         mat = MneNamedMatrix::read_named_matrix(stream,comps[k],FIFF_MNE_CTF_COMP_DATA);
         if (!mat)
