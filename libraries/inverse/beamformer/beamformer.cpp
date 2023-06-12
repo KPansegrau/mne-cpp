@@ -41,6 +41,8 @@
 #include <mne/mne_sourceestimate.h>
 #include <fiff/fiff_evoked.h>
 
+#include <fstream>
+
 //=============================================================================================================
 // QT INCLUDES
 //=============================================================================================================
@@ -72,9 +74,8 @@ Beamformer::Beamformer(const MNEBeamformerWeights &p_beamformerWeights, float p_
       m_bBeamformerSetup(false)
 {
 
-    this->setRegularization(p_fLambda);
+    this->setRegularization(p_fLambda); //TODO: this regularization parameter is not used for beamformer creation
     this->setWeightnorm(p_sWeightnorm);
-
 }
 
 
@@ -142,12 +143,15 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
     //output matrix has dimension (3*nsource x ntimes)
     MatrixXd sol = m_matWTSetup * data; //filter output
     std::cout << "[Beamformer::calculateInverse] Filter output dim: sol " << sol.rows() << " x " << sol.cols() << std::endl;
+    qDebug() << "[Beamformer::calculateInverse] sol.max(): " << sol.maxCoeff();
+    qDebug() << "[Beamformer::calculateInverse] data.max(): " << data.maxCoeff();
 
     //adapted from MinimumNorm::calculateInverse
     //combine x,y and z component of filter output using L2-Norm
     if (!m_beamformerWeightsSetup.fixedOri && pick_normal == false)
     {
 
+        qInfo() << "[[Beamformer::calculateInverse] Combining the filter output components.";
         MatrixXd sol1(sol.rows()/3,sol.cols());
         for(qint32 i = 0; i < sol.cols(); ++i)
         {
@@ -158,6 +162,8 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
         sol.resize(sol1.rows(),sol1.cols());
         sol = sol1;
     }
+
+        qDebug() << "[Beamformer::calculateInverse] sol.max() after component combination: " << sol.maxCoeff();
 
 //    qDebug() << "[Beamformer::calculateInverse] Data dim: " << data.rows() << " x " << data.cols();
 //    qDebug() << "[Beamformer::calculateInverse] m_matWTSetup dim: " << m_matWTSetup.rows() << " x " << m_matWTSetup.cols();
@@ -178,6 +184,7 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
 
     //Results
     //HINT: copied from calculateInverse of minimumnorm
+    //[0] and [1] are for the two different hemispheres
     VectorXi p_vecVertices(m_beamformerWeightsSetup.src[0].vertno.size() + m_beamformerWeightsSetup.src[1].vertno.size());
     p_vecVertices << m_beamformerWeightsSetup.src[0].vertno, m_beamformerWeightsSetup.src[1].vertno;
 
@@ -201,9 +208,16 @@ void Beamformer::doInverseSetup(qint32 nave, bool pick_normal)
     //without having to access the whitener matrix from within the calculateInverse method called in the run method of the beamformer plug-in
     m_beamformerWeightsSetup = m_beamformerWeights;
     m_beamformerWeightsSetup.weights *= m_beamformerWeights.whitener;
-    m_bBeamformerSetup = true;
+
+    //TODO for debugging only, delete later
+//    std::ofstream fileWhitener;
+//    fileWhitener.open("testWhitener", std::ios::app);
+//    fileWhitener << m_beamformerWeights.whitener << '\n' << '\n' << '\n';
+//    fileWhitener.close();
 
     m_matWTSetup = m_beamformerWeightsSetup.weights;
+
+    m_bBeamformerSetup = true;
 
 }
 

@@ -85,19 +85,18 @@ using namespace Eigen;
 //=============================================================================================================
 
 CovarianceEvoked::CovarianceEvoked()
-    : m_pCircularEvokedBuffer(CircularBuffer<FIFFLIB::FiffEvoked>::SPtr::create(40))
-    , m_iEstimationSamples(2400)
-    , m_sAvrType("1")
-    , m_iNumPreStimSamples(-1)
+    : m_pCircularEvokedBuffer(CircularBuffer<FIFFLIB::FiffEvoked>::SPtr::create(40)) //same as in rtcmne.cpp: buffer for evoked data input
+    , m_iEstimationSamples(2400) //2400 because pre and post stimulative part are 240 samples each
+    , m_sAvrType("1") //trigger type is 1 in simulated file, TODO: enable that the trigger type is read from the input evoked data somehow and stored here during updateRTE
+    , m_iNumPreStimSamples(-1) //this is set according to the length of pre and post stimulative parts
 {
-
 }
 
 //=============================================================================================================
 
 CovarianceEvoked::~CovarianceEvoked()
 {
-    //HINT: copied from Covariance::Covariance()
+    //HINT: copied from Covariance::Covariance(), completely analog
     if(this->isRunning())
         stop();
 }
@@ -106,6 +105,7 @@ CovarianceEvoked::~CovarianceEvoked()
 
 QSharedPointer<AbstractPlugin> CovarianceEvoked::clone() const
 {
+    //HINT: completely analog to Covariance::clone
     QSharedPointer<CovarianceEvoked> pCovarianceEvokedClone(new CovarianceEvoked);
     return pCovarianceEvokedClone;
 }
@@ -120,7 +120,7 @@ void CovarianceEvoked::init()
     //Load Settings
     //HINT: copied form Covariance::init()
     QSettings settings("MNECPP");
-    m_iEstimationSamples = settings.value(QString("MNESCAN/%1/estimationSamples").arg(this->getName()), 5000).toInt();
+    m_iEstimationSamples = settings.value(QString("MNESCAN/%1/estimationSamples").arg(this->getName()), 2400).toInt();
 
     //Input
     //HINT: analog to this part in RtcMne::init()
@@ -130,7 +130,7 @@ void CovarianceEvoked::init()
     m_inputConnectors.append(m_pCovarianceEvokedInput);
 
     //Output
-    //HINT: new because we need pair of covariances as output
+    //HINT: new because we need pair of noise and data covariance as output
     m_pCovarianceEvokedOutput = PluginOutputData<RealTimeEvokedCov>::create(this,"CovarianceEvoked Out","CovarianceEvoked output data");
     m_pCovarianceEvokedOutput->measurementData()->setName(this->getName());//Provide name to auto store widget settings
     m_outputConnectors.append(m_pCovarianceEvokedOutput);
@@ -142,13 +142,14 @@ void CovarianceEvoked::init()
 void CovarianceEvoked::initPluginControlWidgets()
 {
 
+    //HINT: completely analog to Covariance::initPluginControlWidgets
     qInfo() << "[CovarianceEvoked::initPluginControlWidgets] Initializing control widgets...";
 
     //HINT: copied from Covariance::initPluginControlWidgets()
     if(m_pFiffInfoInput) {
 
         //TODO: delete later
-        qDebug() << "[CovarianceEvoked::initPluginControlWidgets] if(m_pFiffInfoInput) true.";
+//        qDebug() << "[CovarianceEvoked::initPluginControlWidgets] if(m_pFiffInfoInput) true.";
 
         QList<QWidget*> plControlWidgets;
 
@@ -157,6 +158,12 @@ void CovarianceEvoked::initPluginControlWidgets()
                 pCovarianceEvokedWidget, &CovarianceEvokedSettingsView::setGuiMode);
         connect(pCovarianceEvokedWidget, &CovarianceEvokedSettingsView::samplesChanged,
                 this, &CovarianceEvoked::changeSamples);
+
+        //HINT: this is new because we need to set the triggert type member when the trigger type of incoming evoked data changes
+        connect(this, &CovarianceEvoked::responsibleTriggerTypesChanged,
+                this, &CovarianceEvoked::changeTriggerType);
+
+
         pCovarianceEvokedWidget->setMinSamples(m_pFiffInfoInput->sfreq);
         pCovarianceEvokedWidget->setCurrentSamples(m_iEstimationSamples);
         pCovarianceEvokedWidget->setObjectName("group_Settings");
@@ -316,12 +323,14 @@ void CovarianceEvoked::changeSamples(qint32 samples)
     qDebug() << "[CovarianceEvoked::changeSamples] Changed samples to " << m_iEstimationSamples;
 }
 
+
 //=============================================================================================================
 
-void CovarianceEvoked::onTriggerTypeChanged(const QString& triggerType)
+void CovarianceEvoked::changeTriggerType(const QStringList& lTriggerType)
 {
-    m_sAvrType = triggerType;
-//    qDebug() << "[CovarianceEvoked::onTriggerTypeChanged] Changed trigger type to " << m_sAvrType;
+    //TODO: this method can only handle the first trigger type. Change it so that full list can be handeled
+    m_sAvrType = lTriggerType.at(0);
+//    qDebug() << "[CovarianceEvoked::changeTriggerType] Changed trigger type to " << m_sAvrType;
 
 }
 
@@ -346,11 +355,11 @@ void CovarianceEvoked::run()
 
     //init
     FiffEvoked evokedData;
-    MatrixXd matPreStimData;
-    MatrixXd matPostStimData;
     FiffCov fiffNoiseCov;
     FiffCov fiffDataCov;
+    m_qMutex.lock();
     int iEstimationSamples;
+    m_qMutex.unlock();
     RTPROCESSINGLIB::RtCov rtNoiseCov(m_pFiffInfoInput);
     RTPROCESSINGLIB::RtCov rtDataCov(m_pFiffInfoInput);
 
@@ -375,21 +384,36 @@ void CovarianceEvoked::run()
             iEstimationSamples = m_iEstimationSamples;
             m_qMutex.unlock();
 
-//            qDebug() << "[CovarianceEvoked::run] evokedData.data " << evokedData.data.rows() << " x " << evokedData.data.cols();
-
-            //split evoked data into pre and post stimulative part
-            matPreStimData = evokedData.data.leftCols(m_iNumPreStimSamples);
-            matPostStimData = evokedData.data.rightCols(evokedData.data.cols() - m_iNumPreStimSamples);
+            qDebug() << "[CovarianceEvoked::run] evokedData.data " << evokedData.data.rows() << " x " << evokedData.data.cols();
+            qDebug() << "[CovarianceEvoked::run] iEstimationSamples:  " << iEstimationSamples;
+            qDebug() << "[CovarianceEvoked::run] m_iNumPreStimSamples:  " << m_iNumPreStimSamples;
 
             //estimate covariance matrices
-            fiffNoiseCov = rtNoiseCov.estimateCovariance(matPreStimData, iEstimationSamples);
-            fiffDataCov = rtDataCov.estimateCovariance(matPostStimData, iEstimationSamples);           
+            fiffNoiseCov = rtNoiseCov.estimateCovariance(evokedData.data.leftCols(m_iNumPreStimSamples), iEstimationSamples);
+            fiffDataCov = rtDataCov.estimateCovariance(evokedData.data.rightCols(evokedData.data.cols() - m_iNumPreStimSamples), iEstimationSamples);
 
             //set kind of data covariance manually (during estimateCovariance it is set to FIFFV_MNE_NOISE_COV)
             fiffDataCov.kind = FIFFV_MNE_SIGNAL_COV;
 
 //            qDebug() << "[CovarianceEvoked::run] Estimated noise covariance matrix " << fiffNoiseCov.data.rows() << " x " << fiffNoiseCov.data.cols();
 //            qDebug() << "[CovarianceEvoked::run] Estimated data covariance matrix " << fiffDataCov.data.rows() << " x " << fiffDataCov.data.cols();
+
+            //TODO: only for debugging, delete later
+            //this creates a spatial filter when used for beamformer weight computation
+//            fiffDataCov.data = MatrixXd::Identity(fiffDataCov.data.rows(),fiffDataCov.data.cols());
+//            VectorXd vecSimulatedStdNoise(fiffNoiseCov.data.rows());
+//            for(int iChan = 0; iChan < vecSimulatedStdNoise.size()-2; iChan += 3){
+//                vecSimulatedStdNoise[iChan] = pow(5e-13,2); //gradiometer sensor noise variance
+//                vecSimulatedStdNoise[iChan+1] = pow(5e-13,2);
+//                vecSimulatedStdNoise[iChan+2] = pow(20e-15,2); //magnetometer senosor noise variance
+//            }
+//            MatrixXd matSimulatedNoiseCov = vecSimulatedStdNoise.asDiagonal();
+//            fiffNoiseCov.data = matSimulatedNoiseCov;
+
+            //TODO: only for debugging, delete later
+//            fiffDataCov.data = fiffNoiseCov.data;
+//            fiffDataCov.data = matSimulatedNoiseCov;
+
 
 
             if(!fiffNoiseCov.names.isEmpty() && !fiffDataCov.names.isEmpty()) {
@@ -404,6 +428,7 @@ void CovarianceEvoked::run()
 ////                [DEBUG] [CovarianceEvoked::run] fiffDataCov.min =  -2.88163e-09
 //                FiffCov fiffDataCovConst = fiffDataCov;
 //                fiffDataCovConst.data = MatrixXd::Ones(fiffDataCov.data.rows(),fiffDataCov.data.cols()) * 2.93903e-08;
+
 
 
                 m_pCovarianceEvokedOutput->measurementData()->setValue(fiffNoiseCov,fiffDataCov);

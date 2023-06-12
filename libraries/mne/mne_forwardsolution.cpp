@@ -1113,6 +1113,7 @@ void MNEForwardSolution::prepare_forward(const FiffInfo &p_info,
     qint32 n_chan = ch_names.size();
     printf("Computing inverse operator with %d channels.\n", n_chan);
 
+
     //
     //   Handle noise cov
     //
@@ -1131,6 +1132,7 @@ void MNEForwardSolution::prepare_forward(const FiffInfo &p_info,
     }
     if(p_outNumNonZero > 0)
         t_vecNonZero.conservativeResize(p_outNumNonZero);
+
 
     if(p_outNumNonZero > 0)
     {
@@ -1154,11 +1156,14 @@ void MNEForwardSolution::prepare_forward(const FiffInfo &p_info,
         }
     }
 
+
     VectorXi fwd_idx = VectorXi::Zero(ch_names.size());
     VectorXi info_idx = VectorXi::Zero(ch_names.size());
     qint32 idx;
     qint32 count_fwd_idx = 0;
     qint32 count_info_idx = 0;
+
+
     for(qint32 i = 0; i < ch_names.size(); ++i)
     {
         idx = fwd_ch_names.indexOf(ch_names[i]);
@@ -1174,8 +1179,11 @@ void MNEForwardSolution::prepare_forward(const FiffInfo &p_info,
             ++count_info_idx;
         }
     }
+
+
     fwd_idx.conservativeResize(count_fwd_idx);
     info_idx.conservativeResize(count_info_idx);
+
 
     gain.resize(count_fwd_idx, this->sol->data.cols());
     for(qint32 i = 0; i < count_fwd_idx; ++i)

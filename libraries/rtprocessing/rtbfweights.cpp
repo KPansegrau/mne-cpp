@@ -80,11 +80,11 @@ void RtBfWeightsWorker::doWork(const RtBfWeightsInput &inputData)
 
 
     // Restrict forward solution as necessary for MEG, EEG
-    MNEForwardSolution forwardMeg = inputData.pFwd->pick_types(true, true);
+    MNEForwardSolution pickedForward = inputData.pFwd->pick_types(true, true);
 
 
     MNEBeamformerWeights bfWeights(*inputData.pFiffInfo.data(),
-                                        *inputData.pFwd,
+                                        pickedForward,
                                         inputData.dataCov,
                                         inputData.noiseCov,
                                         inputData.sWeightnorm
@@ -118,10 +118,8 @@ RtBfWeights::RtBfWeights(FiffInfo::SPtr &p_pFiffInfo,
     connect(this, &RtBfWeights::operate,
             worker, &RtBfWeightsWorker::doWork);
 
-    bool bResultReadyConnection = connect(worker, &RtBfWeightsWorker::resultReady,
+    connect(worker, &RtBfWeightsWorker::resultReady,
             this, &RtBfWeights::handleResults);
-
-    qDebug() << "[RtBfWeights::RtBfWeights] bResultReadyConnection: " << bResultReadyConnection;
 
     m_workerThread.start();
 

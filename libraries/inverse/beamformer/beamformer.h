@@ -178,7 +178,7 @@ public:
      *
      * @return the prepared beamformer.
      */
-    inline MNELIB::MNEBeamformerWeights & getPreparedBeamformer();
+    inline MNELIB::MNEBeamformerWeights& getPreparedBeamformer();
 
     //=========================================================================================================
     /**

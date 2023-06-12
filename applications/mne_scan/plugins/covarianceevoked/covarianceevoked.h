@@ -162,11 +162,12 @@ protected:
 
     //=========================================================================================================
     /**
-     * Slot called when the trigger type changed.
+     * Slot called when the trigger type in the evoked input data changed.
      *
      * @param[in] triggerType        The new trigger type.
      */
-    void onTriggerTypeChanged(const QString& triggerType);
+    void changeTriggerType(const QStringList &lTriggerType);
+
 
     //=========================================================================================================
 

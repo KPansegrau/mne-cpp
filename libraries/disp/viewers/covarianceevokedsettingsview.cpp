@@ -80,7 +80,7 @@ CovarianceEvokedSettingsView::CovarianceEvokedSettingsView(const QString& sSetti
     t_pLabelNumSamples->setText("Number of Samples");
     t_pGridLayout->addWidget(t_pLabelNumSamples,0,0,1,1);
 
-    qint32 minSamples = 100;
+    qint32 minSamples = 240;
 
     m_pSpinBoxNumSamples = new QSpinBox;
     m_pSpinBoxNumSamples->setMinimum(minSamples);

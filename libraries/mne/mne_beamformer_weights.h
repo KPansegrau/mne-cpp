@@ -139,6 +139,16 @@ public:
 
     //=========================================================================================================
     /**
+     * Reduces prepared leadfield matrix rank to 2 for each source position
+     * This is recommended for MEG input data, which has low sensitivity to radial sources and therefore one orientation often carries a lot of noise.
+     */
+
+    //TODO: delete this if rank reduction is not performed
+
+    Eigen::MatrixXd reduceLocLeadfieldRank(const Eigen::MatrixXd &matLocLeadfield);
+
+    //=========================================================================================================
+    /**
      * Checks whether cannels of beamformer match with channels of data covariance, noise covariance and input data
      *
      */

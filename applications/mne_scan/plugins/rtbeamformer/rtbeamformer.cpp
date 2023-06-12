@@ -105,9 +105,9 @@ RtBeamformer::RtBeamformer()
     , m_bEvokedInput(false)
     , m_bUpdateBeamformer(false)
     , m_iNumAverages(1)
-    , m_iTimePointSps(0)
+    , m_iTimePointSps(125) //TODO: change this to 0 in the end
     , m_iDownSample(1)
-    , m_sWeightnorm("no")
+    , m_sWeightnorm("no") //TODO: change this to "no" in the end
     , m_sAvrType("1")
     , m_sAtlasDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/label")
     , m_sSurfaceDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/surf")
@@ -289,7 +289,7 @@ bool RtBeamformer::calcFiffInfo()
 
 
     if(m_qListNoiseCovChNames.size() > 0 && m_qListDataCovChNames.size() > 0 && m_pFiffInfoInput && m_pFiffInfoForward){
-
+//        qDebug() << "[RtBeamformer::calcFiffInfo] Infos available";
 
         // Align channel names of the forward solution to the incoming averaged (currently acquired) data
         // Find out whether the forward solution depends on only MEG, EEG or both MEG and EEG channels
@@ -297,8 +297,7 @@ bool RtBeamformer::calcFiffInfo()
         m_pFiffInfoForward->ch_names.clear();
         int counter = 0;
 
-        //TODO: do we need differentatiation of magnetometer and gradiometers here? (constants does not have FIFFV_MAG_CH etc)
-        for(qint32 x = 0; x < m_pFiffInfoForward->chs.size(); ++x) {
+       for(qint32 x = 0; x < m_pFiffInfoForward->chs.size(); ++x) {
             if(forwardChannelsTypes.contains("MEG") && forwardChannelsTypes.contains("EEG"))
                 break;
 
@@ -311,7 +310,7 @@ bool RtBeamformer::calcFiffInfo()
 
         //If only MEG channels are used
         if(forwardChannelsTypes.contains("MEG") && !forwardChannelsTypes.contains("EEG")) {
-            qInfo()<<"RtcBeamformer::calcFiffInfo - MEG fwd solution";
+            qInfo()<<"[RtcBeamformer::calcFiffInfo] MEG fwd solution";
             for(qint32 x = 0; x < m_pFiffInfoInput->chs.size(); ++x)
             {
                 if(m_pFiffInfoInput->chs[x].kind == FIFFV_MEG_CH) {
@@ -324,7 +323,7 @@ bool RtBeamformer::calcFiffInfo()
 
         //If only EEG channels are used
         if(!forwardChannelsTypes.contains("MEG") && forwardChannelsTypes.contains("EEG")) {
-            qInfo()<<"RtcBeamformer::calcFiffInfo - EEG fwd solution";
+            qInfo()<<"[RtcBeamformer::calcFiffInfo] EEG fwd solution";
             for(qint32 x = 0; x < m_pFiffInfoInput->chs.size(); ++x)
             {
                 if(m_pFiffInfoInput->chs[x].kind == FIFFV_EEG_CH) {
@@ -337,7 +336,7 @@ bool RtBeamformer::calcFiffInfo()
 
         //If both MEG and EEG channels are used
         if(forwardChannelsTypes.contains("MEG") && forwardChannelsTypes.contains("EEG")) {
-            qInfo()<<"RtcBeamformer::calcFiffInfo - MEG EEG fwd solution";
+            qInfo()<<"[RtcBeamformer::calcFiffInfo] MEG EEG fwd solution";
             for(qint32 x = 0; x < m_pFiffInfoInput->chs.size(); ++x)
             {
                 if(m_pFiffInfoInput->chs[x].kind == FIFFV_MEG_CH || m_pFiffInfoInput->chs[x].kind == FIFFV_EEG_CH) {
@@ -365,7 +364,7 @@ bool RtBeamformer::calcFiffInfo()
                 tmp2_pick_ch_names << ch; //add all channels to pick list that are additionally common to noise covariance matrix
         }
 
-        foreach (const QString &ch, tmp1_pick_ch_names)
+        foreach (const QString &ch, tmp2_pick_ch_names)
         {
             if(m_qListDataCovChNames.contains(ch))
                 m_qListPickChannels << ch; //add all channels to pick list that are additionally common to data covariance matrix
@@ -373,11 +372,13 @@ bool RtBeamformer::calcFiffInfo()
 
         RowVectorXi sel = m_pFiffInfoInput->pick_channels(m_qListPickChannels);
 
+//        qDebug() << "RtcMne::calcFiffInfo - m_qListPickChannels.size()" << m_qListPickChannels.size();
+//        qDebug() << "RtcMne::calcFiffInfo - m_qListPickChannels" << m_qListPickChannels;
+
+
         m_pFiffInfo = QSharedPointer<FiffInfo>(new FiffInfo(m_pFiffInfoInput->pick_info(sel)));
 
         m_pRTSEOutput->measurementData()->setFiffInfo(m_pFiffInfo);
-
-//        qDebug() << "[RtcBeamformer::calcFiffInfo] m_pFiffInfo" << m_pFiffInfo->ch_names;
 
 
         return true;
@@ -462,6 +463,7 @@ void RtBeamformer::updateRTC(SCMEASLIB::Measurement::SPtr pMeasurement)
 
     if(m_pFwd) {
 
+    qInfo() << "[RtBeamformer::updateRTC] Updating RTC...";
 
         QSharedPointer<RealTimeEvokedCov> pRTC = pMeasurement.dynamicCast<RealTimeEvokedCov>();
 
@@ -471,6 +473,10 @@ void RtBeamformer::updateRTC(SCMEASLIB::Measurement::SPtr pMeasurement)
                 m_pRtBfWeights = RtBfWeights::SPtr(new RtBfWeights(m_pFiffInfo, m_pFwd, m_sWeightnorm));
                 connect(m_pRtBfWeights.data(), &RtBfWeights::bfWeightsCalculated,
                         this, &RtBeamformer::updateBFWeights);
+
+
+//                qDebug() << "[RtBeamformer::onWeightnormChanged] Created new m_pRtBfWeights.";
+
             }
 
             //Fiff Information of the covariance
@@ -485,10 +491,14 @@ void RtBeamformer::updateRTC(SCMEASLIB::Measurement::SPtr pMeasurement)
             //HINT: added setting of data cov here
             if(this->isRunning() && m_pRtBfWeights){
 
+                qDebug() << "[RtBeamformer::updateRTC] Updating beamformer weights due to new covariance matrices...";
+
                 m_pNoiseCov = QSharedPointer<FiffCov>(new FiffCov(pRTC->getValue()->first)); //we only want the first of the pair for the member
                 m_pDataCov = QSharedPointer<FiffCov>(new FiffCov(pRTC->getValue()->second));
 
+
                 m_pRtBfWeights->append(*m_pNoiseCov, *m_pDataCov);
+
 
             }
         }
@@ -516,6 +526,7 @@ void RtBeamformer::updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement)
             // update beamformer weights
             if(this->isRunning() && m_pRtBfWeights) {
 
+                qDebug() << "[RtBeamformer::updateRTFS] Updating beamformer weights due to new forward solution...";
 
                 m_pRtBfWeights->setFwdSolution(m_pFwd);
                 m_pRtBfWeights->setWeightnorm(m_sWeightnorm);
@@ -535,7 +546,7 @@ void RtBeamformer::updateBFWeights(const MNEBeamformerWeights& bfWeights)
 {
     //HINT: copied and modified according to rtcmne::updateInvOp()
 
-    qDebug() << "[RtBeamformer::updateBFWeights] Updating m_bfWeights...";
+    qDebug() << "[RtBeamformer::updateBFWeights] New m_bfWeights arrived.";
 
     QMutexLocker locker(&m_qMutex);
 
@@ -558,28 +569,28 @@ void RtBeamformer::onWeightnormChanged(const QString& weightnorm)
 
     if(this->isRunning()) {
 
-        if(!m_pFiffInfo || !m_pFwd || !m_pNoiseCov || !m_pDataCov){
-                qWarning() << "[RtBeamformer::onWeightnormChanged] Missing FiffInfo and/or foward solution and/or covariance matrices, no computation of beamformer weights possible.";
-                return;
+//        if(!m_pFiffInfo || !m_pFwd || !m_pNoiseCov || !m_pDataCov){
+//                qWarning() << "[RtBeamformer::onWeightnormChanged] Missing FiffInfo and/or foward solution and/or covariance matrices, no computation of beamformer weights possible.";
+//                return;
 
-        }else if(!m_pRtBfWeights && m_pFiffInfo && m_pFwd && m_pNoiseCov && m_pDataCov) {
-            //create m_pRtBfWeights
-            m_pRtBfWeights = RtBfWeights::SPtr(new RtBfWeights(m_pFiffInfo, m_pFwd, m_sWeightnorm));
-            connect(m_pRtBfWeights.data(), &RtBfWeights::bfWeightsCalculated,
-                this, &RtBeamformer::updateBFWeights);
+//        }else if(!m_pRtBfWeights && m_pFiffInfo && m_pFwd && m_pNoiseCov && m_pDataCov) {
+//            //create m_pRtBfWeights
+//            m_pRtBfWeights = RtBfWeights::SPtr(new RtBfWeights(m_pFiffInfo, m_pFwd, m_sWeightnorm));
+//            connect(m_pRtBfWeights.data(), &RtBfWeights::bfWeightsCalculated,
+//                this, &RtBeamformer::updateBFWeights);
 
-            qDebug() << "[RtBeamformer::onWeightnormChanged] Created new m_pRtBfWeights.";
-        }
+//            qDebug() << "[RtBeamformer::onWeightnormChanged] Created new m_pRtBfWeights.";
+//        }
 
 
         if(m_pRtBfWeights && m_pFiffInfo && m_pFwd && m_pNoiseCov && m_pDataCov){
+
+            qDebug() << "[RtBeamformer::onWeightnormChanged] Updating beamformer weights due to new weightnorm type...";
 
             //update beamformer weights
             m_pRtBfWeights->setFwdSolution(m_pFwd);
             m_pRtBfWeights->setWeightnorm(m_sWeightnorm);
             m_pRtBfWeights->append(*m_pNoiseCov, *m_pDataCov);
-
-            qDebug() << "[RtBeamformer::onWeightnormChanged] Updated m_pRtBfWeights.";
 
             return;
         }
@@ -661,6 +672,14 @@ void RtBeamformer::run()
     std::ofstream timeFileCovarianceEvokedStart;
     std::ofstream timeFileCovarianceEvokedStop;
 
+    //TODO for debugging only, delete later
+//    std::ofstream fileNoiseCovBFIn;
+//    std::ofstream fileDataCovBFIn;
+//    std::ofstream fileNoiseCovBFOut;
+//    std::ofstream fileDataCovBFOut;
+//    std::ofstream fileWhitenerBFOut;
+//    std::ofstream fileSourceEstimateFull;
+
 
     //this truncation deletes all processing time measurements that were performed during computation of forward solution
     //for performance evaluation of the real-time pipeline, forward solution is assumed to be computed prior to real-time application
@@ -681,6 +700,30 @@ void RtBeamformer::run()
 
     timeFileCovarianceEvokedStop.open("testTimingCovarianceEvokedStop.txt", std::ofstream::trunc);
     timeFileCovarianceEvokedStop.close();
+
+
+    //this deletes all old entries in the files for covariance matrices, whitener and full source estimate
+
+//    fileActiveSourceIdx.open("testfileActiveSourceIdx.txt", std::ofstream::trunc);
+//    fileActiveSourceIdx.close();
+
+//    fileNoiseCovBFIn.open("testNoiseCovBFIn.txt", std::ofstream::trunc);
+//    fileNoiseCovBFIn.close();
+
+//    fileDataCovBFIn.open("testDataCovBFIn.txt", std::ofstream::trunc);
+//    fileDataCovBFIn.close();
+
+//    fileNoiseCovBFOut.open("testNoiseCovBFOut.txt", std::ofstream::trunc);
+//    fileNoiseCovBFOut.close();
+
+//    fileDataCovBFOut.open("testDataCovBFOut.txt", std::ofstream::trunc);
+//    fileDataCovBFOut.close();
+
+//    fileWhitenerBFOut.open("testWhitenerBFOut.txt", std::ofstream::trunc);
+//    fileWhitenerBFOut.close();
+
+//    fileSourceEstimateFull.open("testSourceEstimateFull.txt", std::ofstream::trunc);
+//    fileSourceEstimateFull.close();
 
 
 
@@ -755,13 +798,41 @@ void RtBeamformer::run()
 
                     sourceEstimate = pBeamformer->calculateInverse(evoked);
 
-                    qDebug() << "[RtBeamformer::run] sourceEstimate.data dim before reduction: " << sourceEstimate.data.rows() << " x " << sourceEstimate.data.cols();
+//                    std::cout << "[RtBeamformer::run] sourceEstimate.data.colwise.maxCoeff() : " << sourceEstimate.data.colwise().maxCoeff();
 
-                    qDebug() << "[RtBeamformer::run] Finished computation of source estimate.";
+
+//                    qDebug() << "[RtBeamformer::run] sourceEstimate.data dim before reduction: " << sourceEstimate.data.rows() << " x " << sourceEstimate.data.cols();
+
+//                    //TODO for debugging only, delete later
+//                    fileSourceEstimateFull.open("testSourceEstimateFull.txt", std::ios::app);
+//                    for(int iRow = 0; iRow < sourceEstimate.data.rows(); iRow++){
+
+//                        for(int iCol = 0; iCol < sourceEstimate.data.cols(); iCol++){
+
+//                        fileSourceEstimateFull << sourceEstimate.data(iRow,iCol) << "    ";
+
+//                        }
+//                        fileSourceEstimateFull << '\n' ;
+
+//                    }
+//                    fileSourceEstimateFull << "xxxxxxxxx" << '\n' ;
+//                    fileSourceEstimateFull.close();
+
+
+
+
+
+
+
+
 
                     if(!sourceEstimate.isEmpty()) {
-                        if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {
+                        if((iTimePointSps < sourceEstimate.data.cols()) && iTimePointSps >= 0) {
                             sourceEstimate = sourceEstimate.reduce(iTimePointSps,1);
+
+                            qDebug() << "[RtBeamformer::run] iTimePointSps for reduce: " << iTimePointSps;
+
+                            qDebug() << "[RtBeamformer::run] sourceEstimate.data.maxCoeff() after reduce: " << sourceEstimate.data.maxCoeff();
 
 
                             //normalize beamformer source estimate by dividing by the spacial maximum
@@ -769,6 +840,8 @@ void RtBeamformer::run()
                             sourceEstimate.data /= sourceEstimate.data.maxCoeff();
 
                             m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
+
+                            qDebug() << "[RtBeamformer::run] Finished computation of source estimate.";
 
                             //for performance evaluation only
                             uint64_t time_stop = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -778,28 +851,121 @@ void RtBeamformer::run()
 
                             //TODO: some parts are only for debugging only, delete later
 
-                            //TODO: add accuracy evaluation here
-                            qDebug() << "[RtBeamformer::run] sourceEstimate.data dim: " << sourceEstimate.data.rows() << " x " << sourceEstimate.data.cols();
 
-                            //get index of most active source position
-                            Index maxRow;
-                            Index maxCol;
-                            double dmaxActivity = sourceEstimate.data.maxCoeff(&maxRow, &maxCol);
+//                            std::cout << "[RtBeamformer::run] sourceEstimate.data.mean() : " << sourceEstimate.data.mean();
+
+//                            //TODO: add accuracy evaluation here
+//                            qDebug() << "[RtBeamformer::run] sourceEstimate.data dim: " << sourceEstimate.data.rows() << " x " << sourceEstimate.data.cols();
+
+//                            //get index of most active source position
+//                            Index maxRow;
+//                            Index maxCol;
+//                            double dmaxActivity = sourceEstimate.data.maxCoeff(&maxRow, &maxCol);
 
 
-                            qDebug() << "[RtBeamformer::run] dmaxActivity : " << dmaxActivity;
-                            qDebug() << "[RtBeamformer::run] maxRow : " << maxRow;
+//                            qDebug() << "[RtBeamformer::run] dmaxActivity : " << dmaxActivity;
+//                            qDebug() << "[RtBeamformer::run] maxRow : " << maxRow;
 //                            qDebug() << "[RtBeamformer::run] maxCol : " << maxCol;
 
-                            qDebug() << "[RtBeamformer::run] sourceEstimate.vertices(maxRow): " << sourceEstimate.vertices(maxRow);
-                            qDebug() << "[RtBeamformer::run] sourceEstimate.vertices size: " << sourceEstimate.vertices.size();
+//                            qDebug() << "[RtBeamformer::run] sourceEstimate.vertices(maxRow): " << sourceEstimate.vertices(maxRow);
+//                            qDebug() << "[RtBeamformer::run] sourceEstimate.vertices size: " << sourceEstimate.vertices.size();
+//                            //TODO: check out label ID vs vertex number (for clustered fwd it should be the label ID in vertno says one comment somewhere)
+//                            std::cout << "[RtBeamformer::run] m_pFwd.source_rr(maxRow) : " << m_pFwd->source_rr.block(maxRow,0,1,3) << '\n';
 
-                            std::cout << "[RtBeamformer::run] m_pFwd.source_rr(maxRow) : " << m_pFwd->source_rr.block(maxRow,0,1,3) << '\n';
+
+//                            fileActiveSourceIdx.open("testfileActiveSourceIdx.txt", std::ios::app);
+//                            fileActiveSourceIdx << maxRow << "  "
+//                                                << sourceEstimate.vertices(maxRow) << "  "
+//                                                << m_pFwd->source_rr.block(maxRow,0,1,3) << "  "
+//                                                << pBeamformer->getPreparedBeamformer().weights.maxCoeff() << "  "
+//                                                << pBeamformer->getPreparedBeamformer().weights.mean() << "  "
+//                                                << pBeamformer->getPreparedBeamformer().weights.minCoeff() << "  "
+//                                                << m_bfWeights.weights.maxCoeff() << "  "
+//                                                << m_bfWeights.weights.mean() << "  "
+//                                                << m_bfWeights.weights.maxCoeff() << "  "
+//                                                << '\n';
+
+//                            fileActiveSourceIdx.close();
 
 
-                            fileActiveSourceIdx.open("testfileActiveSourceIdx.txt", std::ios::app);
-                            fileActiveSourceIdx << maxRow << "  " << sourceEstimate.vertices(maxRow) << "  " << m_pFwd->source_rr.block(maxRow,0,1,3) << "  " << pBeamformer->getPreparedBeamformer().weights.maxCoeff() << "  " << pBeamformer->getPreparedBeamformer().weights.mean() << "  " << pBeamformer->getPreparedBeamformer().weights.minCoeff() << '\n';
-                            fileActiveSourceIdx.close();
+//                            //TODO for debugging only, delete later
+//                            fileNoiseCovBFIn.open("testNoiseCovBFIn.txt", std::ios::app);
+//                            for(int iRow = 0; iRow < m_pNoiseCov->data.rows(); iRow++){
+
+//                                for(int iCol = 0; iCol < m_pNoiseCov->data.cols(); iCol++){
+
+//                                fileNoiseCovBFIn << m_pNoiseCov->data(iRow,iCol) << "    ";
+
+//                                }
+//                                fileNoiseCovBFIn << '\n' ;
+
+//                            }
+//                            fileNoiseCovBFIn << "xxxxxxxxx" << '\n' ;
+//                            fileNoiseCovBFIn.close();
+
+//                            //TODO for debugging only, delete later
+//                            fileDataCovBFIn.open("testDataCovBFIn.txt", std::ios::app);
+//                            for(int iRow = 0; iRow < m_pDataCov->data.rows(); iRow++){
+
+//                                for(int iCol = 0; iCol < m_pDataCov->data.cols(); iCol++){
+
+//                                fileDataCovBFIn << m_pDataCov->data(iRow,iCol) << "    ";
+
+//                                }
+//                                fileDataCovBFIn << '\n' ;
+
+//                            }
+//                            fileDataCovBFIn << "xxxxxxxxx" << '\n' ;
+//                            fileDataCovBFIn.close();
+
+
+//                            //TODO for debugging only, delete later
+//                            fileNoiseCovBFOut.open("testNoiseCovBFOut.txt", std::ios::app);
+//                            MatrixXd matNoiseCovPrepared = pBeamformer->getPreparedBeamformer().noise_cov->data;
+//                            for(int iRow = 0; iRow < matNoiseCovPrepared.rows(); iRow++){
+
+//                                for(int iCol = 0; iCol < matNoiseCovPrepared.cols(); iCol++){
+
+//                                fileNoiseCovBFOut << matNoiseCovPrepared(iRow,iCol) << "    ";
+
+//                                }
+//                                fileNoiseCovBFOut << '\n' ;
+
+//                            }
+//                            fileNoiseCovBFOut << "xxxxxxxxx" << '\n' ;
+//                            fileNoiseCovBFOut.close();
+
+//                            //TODO for debugging only, delete later
+//                            fileDataCovBFOut.open("testDataCovBFOut.txt", std::ios::app);
+//                            MatrixXd matDataCovPrepared = pBeamformer->getPreparedBeamformer().data_cov->data;
+//                            for(int iRow = 0; iRow < matDataCovPrepared.rows(); iRow++){
+
+//                                for(int iCol = 0; iCol < matDataCovPrepared.cols(); iCol++){
+
+//                                fileDataCovBFOut << matDataCovPrepared(iRow,iCol) << "    ";
+
+//                                }
+//                                fileDataCovBFOut << '\n' ;
+
+//                            }
+//                            fileDataCovBFOut << "xxxxxxxxx" << '\n' ;
+//                            fileDataCovBFOut.close();
+
+//                            //TODO for debugging only, delete later
+//                            fileWhitenerBFOut.open("testWhitenerBFOut.txt", std::ios::app);
+//                            MatrixXd matWhitener = pBeamformer->getPreparedBeamformer().whitener;
+//                            for(int iRow = 0; iRow < matDataCovPrepared.rows(); iRow++){
+
+//                                for(int iCol = 0; iCol < matWhitener.cols(); iCol++){
+
+//                                fileWhitenerBFOut << matWhitener(iRow,iCol) << "    ";
+
+//                                }
+//                                fileWhitenerBFOut << '\n' ;
+
+//                            }
+//                            fileWhitenerBFOut << "xxxxxxxxx" << '\n' ;
+//                            fileWhitenerBFOut.close();
 
 
                         } else {
