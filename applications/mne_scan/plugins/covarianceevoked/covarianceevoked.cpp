@@ -384,9 +384,9 @@ void CovarianceEvoked::run()
             iEstimationSamples = m_iEstimationSamples;
             m_qMutex.unlock();
 
-            qDebug() << "[CovarianceEvoked::run] evokedData.data " << evokedData.data.rows() << " x " << evokedData.data.cols();
+//            qDebug() << "[CovarianceEvoked::run] evokedData.data " << evokedData.data.rows() << " x " << evokedData.data.cols();
             qDebug() << "[CovarianceEvoked::run] iEstimationSamples:  " << iEstimationSamples;
-            qDebug() << "[CovarianceEvoked::run] m_iNumPreStimSamples:  " << m_iNumPreStimSamples;
+//            qDebug() << "[CovarianceEvoked::run] m_iNumPreStimSamples:  " << m_iNumPreStimSamples;
 
             //estimate covariance matrices
             fiffNoiseCov = rtNoiseCov.estimateCovariance(evokedData.data.leftCols(m_iNumPreStimSamples), iEstimationSamples);

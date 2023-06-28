@@ -587,6 +587,19 @@ void RtcMne::run()
     QStringList lChNamesFiffInfo;
     QStringList lChNamesInvOp;
 
+    //TODO only for MA eval, delete later
+    std::ofstream fileActiveSourceIdxMNE;
+    std::ofstream fileClusteredSourceSpaceMNE;
+
+    fileActiveSourceIdxMNE.open("testfileActiveSourceIdxMNE.txt", std::ofstream::trunc);
+    fileActiveSourceIdxMNE.close();
+
+    fileClusteredSourceSpaceMNE.open("testClusteredSourceSpaceMNE.txt", std::ofstream::trunc);
+    fileClusteredSourceSpaceMNE.close();
+
+
+
+
     // Start processing data
     while(!isInterruptionRequested()) {
         m_qMutex.lock();
@@ -654,7 +667,62 @@ void RtcMne::run()
                     if(!sourceEstimate.isEmpty()) {
                         if(iTimePointSps < sourceEstimate.data.cols() && iTimePointSps >= 0) {
                             sourceEstimate = sourceEstimate.reduce(iTimePointSps,1);
+
+                            //TODO only for MA eval
+                            sourceEstimate.data /= sourceEstimate.data.maxCoeff();
+                            Index maxRow;
+                            Index maxCol;
+                            double dmaxActivity = sourceEstimate.data.maxCoeff(&maxRow, &maxCol);
+
                             m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
+
+
+                            //TODO: only for MA evaluation, delete later
+
+                            fileClusteredSourceSpaceMNE.open("testClusteredSourceSpaceMNE.txt", std::ios::app);
+                            //QList<QString>::iterator i;for (i = list.begin(); i != list.end(); ++i)    cout << *i << Qt::endl;
+
+
+                            QList<Eigen::Vector3f>::const_iterator itr;
+                            for(int iHemi = 0; iHemi < 2; iHemi++){
+
+                                for(itr = m_pFwd->src[iHemi].cluster_info.centroidSource_rr.begin(); itr != m_pFwd->src[iHemi].cluster_info.centroidSource_rr.end(); itr++){
+
+//
+//                                    fileClusteredSourceSpace << *itr->data();
+                                    qDebug() << "[RtBeamformer::run] itr size: " << itr->size() ;
+
+
+                                    for(int iRow = 0; iRow < itr->rows(); iRow++){
+
+                                        fileClusteredSourceSpaceMNE << itr->coeffRef(iRow) << "    ";
+
+                                    }
+                                    fileClusteredSourceSpaceMNE << '\n' ;
+
+                                }
+//                                fileClusteredSourceSpace << "-------" << '\n' ;
+
+                            }
+                            fileClusteredSourceSpaceMNE << "xxxxxxxxx" << '\n' ;
+                            fileClusteredSourceSpaceMNE.close();
+
+                            fileActiveSourceIdxMNE.open("testfileActiveSourceIdxMNE.txt", std::ios::app);
+                            fileActiveSourceIdxMNE << maxRow << "  "
+
+//                                                << m_pFwd->source_rr.block(maxRow,0,1,3) << "  "
+//                                                << pBeamformer->getPreparedBeamformer().weights.maxCoeff() << "  "
+//                                                << pBeamformer->getPreparedBeamformer().weights.mean() << "  "
+//                                                << pBeamformer->getPreparedBeamformer().weights.minCoeff() << "  "
+//                                                << m_bfWeights.weights.maxCoeff() << "  "
+//                                                << m_bfWeights.weights.mean() << "  "
+//                                                << m_bfWeights.weights.maxCoeff() << "  "
+                                                << '\n';
+
+                            fileActiveSourceIdxMNE.close();
+
+
+
                         } else {
                             m_pRTSEOutput->measurementData()->setValue(sourceEstimate);
                         }

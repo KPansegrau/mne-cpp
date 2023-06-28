@@ -27,6 +27,9 @@
 #include <QFile>
 #include <QDir>
 
+//TODO only for debugging, delete later
+#include <fstream>
+
 using namespace Eigen;
 using namespace FWDLIB;
 using namespace FIFFLIB;
@@ -2216,6 +2219,38 @@ void ComputeFwd::initFwd()
     printf ("\n");
 
     // Try to circumvent numerical problems by excluding points too close our ouside the inner skull surface
+
+
+    //TODO: only for debugging, delete later
+    //we need entries of  MNESourceSpaceOld **m_spaces (pointer to pointer for array of arrays)
+    //one loop for the two source spaces, one for all rows of entries in each source space, one for all cols of entries of each source space
+    std::ofstream fileRawSourceSpace;
+    fileRawSourceSpace.open("testRawSourceSpace.txt", std::ofstream::trunc);
+    fileRawSourceSpace.close();
+    fileRawSourceSpace.open("testRawSourceSpace.txt", std::ios::app);
+    for (int k = 0; k < m_iNSpace; k++){
+
+        for (int iPos = 0; iPos < m_spaces[k]->np; iPos++){
+
+//            float fCurrentR = *m_spaces[k]->rr[iPos];
+//            for ()
+            if(m_spaces[k]->inuse[iPos]){
+
+            fileRawSourceSpace << m_spaces[k]->rr[iPos][0] << "    " << m_spaces[k]->rr[iPos][1] << "    " << m_spaces[k]->rr[iPos][2];
+            fileRawSourceSpace << '\n' ; //<< "-------" << '\n';
+            }
+//            fileRawSourceSpace << '\n' ;
+
+
+        }
+    }
+    fileRawSourceSpace << "xxxxxxxxx" << '\n' ;
+
+
+    fileRawSourceSpace.close();
+
+
+
 
     if (m_pSettings->filter_spaces) {
         if (!m_pSettings->mindistoutname.isEmpty()) {

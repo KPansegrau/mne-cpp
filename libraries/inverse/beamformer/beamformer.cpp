@@ -139,6 +139,28 @@ MNESourceEstimate Beamformer::calculateInverse(const MatrixXd &data, float tmin,
 //    MatrixXd matOnes = MatrixXd::Ones(m_matWTSetup.rows(),m_matWTSetup.cols()) * 204.887;
 //    MatrixXd sol = matOnes * data;
 
+
+    //TODO only for debugging, delete later
+    //TODO for debugging only, delete later
+    std::ofstream fileEvokedDataApply;
+
+    fileEvokedDataApply.open("testEvokedDataBFApply.txt", std::ios::app);
+    for(int iRow = 0; iRow < data.rows(); iRow++){
+
+        for(int iCol = 0; iCol < data.cols(); iCol++){
+
+        fileEvokedDataApply <<data(iRow,iCol) << "    ";
+
+        }
+        fileEvokedDataApply << '\n' ;
+
+    }
+    fileEvokedDataApply << "xxxxxxxxx" << '\n' ;
+    fileEvokedDataApply.close();
+
+
+
+
     //apply beamformer filter matrix to data to get filter output
     //output matrix has dimension (3*nsource x ntimes)
     MatrixXd sol = m_matWTSetup * data; //filter output

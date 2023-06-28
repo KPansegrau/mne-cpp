@@ -337,16 +337,16 @@ MatrixXd MNEBeamformerWeights::compute_pseudo_inverse(const MatrixXd &p_matrix, 
 
 
 //    //TODO: for debugging only
-//    std::cout.precision(17);
-//    MatrixXd testMatProd = (p_matrix * matInv * p_matrix);
-//    MatrixXd testPinvCond = testMatProd - p_matrix;
-//    std::cout << "[MNEBeamformerWeights::compute_pseudo_inverse] Test inv constraint (A A+ A) -A  = 0: " << testPinvCond << "\n";
-//    std::cout << "[MNEBeamformerWeights::compute_pseudo_inverse] Test inv diff min: " << testPinvCond.minCoeff() << "\n";
-//    std::cout << "[MNEBeamformerWeights::compute_pseudo_inverse] Test inv diff max: " << testPinvCond.maxCoeff() << "\n";
+    std::cout.precision(17);
+    MatrixXd testMatProd = (p_matrix * matInv * p_matrix);
+    MatrixXd testPinvCond = testMatProd - p_matrix;
+    std::cout << "[MNEBeamformerWeights::compute_pseudo_inverse] Test inv constraint (A A+ A) -A  = 0: " << testPinvCond << "\n";
+    std::cout << "[MNEBeamformerWeights::compute_pseudo_inverse] Test inv diff min: " << testPinvCond.minCoeff() << "\n";
+    std::cout << "[MNEBeamformerWeights::compute_pseudo_inverse] Test inv diff max: " << testPinvCond.maxCoeff() << "\n";
 
 
-//    qDebug() << "[MNEBeamformerWeights::compute_pseudo_inverse] matInv dim: " << matInv.rows() << " x " << matInv.cols();
-//    qDebug() << "[MNEBeamformerWeights::compute_pseudo_inverse] Finished computation of pseudo inverse.";
+    qDebug() << "[MNEBeamformerWeights::compute_pseudo_inverse] matInv dim: " << matInv.rows() << " x " << matInv.cols();
+    qDebug() << "[MNEBeamformerWeights::compute_pseudo_inverse] Finished computation of pseudo inverse.";
 
 
 
@@ -687,38 +687,33 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 //        matLeadfield.block(0,iPos*3,matLeadfield.rows(),3) = reduceLocLeadfieldRank(matLeadfield.block(0,iPos*3,matLeadfield.rows(),3));
 //    }
 
-//    //TODO: only for debugging. delete later   (this writes prepared forward solution for debugging in Matlab)
-//    std::ofstream testFilePreparedForward;
-//    testFilePreparedForward.open("testPreparedForward.txt", std::ios::app);
-//    for(int iRow = 0; iRow < matLeadfield.rows(); iRow++){
+    //TODO: only for debugging. delete later   (this writes prepared forward solution for debugging in Matlab)
+    std::ofstream testFilePreparedForward;
+    testFilePreparedForward.open("testPreparedForward.txt", std::ios::app);
+    for(int iRow = 0; iRow < matLeadfield.rows(); iRow++){
 
-//        for(int iCol = 0; iCol < matLeadfield.cols(); iCol++){
+        for(int iCol = 0; iCol < matLeadfield.cols(); iCol++){
 
-//        testFilePreparedForward << matLeadfield(iRow,iCol) << "    ";
+        testFilePreparedForward << matLeadfield(iRow,iCol) << "    ";
 
-//        }
-//        testFilePreparedForward << '\n' ;
+        }
+        testFilePreparedForward << '\n' ;
 
-//    }
-//    testFilePreparedForward << "xxxxxxxxx" << '\n' ;
-//    testFilePreparedForward.close();
+    }
+    testFilePreparedForward << "xxxxxxxxx" << '\n' ;
+    testFilePreparedForward.close();
 
 
 //    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] outNoiseCov.eigvec.adjoint() dim: " << outNoiseCov.eigvec.adjoint().rows() << " x " << outNoiseCov.eigvec.adjoint().cols();
 //    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matWhitener dim: " << matWhitener.rows() << " x " << matWhitener.cols();
 
-//    //TODO: only for debugging, delete later
-//    matWhitener = MatrixXd::Identity(matLeadfield.rows(),matLeadfield.rows());
 
-    //TODO: only for debugging, delete later if it does not solve the jumping solution problem
-    //Together with the computations in prepare_forward, this creates matWhitener as described in Wester2022 (zca case)
-//    matWhitener = outNoiseCov.eigvec * matWhitener;
 
     //TODO: this is the python non pca whitener (combined with computations in prepare_forward)
-//    matWhitener = outNoiseCov.eigvec.adjoint() * matWhitener; //rows of eigvec are eigenvectors
+    matWhitener = outNoiseCov.eigvec.adjoint() * matWhitener; //rows of eigvec are eigenvectors
 
 //    //TODO: only for debugging, delete later
-    matWhitener = MatrixXd::Identity(matLeadfield.rows(),matLeadfield.rows());
+//    matWhitener = MatrixXd::Identity(matLeadfield.rows(),matLeadfield.rows());
 
 
     //Whiten the forward solution with whitener matrix
@@ -807,7 +802,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     dataCovPicked.data = (dataCovPicked.data + dataCovPicked.data.adjoint())/2.0;
 
 
-//    //TODO: this is only for debugging, delete later
+    //TODO: this is only for debugging, delete later
     //TODO: this is only for debugging, delete later (write singular values to file)
 //    JacobiSVD<MatrixXd> svdDataCovWhitened(dataCovPicked.data, ComputeFullU | ComputeFullV);
 //    VectorXd vecSingDataCovWhitened = svdDataCovWhitened.singularValues(); //sorted in decreasing order
@@ -976,20 +971,31 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
                 // filt*lf = ||lf||, applies to scalar leadfield, and to one of the possibilities of the vector version, eqn. 4.75
                 //TODO: Frobenius norm is better s. Wester 2022 so norm() is used which returns Frobenius norm of matrix
                 //normalize local leadfield to Frobenius Norm (s. Westner 2022, why Frobenius is better than L2 as used in Fieldtrip)
-                MatrixXd matLocLeadfieldNorm = MatrixXd::Zero(matLocLeadfield.rows(),matLocLeadfield.cols());
-                RowVectorXd vecFrobNorm = compute_frobenius_norm(matLocLeadfield);
+//                MatrixXd matLocLeadfieldNorm = MatrixXd::Zero(matLocLeadfield.rows(),matLocLeadfield.cols());
 
-                for(int i = 0; i < vecFrobNorm.size(); i++){
-                    matLocLeadfieldNorm.col(i) = matLocLeadfield.col(i) / vecFrobNorm(i);
+//                RowVectorXd vecFrobNorm = compute_frobenius_norm(matLocLeadfield);
+
+//                for(int i = 0; i < vecFrobNorm.size(); i++){
+//                    matLocLeadfieldNorm.col(i) = matLocLeadfield.col(i) / vecFrobNorm(i);
+//                }
+
+                //normalization to L2 Norm
+                MatrixXd matLocLeadfieldNorm = MatrixXd::Zero(matLocLeadfield.rows(),matLocLeadfield.cols());
+                for(int i = 0; i < matLocLeadfield.cols(); i++){
+                    matLocLeadfieldNorm.col(i) = matLocLeadfield.col(i) / matLocLeadfield.squaredNorm();
                 }
+
+
+//                double dFrobNorm = matLocLeadfield.norm();
+//                MatrixXd matLocLeadfieldNorm = matLocLeadfield / dFrobNorm;
 
                 matLocVirtSens = compute_pseudo_inverse(matLocLeadfieldNorm.transpose() * matDataCovInv * matLocLeadfieldNorm) * matLocLeadfieldNorm.transpose() * matDataCovInv; // S&N eqn. 4.09 (scalar version), and eqn. 4.75 (vector version)
                 matWT.block(iPos*3,0,3,matLocVirtSens.cols()) = matLocVirtSens; //store local virtual sensor with dimension (3 x nchannels) in filter weights matrix matWT
 
-//                //test array gain beamformer condition
-//                MatrixXd matTestBFCond = matLocVirtSens * matLocLeadfieldNorm;
-//                std::cout.precision(18);
-//                std::cout << "[MNEBeamformerWeights::make_beamformer_weights] matTestBFCond arraygain should be identity matrix: " << matTestBFCond << '\n';
+                //test array gain beamformer condition
+                MatrixXd matTestBFCond = matLocVirtSens * matLocLeadfieldNorm;
+                std::cout.precision(18);
+                std::cout << "[MNEBeamformerWeights::make_beamformer_weights] matTestBFCond arraygain should be identity matrix: " << matTestBFCond << '\n';
             }
 
         }else{ //unitgain BF without weight normalization
@@ -1010,9 +1016,9 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
 //            qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] matLocVirtSens dim: " << matLocVirtSens.rows() << " x " << matLocVirtSens.cols();
 
-//            MatrixXd matTestBFCond = matLocVirtSens * matLocLeadfield;
-//            std::cout.precision(18);
-//            std::cout << "[MNEBeamformerWeights::make_beamformer_weights] matTestBFCond should be identity matrix: " << matTestBFCond << '\n';
+            MatrixXd matTestBFCond = matLocVirtSens * matLocLeadfield;
+            std::cout.precision(18);
+            std::cout << "[MNEBeamformerWeights::make_beamformer_weights] matTestBFCond should be identity matrix: " << matTestBFCond << '\n';
 
         }
 
@@ -1043,7 +1049,7 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     //store filter weights and additional info
     p_MNEBeamformerWeights.info = leadfieldInfo;
     p_MNEBeamformerWeights.weights = matWT;
-//        p_MNEBeamformerWeights.weights = MatrixXd::Ones(matWT.rows(),matWT.cols());
+//       p_MNEBeamformerWeights.weights = MatrixXd::Ones(matWT.rows(),matWT.cols());
     p_MNEBeamformerWeights.data_cov = FiffCov::SDPtr(new FiffCov(dataCovPicked));
     p_MNEBeamformerWeights.noise_cov = FiffCov::SDPtr(new FiffCov(outNoiseCov));
     p_MNEBeamformerWeights.weightNorm = p_sWeightnorm;

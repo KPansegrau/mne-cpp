@@ -105,9 +105,9 @@ RtBeamformer::RtBeamformer()
     , m_bEvokedInput(false)
     , m_bUpdateBeamformer(false)
     , m_iNumAverages(1)
-    , m_iTimePointSps(125) //TODO: change this to 0 in the end
+    , m_iTimePointSps(245) //TODO: change this to 0 in the end (125 for 240sps blocks, 245 for 480sps blocks)
     , m_iDownSample(1)
-    , m_sWeightnorm("no") //TODO: change this to "no" in the end
+    , m_sWeightnorm("arraygain") //TODO: change this to "no" in the end
     , m_sAvrType("1")
     , m_sAtlasDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/label")
     , m_sSurfaceDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/surf")
@@ -673,12 +673,18 @@ void RtBeamformer::run()
     std::ofstream timeFileCovarianceEvokedStop;
 
     //TODO for debugging only, delete later
-//    std::ofstream fileNoiseCovBFIn;
-//    std::ofstream fileDataCovBFIn;
-//    std::ofstream fileNoiseCovBFOut;
-//    std::ofstream fileDataCovBFOut;
-//    std::ofstream fileWhitenerBFOut;
-//    std::ofstream fileSourceEstimateFull;
+    std::ofstream fileNoiseCovBFIn;
+    std::ofstream fileDataCovBFIn;
+    std::ofstream fileNoiseCovBFOut;
+    std::ofstream fileDataCovBFOut;
+    std::ofstream fileWhitenerBFOut;
+    std::ofstream fileSourceEstimateFull;
+
+    //TODO for debugging only
+    std::ofstream fileSourceSpace;
+    std::ofstream fileClusteredSourceSpace;
+    std::ofstream fileEvokedData;
+
 
 
     //this truncation deletes all processing time measurements that were performed during computation of forward solution
@@ -704,28 +710,35 @@ void RtBeamformer::run()
 
     //this deletes all old entries in the files for covariance matrices, whitener and full source estimate
 
-//    fileActiveSourceIdx.open("testfileActiveSourceIdx.txt", std::ofstream::trunc);
-//    fileActiveSourceIdx.close();
+    fileActiveSourceIdx.open("testfileActiveSourceIdx.txt", std::ofstream::trunc);
+    fileActiveSourceIdx.close();
 
-//    fileNoiseCovBFIn.open("testNoiseCovBFIn.txt", std::ofstream::trunc);
-//    fileNoiseCovBFIn.close();
+    fileNoiseCovBFIn.open("testNoiseCovBFIn.txt", std::ofstream::trunc);
+    fileNoiseCovBFIn.close();
 
-//    fileDataCovBFIn.open("testDataCovBFIn.txt", std::ofstream::trunc);
-//    fileDataCovBFIn.close();
+    fileDataCovBFIn.open("testDataCovBFIn.txt", std::ofstream::trunc);
+    fileDataCovBFIn.close();
 
-//    fileNoiseCovBFOut.open("testNoiseCovBFOut.txt", std::ofstream::trunc);
-//    fileNoiseCovBFOut.close();
+    fileNoiseCovBFOut.open("testNoiseCovBFOut.txt", std::ofstream::trunc);
+    fileNoiseCovBFOut.close();
 
-//    fileDataCovBFOut.open("testDataCovBFOut.txt", std::ofstream::trunc);
-//    fileDataCovBFOut.close();
+    fileDataCovBFOut.open("testDataCovBFOut.txt", std::ofstream::trunc);
+    fileDataCovBFOut.close();
 
-//    fileWhitenerBFOut.open("testWhitenerBFOut.txt", std::ofstream::trunc);
-//    fileWhitenerBFOut.close();
+    fileWhitenerBFOut.open("testWhitenerBFOut.txt", std::ofstream::trunc);
+    fileWhitenerBFOut.close();
 
-//    fileSourceEstimateFull.open("testSourceEstimateFull.txt", std::ofstream::trunc);
-//    fileSourceEstimateFull.close();
+    fileSourceEstimateFull.open("testSourceEstimateFull.txt", std::ofstream::trunc);
+    fileSourceEstimateFull.close();
 
+    fileSourceSpace.open("testSourceSpace.txt", std::ofstream::trunc);
+    fileSourceSpace.close();
 
+    fileClusteredSourceSpace.open("testClusteredSourceSpace.txt", std::ofstream::trunc);
+    fileClusteredSourceSpace.close();
+
+    fileEvokedData.open("testEvokedDataBFIn.txt", std::ofstream::trunc);
+    fileEvokedData.close();
 
     qInfo() << "[RtBeamformer::run] Start processing data....";
 
@@ -786,6 +799,23 @@ void RtBeamformer::run()
             if(m_pCircularEvokedBuffer->pop(evoked)) {
                 // Get the current evoked data
 
+
+                //TODO only for debugging, delete later
+                //TODO for debugging only, delete later
+                fileEvokedData.open("testEvokedDataBFIn.txt", std::ios::app);
+                for(int iRow = 0; iRow < evoked.data.rows(); iRow++){
+
+                    for(int iCol = 0; iCol < evoked.data.cols(); iCol++){
+
+                    fileEvokedData << evoked.data(iRow,iCol) << "    ";
+
+                    }
+                    fileEvokedData << '\n' ;
+
+                }
+                fileEvokedData << "xxxxxxxxx" << '\n' ;
+                fileEvokedData.close();
+
                 //for performance evaluation
                 timeFileStartApplication.open("testTimingBFApplicationStart.txt", std::ios::app);
                 uint64_t time_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -798,25 +828,24 @@ void RtBeamformer::run()
 
                     sourceEstimate = pBeamformer->calculateInverse(evoked);
 
-//                    std::cout << "[RtBeamformer::run] sourceEstimate.data.colwise.maxCoeff() : " << sourceEstimate.data.colwise().maxCoeff();
 
 
-//                    qDebug() << "[RtBeamformer::run] sourceEstimate.data dim before reduction: " << sourceEstimate.data.rows() << " x " << sourceEstimate.data.cols();
+                    qDebug() << "[RtBeamformer::run] sourceEstimate.data dim before reduction: " << sourceEstimate.data.rows() << " x " << sourceEstimate.data.cols();
 
-//                    //TODO for debugging only, delete later
-//                    fileSourceEstimateFull.open("testSourceEstimateFull.txt", std::ios::app);
-//                    for(int iRow = 0; iRow < sourceEstimate.data.rows(); iRow++){
+                    //TODO for debugging only, delete later
+                    fileSourceEstimateFull.open("testSourceEstimateFull.txt", std::ios::app);
+                    for(int iRow = 0; iRow < sourceEstimate.data.rows(); iRow++){
 
-//                        for(int iCol = 0; iCol < sourceEstimate.data.cols(); iCol++){
+                        for(int iCol = 0; iCol < sourceEstimate.data.cols(); iCol++){
 
-//                        fileSourceEstimateFull << sourceEstimate.data(iRow,iCol) << "    ";
+                        fileSourceEstimateFull << sourceEstimate.data(iRow,iCol) << "    ";
 
-//                        }
-//                        fileSourceEstimateFull << '\n' ;
+                        }
+                        fileSourceEstimateFull << '\n' ;
 
-//                    }
-//                    fileSourceEstimateFull << "xxxxxxxxx" << '\n' ;
-//                    fileSourceEstimateFull.close();
+                    }
+                    fileSourceEstimateFull << "xxxxxxxxx" << '\n' ;
+                    fileSourceEstimateFull.close();
 
 
 
@@ -852,30 +881,63 @@ void RtBeamformer::run()
                             //TODO: some parts are only for debugging only, delete later
 
 
-//                            std::cout << "[RtBeamformer::run] sourceEstimate.data.mean() : " << sourceEstimate.data.mean();
+                            std::cout << "[RtBeamformer::run] sourceEstimate.data.mean() : " << sourceEstimate.data.mean();
 
-//                            //TODO: add accuracy evaluation here
-//                            qDebug() << "[RtBeamformer::run] sourceEstimate.data dim: " << sourceEstimate.data.rows() << " x " << sourceEstimate.data.cols();
+                            //TODO: add accuracy evaluation here
+                            qDebug() << "[RtBeamformer::run] sourceEstimate.data dim: " << sourceEstimate.data.rows() << " x " << sourceEstimate.data.cols();
 
-//                            //get index of most active source position
-//                            Index maxRow;
-//                            Index maxCol;
-//                            double dmaxActivity = sourceEstimate.data.maxCoeff(&maxRow, &maxCol);
-
-
-//                            qDebug() << "[RtBeamformer::run] dmaxActivity : " << dmaxActivity;
-//                            qDebug() << "[RtBeamformer::run] maxRow : " << maxRow;
-//                            qDebug() << "[RtBeamformer::run] maxCol : " << maxCol;
-
-//                            qDebug() << "[RtBeamformer::run] sourceEstimate.vertices(maxRow): " << sourceEstimate.vertices(maxRow);
-//                            qDebug() << "[RtBeamformer::run] sourceEstimate.vertices size: " << sourceEstimate.vertices.size();
-//                            //TODO: check out label ID vs vertex number (for clustered fwd it should be the label ID in vertno says one comment somewhere)
-//                            std::cout << "[RtBeamformer::run] m_pFwd.source_rr(maxRow) : " << m_pFwd->source_rr.block(maxRow,0,1,3) << '\n';
+                            //get index of most active source position
+                            Index maxRow;
+                            Index maxCol;
+                            double dmaxActivity = sourceEstimate.data.maxCoeff(&maxRow, &maxCol);
 
 
-//                            fileActiveSourceIdx.open("testfileActiveSourceIdx.txt", std::ios::app);
-//                            fileActiveSourceIdx << maxRow << "  "
-//                                                << sourceEstimate.vertices(maxRow) << "  "
+                            qDebug() << "[RtBeamformer::run] dmaxActivity : " << dmaxActivity;
+                            qDebug() << "[RtBeamformer::run] maxRow : " << maxRow;
+                            qDebug() << "[RtBeamformer::run] maxCol : " << maxCol;
+
+                            qDebug() << "[RtBeamformer::run] sourceEstimate.vertices(maxRow): " << sourceEstimate.vertices(maxRow);
+                            qDebug() << "[RtBeamformer::run] sourceEstimate.vertices size: " << sourceEstimate.vertices.size();
+                            //TODO: check out label ID vs vertex number (for clustered fwd it should be the label ID in vertno says one comment somewhere)
+                            std::cout << "[RtBeamformer::run] m_pFwd.source_rr(maxRow) : " << m_pFwd->source_rr.block(maxRow,0,1,3) << '\n';
+
+                            std::cout << "[RtBeamformer::run] m_pFwd->src[0].cluster_info.clusterSource_rr.size(): " << m_pFwd->src[0].cluster_info.clusterSource_rr.size() << '\n';
+                            std::cout << "[RtBeamformer::run] m_pFwd->src[0].cluster_info.centroidSource_rr.size(): " << m_pFwd->src[0].cluster_info.centroidSource_rr.size() << '\n';
+
+                            fileClusteredSourceSpace.open("testClusteredSourceSpace.txt", std::ios::app);
+                            //QList<QString>::iterator i;for (i = list.begin(); i != list.end(); ++i)    cout << *i << Qt::endl;
+
+
+                            QList<Eigen::Vector3f>::const_iterator itr;
+                            for(int iHemi = 0; iHemi < 2; iHemi++){
+
+                                for(itr = m_pFwd->src[iHemi].cluster_info.centroidSource_rr.begin(); itr != m_pFwd->src[iHemi].cluster_info.centroidSource_rr.end(); itr++){
+
+//
+//                                    fileClusteredSourceSpace << *itr->data();
+                                    qDebug() << "[RtBeamformer::run] itr size: " << itr->size() ;
+
+
+                                    for(int iRow = 0; iRow < itr->rows(); iRow++){
+
+                                        fileClusteredSourceSpace << itr->coeffRef(iRow) << "    ";
+
+                                    }
+                                    fileClusteredSourceSpace << '\n' ;
+
+                                }
+//                                fileClusteredSourceSpace << "-------" << '\n' ;
+
+                            }
+                            fileClusteredSourceSpace << "xxxxxxxxx" << '\n' ;
+                            fileClusteredSourceSpace.close();
+
+
+
+
+                            fileActiveSourceIdx.open("testfileActiveSourceIdx.txt", std::ios::app);
+                            fileActiveSourceIdx << maxRow << "  "
+
 //                                                << m_pFwd->source_rr.block(maxRow,0,1,3) << "  "
 //                                                << pBeamformer->getPreparedBeamformer().weights.maxCoeff() << "  "
 //                                                << pBeamformer->getPreparedBeamformer().weights.mean() << "  "
@@ -883,89 +945,104 @@ void RtBeamformer::run()
 //                                                << m_bfWeights.weights.maxCoeff() << "  "
 //                                                << m_bfWeights.weights.mean() << "  "
 //                                                << m_bfWeights.weights.maxCoeff() << "  "
-//                                                << '\n';
+                                                << '\n';
 
-//                            fileActiveSourceIdx.close();
+                            fileActiveSourceIdx.close();
 
+                            //TODO for debugging only, delete later
+                            fileSourceSpace.open("testSourceSpace.txt", std::ios::app);
+                            for(int iRow = 0; iRow < m_pFwd->source_rr.rows(); iRow++){
 
-//                            //TODO for debugging only, delete later
-//                            fileNoiseCovBFIn.open("testNoiseCovBFIn.txt", std::ios::app);
-//                            for(int iRow = 0; iRow < m_pNoiseCov->data.rows(); iRow++){
+                                for(int iCol = 0; iCol < m_pFwd->source_rr.cols(); iCol++){
 
-//                                for(int iCol = 0; iCol < m_pNoiseCov->data.cols(); iCol++){
+                                fileSourceSpace << m_pFwd->source_rr(iRow,iCol) << "    ";
 
-//                                fileNoiseCovBFIn << m_pNoiseCov->data(iRow,iCol) << "    ";
+                                }
+                                fileSourceSpace << '\n' ;
 
-//                                }
-//                                fileNoiseCovBFIn << '\n' ;
-
-//                            }
-//                            fileNoiseCovBFIn << "xxxxxxxxx" << '\n' ;
-//                            fileNoiseCovBFIn.close();
-
-//                            //TODO for debugging only, delete later
-//                            fileDataCovBFIn.open("testDataCovBFIn.txt", std::ios::app);
-//                            for(int iRow = 0; iRow < m_pDataCov->data.rows(); iRow++){
-
-//                                for(int iCol = 0; iCol < m_pDataCov->data.cols(); iCol++){
-
-//                                fileDataCovBFIn << m_pDataCov->data(iRow,iCol) << "    ";
-
-//                                }
-//                                fileDataCovBFIn << '\n' ;
-
-//                            }
-//                            fileDataCovBFIn << "xxxxxxxxx" << '\n' ;
-//                            fileDataCovBFIn.close();
+                            }
+                            fileSourceSpace << "xxxxxxxxx" << '\n' ;
+                            fileSourceSpace.close();
 
 
-//                            //TODO for debugging only, delete later
-//                            fileNoiseCovBFOut.open("testNoiseCovBFOut.txt", std::ios::app);
-//                            MatrixXd matNoiseCovPrepared = pBeamformer->getPreparedBeamformer().noise_cov->data;
-//                            for(int iRow = 0; iRow < matNoiseCovPrepared.rows(); iRow++){
+                            //TODO for debugging only, delete later
+                            fileNoiseCovBFIn.open("testNoiseCovBFIn.txt", std::ios::app);
+                            for(int iRow = 0; iRow < m_pNoiseCov->data.rows(); iRow++){
 
-//                                for(int iCol = 0; iCol < matNoiseCovPrepared.cols(); iCol++){
+                                for(int iCol = 0; iCol < m_pNoiseCov->data.cols(); iCol++){
 
-//                                fileNoiseCovBFOut << matNoiseCovPrepared(iRow,iCol) << "    ";
+                                fileNoiseCovBFIn << m_pNoiseCov->data(iRow,iCol) << "    ";
 
-//                                }
-//                                fileNoiseCovBFOut << '\n' ;
+                                }
+                                fileNoiseCovBFIn << '\n' ;
 
-//                            }
-//                            fileNoiseCovBFOut << "xxxxxxxxx" << '\n' ;
-//                            fileNoiseCovBFOut.close();
+                            }
+                            fileNoiseCovBFIn << "xxxxxxxxx" << '\n' ;
+                            fileNoiseCovBFIn.close();
 
-//                            //TODO for debugging only, delete later
-//                            fileDataCovBFOut.open("testDataCovBFOut.txt", std::ios::app);
-//                            MatrixXd matDataCovPrepared = pBeamformer->getPreparedBeamformer().data_cov->data;
-//                            for(int iRow = 0; iRow < matDataCovPrepared.rows(); iRow++){
+                            //TODO for debugging only, delete later
+                            fileDataCovBFIn.open("testDataCovBFIn.txt", std::ios::app);
+                            for(int iRow = 0; iRow < m_pDataCov->data.rows(); iRow++){
 
-//                                for(int iCol = 0; iCol < matDataCovPrepared.cols(); iCol++){
+                                for(int iCol = 0; iCol < m_pDataCov->data.cols(); iCol++){
 
-//                                fileDataCovBFOut << matDataCovPrepared(iRow,iCol) << "    ";
+                                fileDataCovBFIn << m_pDataCov->data(iRow,iCol) << "    ";
 
-//                                }
-//                                fileDataCovBFOut << '\n' ;
+                                }
+                                fileDataCovBFIn << '\n' ;
 
-//                            }
-//                            fileDataCovBFOut << "xxxxxxxxx" << '\n' ;
-//                            fileDataCovBFOut.close();
+                            }
+                            fileDataCovBFIn << "xxxxxxxxx" << '\n' ;
+                            fileDataCovBFIn.close();
 
-//                            //TODO for debugging only, delete later
-//                            fileWhitenerBFOut.open("testWhitenerBFOut.txt", std::ios::app);
-//                            MatrixXd matWhitener = pBeamformer->getPreparedBeamformer().whitener;
-//                            for(int iRow = 0; iRow < matDataCovPrepared.rows(); iRow++){
 
-//                                for(int iCol = 0; iCol < matWhitener.cols(); iCol++){
+                            //TODO for debugging only, delete later
+                            fileNoiseCovBFOut.open("testNoiseCovBFOut.txt", std::ios::app);
+                            MatrixXd matNoiseCovPrepared = pBeamformer->getPreparedBeamformer().noise_cov->data;
+                            for(int iRow = 0; iRow < matNoiseCovPrepared.rows(); iRow++){
 
-//                                fileWhitenerBFOut << matWhitener(iRow,iCol) << "    ";
+                                for(int iCol = 0; iCol < matNoiseCovPrepared.cols(); iCol++){
 
-//                                }
-//                                fileWhitenerBFOut << '\n' ;
+                                fileNoiseCovBFOut << matNoiseCovPrepared(iRow,iCol) << "    ";
 
-//                            }
-//                            fileWhitenerBFOut << "xxxxxxxxx" << '\n' ;
-//                            fileWhitenerBFOut.close();
+                                }
+                                fileNoiseCovBFOut << '\n' ;
+
+                            }
+                            fileNoiseCovBFOut << "xxxxxxxxx" << '\n' ;
+                            fileNoiseCovBFOut.close();
+
+                            //TODO for debugging only, delete later
+                            fileDataCovBFOut.open("testDataCovBFOut.txt", std::ios::app);
+                            MatrixXd matDataCovPrepared = pBeamformer->getPreparedBeamformer().data_cov->data;
+                            for(int iRow = 0; iRow < matDataCovPrepared.rows(); iRow++){
+
+                                for(int iCol = 0; iCol < matDataCovPrepared.cols(); iCol++){
+
+                                fileDataCovBFOut << matDataCovPrepared(iRow,iCol) << "    ";
+
+                                }
+                                fileDataCovBFOut << '\n' ;
+
+                            }
+                            fileDataCovBFOut << "xxxxxxxxx" << '\n' ;
+                            fileDataCovBFOut.close();
+
+                            //TODO for debugging only, delete later
+                            fileWhitenerBFOut.open("testWhitenerBFOut.txt", std::ios::app);
+                            MatrixXd matWhitener = pBeamformer->getPreparedBeamformer().whitener;
+                            for(int iRow = 0; iRow < matDataCovPrepared.rows(); iRow++){
+
+                                for(int iCol = 0; iCol < matWhitener.cols(); iCol++){
+
+                                fileWhitenerBFOut << matWhitener(iRow,iCol) << "    ";
+
+                                }
+                                fileWhitenerBFOut << '\n' ;
+
+                            }
+                            fileWhitenerBFOut << "xxxxxxxxx" << '\n' ;
+                            fileWhitenerBFOut.close();
 
 
                         } else {
