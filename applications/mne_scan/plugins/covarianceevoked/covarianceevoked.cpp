@@ -368,6 +368,15 @@ void CovarianceEvoked::run()
     std::ofstream timeFileStart;
     std::ofstream timeFileStop;
 
+    std::ofstream testNoiseCovEvokedOut;
+    std::ofstream testDataCovEvokedOut;
+
+    testNoiseCovEvokedOut.open("testNoiseCovEvokedOut.txt", std::ofstream::trunc);
+    testNoiseCovEvokedOut.close();
+
+    testDataCovEvokedOut.open("testDataCovEvokedOut.txt", std::ofstream::trunc);
+    testDataCovEvokedOut.close();
+
     //start processing data
     while(!isInterruptionRequested()) {
 
@@ -413,6 +422,55 @@ void CovarianceEvoked::run()
             //TODO: only for debugging, delete later
 //            fiffDataCov.data = fiffNoiseCov.data;
 //            fiffDataCov.data = matSimulatedNoiseCov;
+
+            //set diagonal values to zero since this is autokovarianz (Hint from OIPE 2023)
+            //TODO: here must be the cause why MNE Scan crashes at the really beginning when pipeline is run
+            //TODO: try double loop instead
+//            for(int i = 0; i < fiffNoiseCov.data.size(); i++){
+//                fiffNoiseCov.data(i,i) = 0.0;
+//                fiffDataCov.data(i,i) = 0.0;
+//            }
+
+            //TODO: this does not crash, but fiffDataCov.data and fiffNoiseCov.data is empty :/
+            for(int iRow = 0; iRow < fiffDataCov.data.rows(); iRow++){
+                for(int iCol = 0; iCol < fiffDataCov.data.cols(); iCol++){
+                    if(iRow == iCol){
+                        fiffDataCov.data(iRow, iCol) = 0.0;
+                    }
+                }
+            }
+
+
+
+            //TODO for debugging only, delete later
+            testNoiseCovEvokedOut.open("testNoiseCovEvokedOut.txt", std::ios::app);
+            for(int iRow = 0; iRow < fiffNoiseCov.data.rows(); iRow++){
+
+                for(int iCol = 0; iCol < fiffNoiseCov.data.cols(); iCol++){
+
+                testNoiseCovEvokedOut << fiffNoiseCov.data(iRow,iCol) << "    ";
+
+                }
+                testNoiseCovEvokedOut << '\n' ;
+
+            }
+            testNoiseCovEvokedOut << "xxxxxxxxx" << '\n' ;
+            testNoiseCovEvokedOut.close();
+
+            //TODO for debugging only, delete later
+            testDataCovEvokedOut.open("testDataCovEvokedOut.txt", std::ios::app);
+            for(int iRow = 0; iRow < fiffDataCov.data.rows(); iRow++){
+
+                for(int iCol = 0; iCol < fiffDataCov.data.cols(); iCol++){
+
+                testDataCovEvokedOut << fiffDataCov.data(iRow,iCol) << "    ";
+
+                }
+                testDataCovEvokedOut << '\n' ;
+
+            }
+            testDataCovEvokedOut << "xxxxxxxxx" << '\n' ;
+            testDataCovEvokedOut.close();
 
 
 

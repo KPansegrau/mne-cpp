@@ -167,6 +167,18 @@ public:
 
     //=========================================================================================================
     /**
+     * Estimates rank of covariance matrix
+     *
+     * TODO: This method estimates the rank of the covariance matrix using the XXX algorithm
+     *
+     * @param[in] p_covMat     The covariance matrix for which the rank is to be estimated.
+     *
+     * @return the estimated rank of the covariance matrix.
+     */
+    qint32 estimateCovRank(const Eigen::MatrixXd p_covMat) const;
+
+    //=========================================================================================================
+    /**
      * Assignment Operator
      *
      * @param[in] rhs     FiffCov which should be assigned.
@@ -198,6 +210,9 @@ public:
     fiff_int_t nfree;       /**< Number of degrees of freedom. */
     Eigen::VectorXd eig;    /**< Vector of eigenvalues. */
     Eigen::MatrixXd eigvec; /**< Matrix of eigenvectors (each row represents an eigenvector). */
+    qint32 rankPreReg;      /**< Rank of covariance matrix estimated before regularization . */
+    qint32 rankPostReg;      /**< Rank of covariance matrix estimated after regularization . */
+
 
 // ### OLD STRUCT ###
 // typedef struct {		/* Covariance matrix storage */

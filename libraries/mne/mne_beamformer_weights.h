@@ -139,6 +139,23 @@ public:
 
     //=========================================================================================================
     /**
+     * Estimates the rank of a covariance matrix.
+     * If different channel types are combined, the total rank is the sum of the channel type dependent ranks.
+     * (similar to procedure in MNE Python, but performed after regularization (in Covariance Evoked plug-in) here)
+     *
+     * @param[in] p_infoCov         The info corresponding to the covariance matrix (for separating the different channel types).
+     * @param[in] p_exclude         The channels that have been excluded form the covariance matrix before (for excluding them for rank estimation too).
+     * @param[in] p_covMat          The covariance matrix for which the rank should be estimated.
+     *
+     * @return the rank of the covariance matrix.
+     *
+     *
+     */
+
+    qint32 estimateCovarinaceRank(const FIFFLIB::FiffInfo &p_infoCov, const QStringList p_exclude, FIFFLIB::FiffCov p_covMat);
+
+    //=========================================================================================================
+    /**
      * Reduces prepared leadfield matrix rank to 2 for each source position
      * This is recommended for MEG input data, which has low sensitivity to radial sources and therefore one orientation often carries a lot of noise.
      */

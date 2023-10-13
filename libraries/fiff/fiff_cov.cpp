@@ -116,6 +116,8 @@ FiffCov::FiffCov(const FiffCov &p_FiffCov)
 , nfree(p_FiffCov.nfree)
 , eig(p_FiffCov.eig)
 , eigvec(p_FiffCov.eigvec)
+, rankPreReg(p_FiffCov.rankPreReg)
+, rankPostReg(p_FiffCov.rankPostReg)
 {
     qRegisterMetaType<QSharedPointer<FIFFLIB::FiffCov> >("QSharedPointer<FIFFLIB::FiffCov>");
     qRegisterMetaType<FIFFLIB::FiffCov>("FIFFLIB::FiffCov");
@@ -141,6 +143,8 @@ void FiffCov::clear()
     nfree = -1;
     eig = VectorXd();
     eigvec = MatrixXd();
+    rankPreReg = 0;
+    rankPostReg = 0;
 }
 
 //=============================================================================================================
@@ -373,6 +377,10 @@ FiffCov FiffCov::regularize(const FiffInfo& p_info, double p_fRegMag, double p_f
 
     MatrixXd C(cov_good.data);
 
+    //TODO: only for debugging
+    //estimate the rank of the data covariance before regularization
+    cov.rankPreReg = cov.estimateCovRank(cov_good.data);
+
 
 
     //Subtract number of found stim channels because they are still in C but not the idx_eeg, idx_mag or idx_grad
@@ -457,7 +465,25 @@ FiffCov FiffCov::regularize(const FiffInfo& p_info, double p_fRegMag, double p_f
         for(qint32 j = 0; j < idx.size(); ++j)
             cov.data(idx[i], idx[j]) = C(i, j);
 
+    //TODO: only for debugging
+    //estimate rank of covariance matrix after regularization
+    cov.rankPostReg = cov.estimateCovRank(cov.data);
+
+
+//    qDebug() << "[FiffCov::regularize] cov dim after regularization: " << cov.data.rows() << " x " << cov.data.cols();
+
     return cov;
+}
+
+//=============================================================================================================
+
+qint32 FiffCov::estimateCovRank(const MatrixXd p_covMat) const{
+
+    qint32 rank = 0;
+
+    rank = MNEMath::rank(p_covMat);
+
+    return rank;
 }
 
 //=============================================================================================================
@@ -476,6 +502,8 @@ FiffCov& FiffCov::operator= (const FiffCov &rhs)
         nfree = rhs.nfree;
         eig = rhs.eig;
         eigvec = rhs.eigvec;
+        rankPreReg = rhs.rankPreReg;
+        rankPostReg = rhs.rankPostReg;
     }
     // to support chained assignment operators (a=b=c), always return *this
     return *this;

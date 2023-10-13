@@ -107,7 +107,7 @@ RtBeamformer::RtBeamformer()
     , m_iNumAverages(1)
     , m_iTimePointSps(245) //TODO: change this to 0 in the end (125 for 240sps blocks, 245 for 480sps blocks)
     , m_iDownSample(1)
-    , m_sWeightnorm("arraygain") //TODO: change this to "no" in the end
+    , m_sWeightnorm("no") //TODO: change this to "no" in the end
     , m_sAvrType("1")
     , m_sAtlasDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/label")
     , m_sSurfaceDir(QCoreApplication::applicationDirPath() + "/MNE-sample-data/subjects/sample/surf")
@@ -535,6 +535,28 @@ void RtBeamformer::updateRTFS(SCMEASLIB::Measurement::SPtr pMeasurement)
 
         } else if(!pRTFS->isClustered()) {
             qWarning() << "[RtBeamformer::updateRTFS] The forward solution has not been clustered yet.";
+
+            //TODO: this is only for testing BF without clustering
+            m_pFwd = pRTFS->getValue();
+            m_pRTSEOutput->measurementData()->setFwdSolution(m_pFwd);
+
+            m_qMutex.lock();
+            m_pFiffInfoForward = QSharedPointer<FiffInfoBase>(new FiffInfoBase(m_pFwd->info));
+            m_qMutex.unlock();
+
+            // update beamformer weights
+            if(this->isRunning() && m_pRtBfWeights) {
+
+                qDebug() << "[RtBeamformer::updateRTFS] Updating beamformer weights due to new forward solution...";
+
+                m_pRtBfWeights->setFwdSolution(m_pFwd);
+                m_pRtBfWeights->setWeightnorm(m_sWeightnorm);
+                m_pRtBfWeights->append(*m_pNoiseCov, *m_pDataCov);
+            }
+
+
+
+
         }
     }
 
@@ -685,6 +707,10 @@ void RtBeamformer::run()
     std::ofstream fileClusteredSourceSpace;
     std::ofstream fileEvokedData;
 
+    //TODO for debugging only, delete later
+    std::ofstream fileCovInfo;
+    std::ofstream fileWTOut;
+
 
 
     //this truncation deletes all processing time measurements that were performed during computation of forward solution
@@ -739,6 +765,12 @@ void RtBeamformer::run()
 
     fileEvokedData.open("testEvokedDataBFIn.txt", std::ofstream::trunc);
     fileEvokedData.close();
+
+    fileCovInfo.open("testCovInfo.txt", std::ofstream::trunc);
+    fileCovInfo.close();
+
+    fileWTOut.open("testWTOut.txt", std::ofstream::trunc);
+    fileWTOut.close();
 
     qInfo() << "[RtBeamformer::run] Start processing data....";
 
@@ -915,7 +947,7 @@ void RtBeamformer::run()
 
 //
 //                                    fileClusteredSourceSpace << *itr->data();
-                                    qDebug() << "[RtBeamformer::run] itr size: " << itr->size() ;
+//                                    qDebug() << "[RtBeamformer::run] itr size: " << itr->size() ;
 
 
                                     for(int iRow = 0; iRow < itr->rows(); iRow++){
@@ -1043,6 +1075,32 @@ void RtBeamformer::run()
                             }
                             fileWhitenerBFOut << "xxxxxxxxx" << '\n' ;
                             fileWhitenerBFOut.close();
+
+                            //TODO only for debugging
+                            fileCovInfo.open("testCovInfo.txt", std::ios::app);
+                            fileCovInfo << pBeamformer->getPreparedBeamformer().data_cov->rankPostReg << "  "
+//                                            << m_pDataCov->rankPostReg << "  "
+//                                            << m_pNoiseCov->rankPreReg << "  "
+//                                            << m_pNoiseCov->rankPostReg << "  "
+                                            << '\n';
+                            fileCovInfo.close();
+
+
+                            //TODO for debugging only, delete later
+                            fileWTOut.open("testWTOut.txt", std::ios::app);
+                            MatrixXd matWT = pBeamformer->getPreparedBeamformer().weights;
+                            for(int iRow = 0; iRow < matWT.rows(); iRow++){
+
+                                for(int iCol = 0; iCol < matWhitener.cols(); iCol++){
+
+                                fileWTOut << matWT(iRow,iCol) << "    ";
+
+                                }
+                                fileWTOut << '\n' ;
+
+                            }
+                            fileWTOut << "xxxxxxxxx" << '\n' ;
+                            fileWTOut.close();
 
 
                         } else {

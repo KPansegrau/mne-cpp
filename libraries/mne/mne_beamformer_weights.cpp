@@ -152,6 +152,167 @@ MNEBeamformerWeights::~MNEBeamformerWeights()
 
 //=============================================================================================================
 
+qint32 MNEBeamformerWeights::estimateCovarinaceRank(const FiffInfo &p_infoCov, const QStringList p_exclude, FiffCov p_covMat){
+
+    //this method estimates the rank of a covaraince matrix using a procedure similar to the one in _estimate_rank of MNE Python
+
+    //TODO: implement the following steps
+
+    //separate the channel types and get channel-type dependent covariance matrices (this code is partly copied from FiffCov::regularize)
+    RowVectorXi sel_eeg = p_infoCov.pick_types(false, true, false, defaultQStringList, p_exclude);
+    RowVectorXi sel_mag = p_infoCov.pick_types(QString("mag"), false, false, defaultQStringList, p_exclude);
+    RowVectorXi sel_grad = p_infoCov.pick_types(QString("grad"), false, false, defaultQStringList, p_exclude);
+
+    bool has_eeg = (sel_eeg.size() > 0);
+    bool has_mag = (sel_mag.size() > 0);
+    bool has_grad = (sel_grad.size() > 0);
+
+    qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] has_eeg: " << has_eeg;
+    qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] has_mag: " << has_mag;
+    qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] has_grad: " << has_grad;
+
+    //scale covariance matrix with channel type dependent factors in order to get entries around one
+    // grad: 1e13, mag: 1e15, eeg: 1e6 (for raw sensor data -> covariance data has entries in range ???)
+    //regularized covariance matrix ideally has values around 2.5e-25 for gradiometers (std: 5e-13) and 4e-28 for magnetometers (std: 20e-15) on main diagonale
+    //TODO: check whether these scalings work, if not use their squares for scaling
+
+    QStringList info_ch_names = p_infoCov.ch_names;
+    QStringList ch_names_eeg, ch_names_mag, ch_names_grad;
+    FiffCov covEEG, covMAG, covGRAD;
+    qint32 iRankEEG = 0;
+    qint32 iRankMAG = 0;
+    qint32 iRankGRAD = 0;
+    qint32 iTotalRank = 0;  //get total rank as sum of channel-type dependent ranks
+
+    if(has_eeg){
+
+        for(qint32 i = 0; i < sel_eeg.size(); ++i){
+            ch_names_eeg << info_ch_names[sel_eeg(i)];
+        }
+        covEEG = p_covMat.pick_channels(ch_names_eeg);
+
+        //scale cov matrix
+        MatrixXd matCovEEG = covEEG.data;
+
+        matCovEEG *= 1.0e6;
+//        matCovEEG *= 1.0e12;
+
+        //decompose matrix with SVD, compute tolerance (singular values below were assumed to be zero) and estimate rank
+        JacobiSVD<MatrixXd> svdCov(matCovEEG, ComputeThinU | ComputeThinV);
+        VectorXd vecSing = svdCov.singularValues(); //sorted in decreasing order
+        double tol =  vecSing.size() * vecSing[0] * DBL_EPSILON;
+        for(int i = 0; i < vecSing.size(); i++){
+            if(vecSing[i] > tol){
+                iRankEEG++;
+            }
+        }
+
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] EEG vecSing.size(): " << vecSing.size();
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] EEG vecSing[0]: " << vecSing[0];
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] EEG DBL_EPSILON: " << DBL_EPSILON;
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] EEG tol: " << tol;
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] EEG rank: " << iRankEEG;
+        iTotalRank += iRankEEG; //add eeg rank to total rank
+
+    }
+
+    if(has_mag){
+
+        for(qint32 i = 0; i < sel_mag.size(); ++i){
+            ch_names_mag << info_ch_names[sel_mag(i)];
+        }
+        covMAG = p_covMat.pick_channels(ch_names_mag);
+
+        //scale cov matrix
+        MatrixXd matCovMAG = covMAG.data;
+
+        matCovMAG *= 1.0e15;
+//        matCovMAG *= 1.0e30;
+
+        //decompose matrix with SVD
+        JacobiSVD<MatrixXd> svdCov(matCovMAG, ComputeThinU | ComputeThinV);
+        VectorXd vecSing = svdCov.singularValues(); //sorted in decreasing order
+        double tol =  vecSing.size() * vecSing[0] * DBL_EPSILON;
+        for(int i = 0; i < vecSing.size(); i++){
+            if(vecSing[i] > tol){
+                iRankMAG++;
+            }
+        }
+
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] MAG vecSing.size(): " << vecSing.size();
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] MAG vecSing[0]: " << vecSing[0];
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] MAG DBL_EPSILON: " << DBL_EPSILON;
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] MAG tol: " << tol ;
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] MAG rank: " << iRankMAG;
+        iTotalRank += iRankMAG; //add magnetometer rank to total rank
+    }
+
+    if(has_grad){
+
+        for(qint32 i = 0; i < sel_grad.size(); ++i){
+            ch_names_grad << info_ch_names[sel_grad(i)];
+        }
+        covGRAD = p_covMat.pick_channels(ch_names_grad);
+
+        //scale cov matrix
+        MatrixXd matCovGRAD = covGRAD.data;
+
+        matCovGRAD *= 1.0e13;
+//        matCovGRAD *= 1.0e26;
+
+        //decompose matrix with SVD
+        JacobiSVD<MatrixXd> svdCov(matCovGRAD, ComputeThinU | ComputeThinV);
+        VectorXd vecSing = svdCov.singularValues(); //sorted in decreasing order
+        double tol =  vecSing.size() * vecSing[0] * DBL_EPSILON;
+        for(int i = 0; i < vecSing.size(); i++){
+            if(vecSing[i] > tol){
+                iRankGRAD++;
+            }
+        }
+
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] GRAD vecSing.size(): " << vecSing.size();
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] GRAD vecSing[0]: " << vecSing[0];
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] GRAD DBL_EPSILON: " << DBL_EPSILON;
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] GRAD tol: " << tol;
+        qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] GRAD rank: " << iRankGRAD;
+        iTotalRank += iRankGRAD; //add gradiometer rank to total rank
+    }
+
+
+    if(iTotalRank < 0){
+        qWarning() << "[MNEBeamformerWeights::estimateCovarianceRank] Total rank < 0. Rank estimation failed!";
+    }else if(iTotalRank == 0){
+        qWarning() << "[MNEBeamformerWeights::estimateCovarianceRank] Total rank == 0. Rank estimation failed!";
+    }else if(iTotalRank > p_covMat.dim){
+        qWarning() << "[MNEBeamformerWeights::estimateCovarianceRank] Total rank > covariance matrix dimension. Rank estimation failed!";
+    }
+
+    qDebug() << "[MNEBeamformerWeights::estimateCovarianceRank] Total rank: " << iTotalRank << '\n';
+
+
+    //optional I guess: compute row norm of covariance matrix in order to get singular values around one
+    //normalize each row to its row norm
+
+    //SVD of normalized covariance matrix
+
+    //transform singular values into float
+
+    //get maximum singular value
+
+    //get epsilon for float64
+
+    //compute tolerance as product of epsilon, matrix dimension (number singular values) and maximum singular value
+
+    //get rank as number of singular values that are greater than the tolerance
+
+    return iTotalRank;
+}
+
+
+
+
+//=============================================================================================================
+
 MatrixXd MNEBeamformerWeights::reduceLocLeadfieldRank(const MatrixXd &matLocLeadfield){
 
     //decompose matrix with svd
@@ -322,6 +483,7 @@ MatrixXd MNEBeamformerWeights::compute_pseudo_inverse(const MatrixXd &p_matrix, 
 //    std::cout << "[MNEBeamformerWeights::compute_pseudo_inverse] tol: " << tol << '\n';
 //    std::cout << "[MNEBeamformerWeights::compute_pseudo_inverse] sumSing: " << sumSing << '\n';
 
+    //TODO: this is the original version with TSVD regularization
     VectorXd vecInvSing = VectorXd::Zero(vecSing.size());
     if(sumSing > 0){
         for(int i = 0; (i < vecSing.size()) && (i < sumSing); i++){
@@ -331,6 +493,17 @@ MatrixXd MNEBeamformerWeights::compute_pseudo_inverse(const MatrixXd &p_matrix, 
         qWarning() << "[MNEBeamformerWeights::compute_pseudo_inverse] Sum of singular values equals zero. Return default matrix.";
         return defaultMatrixXd;
     }
+
+    //TODO: this is the modified version without regularization (no truncation)
+//    VectorXd vecInvSing = VectorXd::Zero(vecSing.size());
+//    for(int i = 0; i < vecInvSing.size(); i++){
+//        if(vecSing[i] > 0){
+//            vecInvSing[i] = 1.0 / vecSing[i];
+//        }else{
+//            vecInvSing[i] = 0;
+//        }
+//    }
+
 
     //compute the pseudo inverse by recompose svd results
     MatrixXd matInv = matV * vecInvSing.asDiagonal() *  matU.adjoint();
@@ -375,17 +548,32 @@ MatrixXd MNEBeamformerWeights::invert_data_cov_mat(const FiffCov &p_dataCov)
 
 
     //invert only non-zero singular values from index 0 to rank-1
-    qint32 rank = MNEMath::rank(p_dataCov.data);
-    qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] rank p_dataCov.data = " << rank;
+//    qint32 rank = MNEMath::rank(p_dataCov.data);
+//    qint32 rank = p_dataCov.rankPreReg;
+//    qint32 rank = p_dataCov.rankPostReg;
+//    qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] rank(p_dataCov.data) = " << rank;
 
+    //TODO: this is the version with TSVD regularization
+    qint32 rank = p_dataCov.rankPostReg;
+    qDebug() << "[MNEBeamformerWeights::invert_data_cov_mat] rank: " << rank;
     VectorXd vecSingInv = VectorXd::Zero(vecSing.size());
     for(int i = 0; i < rank; i++){
         if(vecSing[i] > 0){
-            vecSingInv[i] = 1 / vecSing[i];
+            vecSingInv[i] = 1.0 / vecSing[i];
         }else{
             vecSingInv[i] = 0;
         }
     }
+
+//    //TODO: this is the version without truncation of singular values
+//    VectorXd vecSingInv = VectorXd::Zero(vecSing.size());
+//    for(int i = 0; i < vecSingInv.size(); i++){
+//        if(vecSing[i] > 0){
+//            vecSingInv[i] = 1.0 / vecSing[i];
+//        }else{
+//            vecSingInv[i] = 0;
+//        }
+//    }
 
     //compute the pseudo inverse by recompose svd results
     //HINT: this should be moore penrose pseude inversion as described in Wikipedia
@@ -574,6 +762,13 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     //TODO: this is only for debugging, delete this later
 //    std::ofstream fileDataCovSingIn;
 //    std::ofstream fileDataCovSingWhitened;
+    std::ofstream testNoiseCovInMakeBFWeights;
+    std::ofstream testDataCovInMakeBFWeights;
+    std::ofstream testNoiseCovOutMakeBFWeights;
+    std::ofstream testDataCovPickedMakeBFWeights;
+    std::ofstream testDataCovWhitenedMakeBFWeights;
+    std::ofstream testWTOutMakeBFWeights;
+    std::ofstream testWhitenerOutMakeBFWeights;
 
 
     qInfo("[MNEBeamformerWeights::make_beamformer_weights] Start calculation of beamformer weights...\n");
@@ -604,6 +799,42 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     FiffCov dataCov = p_dataCov;
     FiffCov noiseCov = p_noiseCov;
 
+    //TODO for debugging only, delete later
+    testNoiseCovInMakeBFWeights.open("testNoiseCovInMakeBFWeights.txt", std::ios::app);
+    for(int iRow = 0; iRow < noiseCov.data.rows(); iRow++){
+
+        for(int iCol = 0; iCol < noiseCov.data.cols(); iCol++){
+
+        testNoiseCovInMakeBFWeights << noiseCov.data(iRow,iCol) << "    ";
+
+        }
+        testNoiseCovInMakeBFWeights << '\n' ;
+
+    }
+    testNoiseCovInMakeBFWeights << "xxxxxxxxx" << '\n' ;
+    testNoiseCovInMakeBFWeights.close();
+
+    //TODO for debugging only, delete later
+    testDataCovInMakeBFWeights.open("testDataCovInMakeBFWeights.txt", std::ios::app);
+    for(int iRow = 0; iRow < dataCov.data.rows(); iRow++){
+
+        for(int iCol = 0; iCol < dataCov.data.cols(); iCol++){
+
+        testDataCovInMakeBFWeights << dataCov.data(iRow,iCol) << "    ";
+
+        }
+        testDataCovInMakeBFWeights << '\n' ;
+
+    }
+    testDataCovInMakeBFWeights << "xxxxxxxxx" << '\n' ;
+    testDataCovInMakeBFWeights.close();
+
+    //TODO: only for debugging
+    printf("[MNEBeamformerWeights::make_beamformer_weights] dataCov dimension 1: %d \n", dataCov.dim);
+    printf("[MNEBeamformerWeights::make_beamformer_weights] noiseCov dimension 1: %d \n", noiseCov.dim);
+//    std::cout << "[MNEBeamformerWeights::make_beamformer_weights] noiseCov dimension 1: " << noiseCov.data.rows() << " x " << noiseCov.data.cols();
+
+
     //TODO: this is only for debugging, delete later (write singular values to file)
 //    JacobiSVD<MatrixXd> svdDataCovIn(dataCov.data, ComputeFullU | ComputeFullV);
 //    VectorXd vecSingDataCovIn = svdDataCovIn.singularValues(); //sorted in decreasing order
@@ -628,8 +859,27 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 //    noiseCov.data = matSimulatedNoiseCov;
 
 
+    //TODO: delete later, this creates an ideal noise covariance matrix with simulated sensor variances on main diagonal
+//    VectorXd vecSimulatedStdNoise(noiseCov.data.rows());
+//    for(int iChan = 0; iChan < vecSimulatedStdNoise.size()-2; iChan += 3){
+//        vecSimulatedStdNoise[iChan] = 2.5e-25; //gradiometer sensor noise variance
+//        vecSimulatedStdNoise[iChan+1] = 2.5e-25;
+//        vecSimulatedStdNoise[iChan+2] = 4e-28; //magnetometer senosor noise variance
+//    }
+//    MatrixXd matSimulatedNoiseCov = vecSimulatedStdNoise.asDiagonal();
+//    noiseCov.data = matSimulatedNoiseCov;
+
+
     //TODO only for debugging, delete later
 //    noiseCov.data = MatrixXd::Identity(p_noiseCov.data.rows(),p_noiseCov.data.cols());
+
+
+    //TODO: noise cov estimated in MNE Python
+//    QString pyNoiseCovFileName = QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/mnepy_noisecov_sinusSourceActivity.txt";
+//    Eigen::MatrixXd pyNoiseCov;
+//    UTILSLIB::IOUtils::read_eigen_matrix(pyNoiseCov, pyNoiseCovFileName);
+//    noiseCov.data = pyNoiseCov;
+
 
 //    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] forward.sol dim: " << forward.sol->nrow << " x " << forward.sol->ncol;
 //    qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] dataCov dim: " << dataCov.data.rows() << " x " << dataCov.data.cols();
@@ -682,10 +932,21 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     forward.prepare_forward(dataInfo, noiseCov, false, leadfieldInfo, matLeadfield, outNoiseCov, matWhitener, n_nzero);
 
 
-    //TODO: forward rank reduction, if it does not work, delete this here (this makes WT computation very slow in debug mode!!!, check if suited for RT)
-//    for(int iPos = 0; iPos < forward.nsource; iPos++){
-//        matLeadfield.block(0,iPos*3,matLeadfield.rows(),3) = reduceLocLeadfieldRank(matLeadfield.block(0,iPos*3,matLeadfield.rows(),3));
-//    }
+        //TODO for debugging only, delete later
+        testNoiseCovOutMakeBFWeights.open("testNoiseCovOutMakeBFWeights.txt", std::ios::app);
+        for(int iRow = 0; iRow < outNoiseCov.data.rows(); iRow++){
+
+            for(int iCol = 0; iCol < outNoiseCov.data.cols(); iCol++){
+
+            testNoiseCovOutMakeBFWeights << outNoiseCov.data(iRow,iCol) << "    ";
+
+            }
+            testNoiseCovOutMakeBFWeights << '\n' ;
+
+        }
+        testNoiseCovOutMakeBFWeights << "xxxxxxxxx" << '\n' ;
+        testNoiseCovOutMakeBFWeights.close();
+
 
     //TODO: only for debugging. delete later   (this writes prepared forward solution for debugging in Matlab)
     std::ofstream testFilePreparedForward;
@@ -714,6 +975,15 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
 //    //TODO: only for debugging, delete later
 //    matWhitener = MatrixXd::Identity(matLeadfield.rows(),matLeadfield.rows());
+
+
+
+//    //TODO: data cov estimated in MNE Python
+//    QString pyWhitenerFileName = QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/mnepy_whitener_sinusSourceActivity.txt";
+//    Eigen::MatrixXd pyWhitener;
+//    UTILSLIB::IOUtils::read_eigen_matrix(pyWhitener, pyWhitenerFileName);
+//    matWhitener = pyWhitener;
+
 
 
     //Whiten the forward solution with whitener matrix
@@ -781,7 +1051,22 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 
     //forward solution (+whitener and noise cov matrix) is restricted to sensor channels only (MEG -1, MEG+EE or only EEG) during prepare_forward
     //so we need to reduce the dataCov to the same channels
-    FiffCov dataCovPicked =  dataCov.pick_channels(lCommonChanNames);
+    FiffCov dataCovPicked = dataCov.pick_channels(lCommonChanNames);
+
+    //TODO for debugging only, delete later
+    testDataCovPickedMakeBFWeights.open("testDataCovPickedMakeBFWeights.txt", std::ios::app);
+    for(int iRow = 0; iRow < dataCovPicked.data.rows(); iRow++){
+
+        for(int iCol = 0; iCol < dataCovPicked.data.cols(); iCol++){
+
+        testDataCovPickedMakeBFWeights << dataCovPicked.data(iRow,iCol) << "    ";
+
+        }
+        testDataCovPickedMakeBFWeights << '\n' ;
+
+    }
+    testDataCovPickedMakeBFWeights << "xxxxxxxxx" << '\n' ;
+    testDataCovPickedMakeBFWeights.close();
 
 
     //TODO: this is only for debugging, delete later
@@ -791,12 +1076,40 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 //    UTILSLIB::IOUtils::read_eigen_matrix(idealDataCov, idealDataCovFileName);
 //    dataCovPicked.data = idealDataCov;
 
-    //TODO: delete this, it makes a spatial filter
-//    dataCovPicked.data = matLeadfield * matLeadfield.transpose();
+    //TODO: constant data cov from estimated data cov for constant source activity with noise
+//    QString idealDataCovFileName = QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/est_datacov_simulated_data_constSourceActivity_isi900_stim340_raw.txt";
+//    Eigen::MatrixXd idealDataCov;
+//    UTILSLIB::IOUtils::read_eigen_matrix(idealDataCov, idealDataCovFileName);
+//    dataCovPicked.data = idealDataCov;
+
+
+//    //TODO: ideal data cov estimated from constant source activity file without noise
+//    QString idealDataCovFileName = QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/ideal_noisefree_datacov_simulated_data_constSourceActivity_isi900_stim340_raw.txt";
+//    Eigen::MatrixXd idealDataCov;
+//    UTILSLIB::IOUtils::read_eigen_matrix(idealDataCov, idealDataCovFileName);
+//    dataCovPicked.data = idealDataCov;
+
+    //TODO: data cov estimated in MNE Python
+//    QString pyDataCovFileName = QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/mnepy_datacov_sinusSourceActivity.txt";
+//    Eigen::MatrixXd pyDataCov;
+//    UTILSLIB::IOUtils::read_eigen_matrix(pyDataCov, pyDataCovFileName);
+//    dataCovPicked.data = pyDataCov;
+
+
+
+    //collect all channels that were excluded during picking in order to neglect them for rank estimation too
+    QStringList lExcludedChansCov;
+    for(int i = 0; i < dataInfo.ch_names.size(); i++){
+        if(!lCommonChanNames.contains(dataInfo.ch_names[i]))
+            lExcludedChansCov.append(dataInfo.ch_names[i]);
+    }
+    //TODO: this is for debugging, OIPE BF version with different rank estimation for data covariance estimation
+    qint32 rank = estimateCovarinaceRank(dataInfo, lExcludedChansCov, dataCovPicked);
+    dataCovPicked.rankPostReg = rank;
+
 
 
     //whiten data cov mat (after picking because whitener is from picked forward solution) before regularization
-//    dataCovPicked.data = matWhitener * dataCovPicked.data;
     //TODO: this is data cov whitening as performed in MNE Python (delete if it does not work)
     dataCovPicked.data = matWhitener * dataCovPicked.data * matWhitener.adjoint();
     dataCovPicked.data = (dataCovPicked.data + dataCovPicked.data.adjoint())/2.0;
@@ -812,6 +1125,27 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
 //    }
 //    fileDataCovSingWhitened << '\n' << "xxxxxxxxx" << '\n' ;
 //    fileDataCovSingWhitened.close();
+
+
+    //TODO: only for debugging
+    std::cout << "[MNEBeamformerWeights::make_beamformer_weights] dataCovPicked dimension 2: " << dataCovPicked.data.rows() << " x " << dataCovPicked.data.cols();
+    std::cout << "[MNEBeamformerWeights::make_beamformer_weights] outNoiseCov dimension 2: " << outNoiseCov.data.rows() << " x " << outNoiseCov.data.cols();
+
+
+    //TODO for debugging only, delete later
+    testDataCovWhitenedMakeBFWeights.open("testDataCovWhitenedMakeBFWeights.txt", std::ios::app);
+    for(int iRow = 0; iRow < dataCovPicked.data.rows(); iRow++){
+
+        for(int iCol = 0; iCol < dataCovPicked.data.cols(); iCol++){
+
+        testDataCovWhitenedMakeBFWeights << dataCovPicked.data(iRow,iCol) << "    ";
+
+        }
+        testDataCovWhitenedMakeBFWeights << '\n' ;
+
+    }
+    testDataCovWhitenedMakeBFWeights << "xxxxxxxxx" << '\n' ;
+    testDataCovWhitenedMakeBFWeights.close();
 
 
     //invert data covariance matrix
@@ -1044,6 +1378,43 @@ MNEBeamformerWeights MNEBeamformerWeights::make_beamformer_weights(const FiffInf
     //TODO: only for debugging delete later
     qDebug() << "[MNEBeamformerWeights::make_beamformer_weights] p_MNEBeamformerWeights.weightNorm: " << p_MNEBeamformerWeights.weightNorm;
 
+    //TODO: only for debugging
+    // load WT from MNE Python
+//    QString pyWTFileName = QCoreApplication::applicationDirPath() + "/mne-cpp-test-data/mnepy_WT_sinusSourceActivity.txt";
+//    Eigen::MatrixXd pyWT;
+//    UTILSLIB::IOUtils::read_eigen_matrix(pyWT, pyWTFileName);
+//    matWT = pyWT;
+
+
+    //TODO for debugging only, delete later
+    testWTOutMakeBFWeights.open("testWTOutMakeBFWeights.txt", std::ios::app);
+    for(int iRow = 0; iRow < matWT.rows(); iRow++){
+
+        for(int iCol = 0; iCol < matWT.cols(); iCol++){
+
+        testWTOutMakeBFWeights << matWT(iRow,iCol) << "    ";
+
+        }
+        testWTOutMakeBFWeights << '\n' ;
+
+    }
+    testWTOutMakeBFWeights << "xxxxxxxxx" << '\n' ;
+    testWTOutMakeBFWeights.close();
+
+    //TODO for debugging only, delete later
+    testWhitenerOutMakeBFWeights.open("testWhitenerOutMakeBFWeights.txt", std::ios::app);
+    for(int iRow = 0; iRow < matWhitener.rows(); iRow++){
+
+        for(int iCol = 0; iCol < matWhitener.cols(); iCol++){
+
+        testWhitenerOutMakeBFWeights << matWhitener(iRow,iCol) << "    ";
+
+        }
+        testWhitenerOutMakeBFWeights << '\n' ;
+
+    }
+    testWhitenerOutMakeBFWeights << "xxxxxxxxx" << '\n' ;
+    testWhitenerOutMakeBFWeights.close();
 
 
     //store filter weights and additional info

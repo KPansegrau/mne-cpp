@@ -135,6 +135,11 @@ FiffCov RtCov::estimateCovariance(const Eigen::MatrixXd& matData,
         // regularize noise covariance
         computedCov = computedCov.regularize(m_fiffInfo, 0.05, 0.05, 0.1, doProj, exclude);
 
+//        //TODO: only for debugging
+//        qDebug() << "[RtCov::estimateCovariance] computedCov.data dim after regularization " << computedCov.data.rows() << " x " << computedCov.data.cols();
+
+
+
 //            qint32 samples = rawSegment.cols();
 //            VectorXf mu = rawSegment.rowwise().sum().array() / (float)samples;
 
